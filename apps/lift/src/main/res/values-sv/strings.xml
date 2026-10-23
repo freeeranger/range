@@ -1,5 +1,6 @@
 <resources>
     <string name="app_name">Range Lift</string>
+    <string name="format_language" translatable="false">sv</string>
 
     <string name="action_back">Tillbaka</string>
     <string name="action_more">Fler alternativ</string>
@@ -11,6 +12,16 @@
     <!-- Home -->
     <string name="tab_workouts">Pass</string>
     <string name="tab_exercises">Övningar</string>
+    <string name="tab_home">Hem</string>
+    <string name="home_empty">Avsluta ett pass så syns dina framsteg här.</string>
+    <string name="home_this_week">Den här veckan</string>
+    <string name="home_week_of">Veckan från %1$s</string>
+    <string name="home_volume_title">Volym per vecka</string>
+    <string name="home_volume_description">Volym per vecka de senaste %1$d veckorna. Den här veckan: %2$s.</string>
+    <string name="home_strength_title">Uppskattat 1RM</string>
+    <string name="home_strength_description">Uppskattat 1RM för %1$s över %2$d pass. Senast: %3$s.</string>
+    <string name="home_muscles_title">Set per muskelgrupp</string>
+    <string name="home_muscles_period">Senaste 30 dagarna</string>
     <string name="workout_start">Starta pass</string>
     <string name="workout_continue">Fortsätt passet</string>
     <string name="workouts_empty">Inga pass än. Starta ett och logga dina första set.</string>
@@ -39,14 +50,11 @@
     <string name="workout_set_reps">Reps för set %1$d</string>
     <string name="workout_set_time">Tid för set %1$d</string>
     <string name="workout_drag">Dra för att flytta</string>
-    <plurals name="workout_sets_left">
-        <item quantity="one">Bocka av alla set för att avsluta. %1$d set kvar.</item>
-        <item quantity="other">Bocka av alla set för att avsluta. %1$d set kvar.</item>
-    </plurals>
     <string name="workout_delete_set">Radera set</string>
     <string name="stat_duration">Tid</string>
     <string name="stat_sets">Set</string>
     <string name="stat_volume">Volym</string>
+    <string name="stat_workouts">Pass</string>
 
     <!-- Exercises -->
     <string name="exercises_search">Sök övningar</string>

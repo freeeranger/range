@@ -15,6 +15,16 @@
     <!-- Home -->
     <string name="tab_workouts">Workouts</string>
     <string name="tab_exercises">Exercises</string>
+    <string name="tab_home">Home</string>
+    <string name="home_empty">Finish a workout and your progress shows up here.</string>
+    <string name="home_this_week">This week</string>
+    <string name="home_week_of">Week of %1$s</string>
+    <string name="home_volume_title">Volume per week</string>
+    <string name="home_volume_description">Volume per week over the last %1$d weeks. This week: %2$s.</string>
+    <string name="home_strength_title">Estimated 1RM</string>
+    <string name="home_strength_description">Estimated one-rep max for %1$s over %2$d workouts. Latest: %3$s.</string>
+    <string name="home_muscles_title">Sets per muscle group</string>
+    <string name="home_muscles_period">Last 30 days</string>
     <string name="workout_start">Start workout</string>
     <string name="workout_continue">Continue workout</string>
     <string name="workouts_empty">No workouts yet. Start one and log your first sets.</string>
@@ -43,14 +53,11 @@
     <string name="workout_set_reps">Set %1$d reps</string>
     <string name="workout_set_time">Set %1$d time</string>
     <string name="workout_drag">Drag to reorder</string>
-    <plurals name="workout_sets_left">
-        <item quantity="one">Tick off every set to finish. %1$d set left.</item>
-        <item quantity="other">Tick off every set to finish. %1$d sets left.</item>
-    </plurals>
     <string name="workout_delete_set">Delete set</string>
     <string name="stat_duration">Duration</string>
     <string name="stat_sets">Sets</string>
     <string name="stat_volume">Volume</string>
+    <string name="stat_workouts">Workouts</string>
 
     <!-- Exercises -->
     <string name="exercises_search">Search exercises</string>

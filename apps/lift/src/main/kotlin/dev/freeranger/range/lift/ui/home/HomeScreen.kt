@@ -78,9 +78,9 @@ data class HomeActions(
     val openSettings: () -> Unit = {},
 )
 
-enum class HomeTab { Workouts, Exercises }
+enum class HomeTab { Workouts, Home, Exercises }
 
-/** Past workouts and the exercise library, a tab each, as StrengthLog splits them. */
+/** Three tabs: past workouts, the progress dashboard in the middle where the app opens, and the exercise library. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
@@ -88,7 +88,7 @@ fun HomeScreen(
     now: Instant,
     actions: HomeActions,
     modifier: Modifier = Modifier,
-    initialTab: HomeTab = HomeTab.Workouts,
+    initialTab: HomeTab = HomeTab.Home,
 ) {
     val format = rememberLiftFormat()
     var tab by rememberSaveable { mutableStateOf(initialTab) }
@@ -114,6 +114,12 @@ fun HomeScreen(
                     label = { Text(stringResource(R.string.tab_workouts)) },
                 )
                 NavigationBarItem(
+                    selected = tab == HomeTab.Home,
+                    onClick = { tab = HomeTab.Home },
+                    icon = { Icon(RangeIcons.Home, contentDescription = null) },
+                    label = { Text(stringResource(R.string.tab_home)) },
+                )
+                NavigationBarItem(
                     selected = tab == HomeTab.Exercises,
                     onClick = { tab = HomeTab.Exercises },
                     icon = { Icon(RangeIcons.FitnessCenter, contentDescription = null) },
@@ -126,7 +132,7 @@ fun HomeScreen(
             val container = MaterialTheme.colorScheme.primary
             val content = MaterialTheme.colorScheme.onPrimary
             when (tab) {
-                HomeTab.Workouts -> ExtendedFloatingActionButton(
+                HomeTab.Workouts, HomeTab.Home -> ExtendedFloatingActionButton(
                     text = { Text(stringResource(if (state.inProgress != null) R.string.workout_continue else R.string.workout_start)) },
                     icon = { Icon(RangeIcons.FitnessCenter, contentDescription = null) },
                     onClick = actions.start,
@@ -143,6 +149,7 @@ fun HomeScreen(
         val contentPadding = PaddingValues(top = padding.calculateTopPadding(), bottom = padding.calculateBottomPadding() + 96.dp)
         when (tab) {
             HomeTab.Workouts -> WorkoutHistory(state, now, format, actions, contentPadding)
+            HomeTab.Home -> Dashboard(state.logs, now, format, contentPadding)
             HomeTab.Exercises -> ExerciseList(
                 exercises = state.exercises,
                 bests = state.bests,

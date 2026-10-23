@@ -1,6 +1,7 @@
 package dev.freeranger.range.lift.ui.common
 
 import android.content.Context
+import android.icu.text.CompactDecimalFormat
 import android.text.format.DateFormat
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -18,11 +19,13 @@ import dev.freeranger.range.lift.data.WorkoutSet
 import kotlinx.coroutines.delay
 import java.text.Collator
 import java.text.NumberFormat
+import java.time.DayOfWeek
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.temporal.WeekFields
 import java.util.Locale
 
 /** Turns dates, weights, sets and names into the text shown on screen. */
@@ -44,9 +47,14 @@ class LiftFormat(context: Context) {
     private val dateFormat = pattern("EEEEdMMMM")
     private val dateYearFormat = pattern("EEEEdMMMMy")
     private val monthFormat = pattern("LLLLy")
+    private val shortDateFormat = pattern("MMMd")
     private val weightFormat = NumberFormat.getNumberInstance(locale).apply { maximumFractionDigits = 2 }
     private val volumeFormat = NumberFormat.getIntegerInstance(locale)
     private val collator = Collator.getInstance(locale)
+    private val compactFormat = CompactDecimalFormat.getInstance(locale, CompactDecimalFormat.CompactStyle.SHORT)
+
+    /** The week starts on the day people expect where they live: Monday in Sweden, Sunday in the US. */
+    val firstDayOfWeek: DayOfWeek = WeekFields.of(locale).firstDayOfWeek
 
     /** Sorts names the way this language does, so "Ö" comes after "Z" in Swedish. */
     val byName: Comparator<String> = Comparator { a, b -> collator.compare(a, b) }
@@ -116,6 +124,12 @@ class LiftFormat(context: Context) {
             else -> date.format(dateYearFormat)
         }.capitalized()
     }
+
+    /** "Oct 12": a date on a chart's axis. */
+    fun shortDate(date: LocalDate): String = date.format(shortDateFormat)
+
+    /** "2.5K": a number on a chart's axis. */
+    fun compact(value: Double): String = compactFormat.format(value)
 
     /** "October 2026", heading a month of workouts. */
     fun month(date: LocalDate): String = date.format(monthFormat).capitalized()

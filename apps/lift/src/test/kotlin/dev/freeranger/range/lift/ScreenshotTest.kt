@@ -7,15 +7,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.junit4.v2.createComposeRule
-import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performClick
 import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
 import com.github.takahirom.roborazzi.captureScreenRoboImage
 import dev.freeranger.range.lift.data.BuiltInExercises
 import dev.freeranger.range.lift.data.Exercise
+import dev.freeranger.range.lift.data.LoggedExercise
 import dev.freeranger.range.lift.data.Muscle
 import dev.freeranger.range.lift.data.Workout
 import dev.freeranger.range.lift.data.WorkoutExercise
+import dev.freeranger.range.lift.data.WorkoutLog
 import dev.freeranger.range.lift.data.WorkoutSet
 import dev.freeranger.range.lift.data.bestSets
 import dev.freeranger.range.lift.data.previousSets
@@ -111,6 +111,28 @@ class ScreenshotTest {
         )
     private val logs = workoutLogs(workouts, entries, sets, exercises)
     private val home = HomeState(logs, exercises, loaded = true)
+
+    /** Three months of two workouts a week, getting stronger, with a week off, for the dashboard's charts. */
+    private val progress: List<WorkoutLog> = buildList {
+        var id = 1000L
+        fun log(day: LocalDate, name: String, vararg lifts: Pair<String, List<Pair<Double, Int>>>) {
+            val workout = Workout(id++, name, at(day.atTime(17, 30)), at(day.atTime(18, 35)))
+            val logged = lifts.mapIndexed { position, (key, sets) ->
+                val entry = WorkoutExercise(id++, workout.id, id(key), position)
+                LoggedExercise(entry, exercises.first { it.key == key }, sets.mapIndexed { i, (kg, reps) -> WorkoutSet(id++, entry.id, i, kg, reps, done = true) })
+            }
+            add(WorkoutLog(workout, logged))
+        }
+        for (week in 0..11) {
+            if (week == 7) continue
+            val monday = friday.minusWeeks(11L - week).with(java.time.DayOfWeek.MONDAY)
+            log(monday, "Push", "bench_press" to List(3) { 60.0 + 2.5 * week to 5 }, "overhead_press" to List(3) { 35.0 + week to 6 }, "dip" to List(2) { 0.0 to 10 })
+            if (monday.plusDays(3) < friday) {
+                log(monday.plusDays(3), "Legs", "squat" to List(3) { 80.0 + 5 * week to 5 }, "romanian_deadlift" to List(2) { 70.0 + 2.5 * week to 8 }, "pull_up" to List(3) { 0.0 to 8 + week / 3 })
+            }
+        }
+    }.sortedByDescending { it.workout.startedAt }
+    private val dashboard = HomeState(progress, exercises, loaded = true)
     private val active = logs.first { !it.workout.isFinished }
     private val activeState = WorkoutState(active, active.exercises.associate { it.entry.id to previousSets(logs, it.exercise.id, active.workout.startedAt) })
     private val finishedState = WorkoutState(logs.first { it.workout.id == 3L })
@@ -124,11 +146,27 @@ class ScreenshotTest {
     )
 
     @Test
-    fun home() = capture { HomeScreen(home, now, HomeActions()) }
+    fun home() = capture { HomeScreen(dashboard, now, HomeActions()) }
 
     @Test
     @Config(qualifiers = "sv-rSE-$PHONE")
-    fun homeSwedish() = capture { HomeScreen(home, now, HomeActions()) }
+    fun homeSwedish() = capture { HomeScreen(dashboard, now, HomeActions()) }
+
+    @Test
+    @Config(qualifiers = "+notnight")
+    fun homeLight() = capture(RangeAppearance(theme = ThemeMode.Light, dynamicColor = false)) { HomeScreen(dashboard, now, HomeActions()) }
+
+    /** The whole dashboard on one tall screen, to check every chart. */
+    @Test
+    @Config(qualifiers = "w412dp-h1800dp-night-xxhdpi")
+    fun homeWhole() = capture { HomeScreen(dashboard, now, HomeActions()) }
+
+    @Test
+    fun workouts() = capture { HomeScreen(home, now, HomeActions(), initialTab = HomeTab.Workouts) }
+
+    @Test
+    @Config(qualifiers = "sv-rSE-$PHONE")
+    fun workoutsSwedish() = capture { HomeScreen(home, now, HomeActions(), initialTab = HomeTab.Workouts) }
 
     @Test
     fun homeEmpty() = capture { HomeScreen(HomeState(exercises = exercises, loaded = true), now, HomeActions()) }
@@ -170,12 +208,10 @@ class ScreenshotTest {
     }
 
     @Test
-    fun workoutSetsLeft() = capture(
-        then = {
-            compose.onNodeWithText("Finish").performClick()
-            compose.waitForIdle()
-        },
-    ) { WorkoutScreen(activeState, now, WorkoutActions()) }
+    fun workoutAllTicked() = capture {
+        val allDone = active.copy(exercises = active.exercises.map { e -> e.copy(sets = e.sets.map { it.copy(done = true, reps = it.reps ?: 8, seconds = it.seconds ?: 60) }) })
+        WorkoutScreen(WorkoutState(allDone), now, WorkoutActions())
+    }
 
     @Test
     fun workoutRenaming() = capture { WorkoutScreen(activeState, now, WorkoutActions(), initialDialog = WorkoutDialog.Rename) }
@@ -224,12 +260,10 @@ class ScreenshotTest {
     /** Material You is off so screenshots don't depend on a wallpaper. */
     private fun capture(
         appearance: RangeAppearance = RangeAppearance(dynamicColor = false),
-        then: () -> Unit = {},
         content: @Composable () -> Unit,
     ) {
         compose.setContent { RangeTheme(accent = RangeAccents.Lift, appearance = appearance, content = content) }
         compose.waitForIdle()
-        then()
         captureScreenRoboImage()
     }
 }

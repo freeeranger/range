@@ -36,8 +36,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -49,7 +47,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -62,7 +59,6 @@ import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -97,7 +93,6 @@ import dev.freeranger.range.lift.ui.common.rememberNow
 import dev.freeranger.range.ui.components.RangeNumberCheck
 import dev.freeranger.range.ui.icons.RangeIcons
 import dev.freeranger.range.ui.theme.RangeSpace
-import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import java.time.Instant
@@ -170,14 +165,10 @@ fun WorkoutScreen(
     val today = now.atZone(format.zone).toLocalDate()
     var dialog by rememberSaveable { mutableStateOf(initialDialog) }
     var menu by remember { mutableStateOf(false) }
-    val snackbar = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
-    val left = log.exercises.sumOf { logged -> logged.sets.count { !it.done } }
-    val leftMessage = pluralStringResource(R.plurals.workout_sets_left, left, left)
+    val ready = log.exercises.any { it.sets.isNotEmpty() } && log.exercises.all { logged -> logged.sets.all { it.done } }
 
     Scaffold(
         modifier = modifier,
-        snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             TopAppBar(
                 title = {
@@ -195,19 +186,8 @@ fun WorkoutScreen(
                 },
                 actions = {
                     if (!workout.isFinished) {
-                        Button(
-                            onClick = {
-                                if (left == 0) {
-                                    actions.finish()
-                                } else {
-                                    scope.launch {
-                                        snackbar.currentSnackbarData?.dismiss()
-                                        snackbar.showSnackbar(leftMessage)
-                                    }
-                                }
-                            },
-                            enabled = log.exercises.any { it.sets.isNotEmpty() },
-                        ) {
+                        // Lights up once every set is ticked off.
+                        Button(onClick = actions.finish, enabled = ready) {
                             Text(stringResource(R.string.workout_finish))
                         }
                     }
