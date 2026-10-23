@@ -1,9 +1,6 @@
 package dev.freeranger.range.lift.ui.exercise
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,7 +8,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
@@ -27,15 +23,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import dev.freeranger.range.lift.R
 import dev.freeranger.range.lift.data.Exercise
-import dev.freeranger.range.lift.data.Muscle
 import dev.freeranger.range.lift.data.WorkoutSet
-import dev.freeranger.range.lift.ui.common.NameSheet
 import dev.freeranger.range.lift.ui.common.rememberLiftFormat
 import dev.freeranger.range.ui.components.RangeSectionHeader
 import dev.freeranger.range.ui.icons.RangeIcons
 import dev.freeranger.range.ui.theme.RangeSpace
 
-/** The exercise library, searchable and grouped by muscle, each with its best set so far. */
+/** The exercise library, searchable and grouped by muscle, each with its best set so far. Removed exercises are left out. */
 @Composable
 fun ExerciseList(
     exercises: List<Exercise>,
@@ -48,6 +42,7 @@ fun ExerciseList(
     var query by rememberSaveable { mutableStateOf("") }
     val groups = remember(exercises, query, format) {
         exercises
+            .filterNot { it.archived }
             .map { it to format.name(it) }
             .filter { (_, name) -> name.contains(query.trim(), ignoreCase = true) }
             .sortedWith(compareBy<Pair<Exercise, String>> { it.first.muscle.ordinal }.thenBy(format.byName) { it.second })
@@ -80,35 +75,13 @@ fun ExerciseList(
         groups.forEach { (muscle, entries) ->
             item(key = "muscle $muscle") { RangeSectionHeader(format.muscle(muscle)) }
             items(entries, key = { it.first.id }) { (exercise, name) ->
-                val best = bests[exercise.id]
+                val best = bests[exercise.id]?.let { stringResource(R.string.exercise_best, format.set(it, exercise)) }
+                val supporting = listOfNotNull(format.kind(exercise), best).joinToString(" · ")
                 ListItem(
                     headlineContent = { Text(name) },
-                    supportingContent = best?.let { { Text(stringResource(R.string.exercise_best, format.set(it))) } },
+                    supportingContent = supporting.takeIf { it.isNotEmpty() }?.let { { Text(it) } },
                     modifier = Modifier.clickable { onClick(exercise) },
                 )
-            }
-        }
-    }
-}
-
-/** Asks for a name and muscle group for an exercise of the user's own. */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-fun NewExerciseSheet(onAdd: (String, Muscle) -> Unit, onDismiss: () -> Unit, autoFocus: Boolean = true, initialMuscle: Muscle? = null) {
-    val format = rememberLiftFormat()
-    var muscle by rememberSaveable { mutableStateOf(initialMuscle) }
-    NameSheet(
-        placeholder = stringResource(R.string.exercise_new),
-        saveLabel = stringResource(R.string.exercise_add),
-        onSave = { name -> muscle?.let { onAdd(name, it) } },
-        onDismiss = onDismiss,
-        ready = muscle != null,
-        autoFocus = autoFocus,
-    ) {
-        Text(stringResource(R.string.exercise_muscle), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(RangeSpace.s2)) {
-            Muscle.entries.forEach {
-                FilterChip(selected = muscle == it, onClick = { muscle = it }, label = { Text(format.muscle(it)) })
             }
         }
     }

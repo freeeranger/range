@@ -14,6 +14,10 @@ android {
         versionCode = 1
         versionName = "0.1.0"
     }
+
+    // The migration test reads old schemas as assets. Robolectric only sees the app's own merged
+    // assets, so they go in debug builds (a few KB); release builds never include them.
+    sourceSets.getByName("debug").assets.directories.add("$projectDir/schemas")
 }
 
 room3 {
@@ -37,6 +41,8 @@ dependencies {
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.kotlinx.serialization.json)
+    // Dragging a workout's exercises into a new order (Apache 2.0).
+    implementation(libs.reorderable)
 
     implementation(libs.room3.runtime)
     implementation(libs.sqlite.framework)

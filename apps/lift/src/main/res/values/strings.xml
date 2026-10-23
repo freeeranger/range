@@ -33,21 +33,21 @@
     <string name="workout_delete_title">Delete workout?</string>
     <string name="workout_delete_text">This workout and its sets will be deleted for good.</string>
     <string name="workout_delete_confirm">Delete</string>
-    <string name="workout_finish_title">Finish workout?</string>
-    <string name="workout_finish_text">Sets you haven’t ticked off won’t be saved.</string>
-    <string name="workout_keep_going">Keep going</string>
     <string name="workout_empty">Add an exercise to start logging sets.</string>
     <string name="workout_add_exercise">Add exercise</string>
     <string name="workout_add_set">Add set</string>
     <string name="workout_remove_exercise">Remove exercise</string>
     <string name="workout_column_set">Set</string>
-    <string name="workout_column_previous">Previous</string>
-    <string name="workout_column_reps">Reps</string>
     <string name="workout_set_done">Set %1$d done</string>
     <string name="workout_set_weight">Set %1$d weight</string>
     <string name="workout_set_reps">Set %1$d reps</string>
+    <string name="workout_set_time">Set %1$d time</string>
+    <string name="workout_drag">Drag to reorder</string>
+    <plurals name="workout_sets_left">
+        <item quantity="one">Tick off every set to finish. %1$d set left.</item>
+        <item quantity="other">Tick off every set to finish. %1$d sets left.</item>
+    </plurals>
     <string name="workout_delete_set">Delete set</string>
-    <string name="workout_started">Started %1$s · %2$s</string>
     <string name="stat_duration">Duration</string>
     <string name="stat_sets">Sets</string>
     <string name="stat_volume">Volume</string>
@@ -57,7 +57,6 @@
     <string name="exercises_none_found">No exercises match “%1$s”.</string>
     <string name="exercise_new">New exercise</string>
     <string name="exercise_muscle">Muscle group</string>
-    <string name="exercise_add">Add</string>
     <string name="exercise_best">Best: %1$s</string>
     <string name="exercise_best_set">Best set</string>
     <string name="exercise_one_rep_max">Est. 1RM</string>
@@ -65,6 +64,32 @@
     <string name="exercise_history">History</string>
     <string name="exercise_no_history">No sets logged yet.</string>
     <string name="exercise_pick_title">Add exercise</string>
+    <string name="exercise_edit">Edit exercise</string>
+    <string name="exercise_edit_title">Edit exercise</string>
+    <string name="exercise_save">Save</string>
+    <string name="exercise_name">Name</string>
+    <string name="exercise_measure">Measured in</string>
+    <string name="exercise_load">Weight</string>
+    <string name="exercise_more">More</string>
+    <string name="exercise_each_side">Each side</string>
+    <string name="exercise_each_side_hint">Log one side at a time, like lunges or one-arm rows</string>
+    <string name="exercise_remove">Remove from library</string>
+    <string name="exercise_remove_title">Remove %1$s?</string>
+    <string name="exercise_remove_text">It won’t be offered for new workouts. Past workouts keep their sets.</string>
+    <string name="exercise_remove_confirm">Remove</string>
+    <string name="exercise_restore">Put back in library</string>
+    <string name="exercise_removed_note">Removed from your library. Past workouts still show it.</string>
+
+    <string name="measure_reps">Reps</string>
+    <string name="measure_time">Time</string>
+    <string name="load_weight">Weight</string>
+    <string name="load_weight_hint">Barbell, dumbbells or a machine</string>
+    <string name="load_bodyweight">Bodyweight</string>
+    <string name="load_bodyweight_hint">No weight to log, like push-ups</string>
+    <string name="load_extra_weight">Bodyweight + extra</string>
+    <string name="load_extra_weight_hint">Add weight when you want, like weighted pull-ups</string>
+    <string name="load_assisted">Assisted</string>
+    <string name="load_assisted_hint">Log the help from a band or machine. Less is better.</string>
 
     <string name="muscle_chest">Chest</string>
     <string name="muscle_back">Back</string>
@@ -76,7 +101,11 @@
     <!-- Units -->
     <string name="unit_kg">%1$s kg</string>
     <string name="unit_kg_label">kg</string>
-    <string name="set_weight_reps">%1$s × %2$d</string>
+    <string name="unit_kg_extra">+%1$s kg</string>
+    <string name="unit_kg_extra_label">+kg</string>
+    <string name="unit_kg_assist">−%1$s kg</string>
+    <string name="unit_kg_assist_label">−kg</string>
+    <string name="set_weight_amount">%1$s × %2$s</string>
     <plurals name="set_reps">
         <item quantity="one">%1$d rep</item>
         <item quantity="other">%1$d reps</item>
@@ -121,4 +150,8 @@
     <string name="exercise_hanging_leg_raise">Hanging leg raise</string>
     <string name="exercise_cable_crunch">Cable crunch</string>
     <string name="exercise_ab_wheel">Ab wheel rollout</string>
+    <string name="exercise_assisted_pull_up">Assisted pull-up</string>
+    <string name="exercise_one_arm_dumbbell_row">One-arm dumbbell row</string>
+    <string name="exercise_plank">Plank</string>
+    <string name="exercise_side_plank">Side plank</string>
 </resources>

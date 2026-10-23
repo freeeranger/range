@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.freeranger.range.lift.data.Exercise
 import dev.freeranger.range.lift.data.LiftRepository
-import dev.freeranger.range.lift.data.Muscle
 import dev.freeranger.range.lift.data.Workout
 import dev.freeranger.range.lift.data.WorkoutSet
 import dev.freeranger.range.lift.data.bestSets
@@ -12,6 +11,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -30,10 +30,29 @@ class ExercisePickerViewModel(
     fun pick(exerciseId: Long) {
         appScope.launch { repository.addToWorkout(workoutId, exerciseId) }
     }
+}
 
-    /** Adds a new exercise to the library and straight into the workout. */
-    fun create(name: String, muscle: Muscle) {
-        appScope.launch { repository.addToWorkout(workoutId, repository.addExercise(name, muscle)) }
+class ExerciseEditViewModel(
+    private val id: Long?,
+    private val workoutId: Long?,
+    private val repository: LiftRepository,
+    /** Outlives this screen, which closes as soon as Save is tapped. */
+    private val appScope: CoroutineScope,
+) : ViewModel() {
+    val exercise: StateFlow<Exercise?> = repository.exercises
+        .map { all -> all.firstOrNull { it.id == id } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** Saves the changes, or adds the new exercise to the library and, if one is open, the workout. */
+    fun save(exercise: Exercise) {
+        appScope.launch {
+            if (id != null) {
+                repository.updateExercise(exercise.copy(id = id))
+            } else {
+                val added = repository.addExercise(exercise)
+                if (workoutId != null) repository.addToWorkout(workoutId, added)
+            }
+        }
     }
 }
 
@@ -47,7 +66,11 @@ data class ExerciseDetailState(
     val best: WorkoutSet? = null,
 )
 
-class ExerciseDetailViewModel(id: Long, repository: LiftRepository) : ViewModel() {
+class ExerciseDetailViewModel(
+    private val id: Long,
+    private val repository: LiftRepository,
+    private val appScope: CoroutineScope,
+) : ViewModel() {
     val state: StateFlow<ExerciseDetailState> = combine(repository.exercises, repository.logs) { exercises, logs ->
         val sessions = logs.filter { it.workout.isFinished }.mapNotNull { log ->
             val sets = log.exercises.filter { it.exercise.id == id }.flatMap { it.sets }.filter { it.done }
@@ -55,4 +78,8 @@ class ExerciseDetailViewModel(id: Long, repository: LiftRepository) : ViewModel(
         }
         ExerciseDetailState(exercises.firstOrNull { it.id == id }, sessions, bestSets(logs)[id])
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ExerciseDetailState())
+
+    fun setRemoved(removed: Boolean) {
+        appScope.launch { repository.setRemoved(id, removed) }
+    }
 }

@@ -1,5 +1,6 @@
 package dev.freeranger.range.lift.ui.exercise
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -8,6 +9,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -15,10 +19,12 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -29,7 +35,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.freeranger.range.lift.LocalAppContainer
 import dev.freeranger.range.lift.R
 import dev.freeranger.range.lift.data.Exercise
-import dev.freeranger.range.lift.data.Muscle
 import dev.freeranger.range.lift.data.WorkoutSet
 import dev.freeranger.range.lift.ui.common.Stat
 import dev.freeranger.range.lift.ui.common.StatsCard
@@ -41,7 +46,7 @@ import dev.freeranger.range.ui.theme.RangeSpace
 import java.time.LocalDate
 
 @Composable
-fun ExercisePickerRoute(workoutId: Long, onDone: () -> Unit) {
+fun ExercisePickerRoute(workoutId: Long, onDone: () -> Unit, onCreate: () -> Unit) {
     val container = LocalAppContainer.current
     val viewModel = viewModel { ExercisePickerViewModel(workoutId, container.repository, container.scope) }
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -52,26 +57,21 @@ fun ExercisePickerRoute(workoutId: Long, onDone: () -> Unit) {
             viewModel.pick(it.id)
             onDone()
         },
-        onCreate = { name, muscle ->
-            viewModel.create(name, muscle)
-            onDone()
-        },
+        onCreate = onCreate,
         onBack = onDone,
     )
 }
 
-/** The exercise library, opened from a workout: tapping one adds it. */
+/** The exercise library, opened from a workout: tapping one adds it, and a new one is added straight in. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExercisePickerScreen(
     exercises: List<Exercise>,
     bests: Map<Long, WorkoutSet>,
     onPick: (Exercise) -> Unit,
-    onCreate: (String, Muscle) -> Unit,
+    onCreate: () -> Unit,
     onBack: () -> Unit,
-    initiallyAdding: Boolean = false,
 ) {
-    var adding by rememberSaveable { mutableStateOf(initiallyAdding) }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -83,7 +83,7 @@ fun ExercisePickerScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { adding = true },
+                onClick = onCreate,
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
             ) {
@@ -98,24 +98,43 @@ fun ExercisePickerScreen(
             contentPadding = PaddingValues(top = padding.calculateTopPadding(), bottom = padding.calculateBottomPadding() + 96.dp),
         )
     }
-    if (adding) NewExerciseSheet(onAdd = onCreate, onDismiss = { adding = false }, autoFocus = !initiallyAdding)
 }
 
 @Composable
-fun ExerciseDetailRoute(id: Long, onBack: () -> Unit) {
+fun ExerciseDetailRoute(id: Long, onBack: () -> Unit, onEdit: () -> Unit) {
     val container = LocalAppContainer.current
-    val viewModel = viewModel { ExerciseDetailViewModel(id, container.repository) }
+    val viewModel = viewModel { ExerciseDetailViewModel(id, container.repository, container.scope) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val today = rememberNow().atZone(rememberLiftFormat().zone).toLocalDate()
-    ExerciseDetailScreen(state, today, onBack)
+    ExerciseDetailScreen(
+        state = state,
+        today = today,
+        onBack = onBack,
+        onEdit = onEdit,
+        onRemove = {
+            viewModel.setRemoved(true)
+            onBack()
+        },
+        onRestore = { viewModel.setRemoved(false) },
+    )
 }
 
-/** One exercise: its best set, estimated one-rep max, and every workout it was done in. */
+/** One exercise: its best set, estimated one-rep max, and every workout it was done in. Edited or removed from its menu. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ExerciseDetailScreen(state: ExerciseDetailState, today: LocalDate, onBack: () -> Unit) {
+fun ExerciseDetailScreen(
+    state: ExerciseDetailState,
+    today: LocalDate,
+    onBack: () -> Unit,
+    onEdit: () -> Unit = {},
+    onRemove: () -> Unit = {},
+    onRestore: () -> Unit = {},
+    initiallyRemoving: Boolean = false,
+) {
     val format = rememberLiftFormat()
     val exercise = state.exercise
+    var menu by remember { mutableStateOf(false) }
+    var removing by rememberSaveable { mutableStateOf(initiallyRemoving) }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -123,21 +142,52 @@ fun ExerciseDetailScreen(state: ExerciseDetailState, today: LocalDate, onBack: (
                     Column {
                         Text(exercise?.let(format::name).orEmpty())
                         exercise?.let {
-                            Text(format.muscle(it.muscle), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(format.about(it), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) { Icon(RangeIcons.ArrowBack, contentDescription = stringResource(R.string.action_back)) }
                 },
+                actions = {
+                    if (exercise == null) return@TopAppBar
+                    IconButton(onClick = onEdit) { Icon(RangeIcons.Edit, contentDescription = stringResource(R.string.exercise_edit)) }
+                    Box {
+                        IconButton(onClick = { menu = true }) {
+                            Icon(RangeIcons.MoreVert, contentDescription = stringResource(R.string.action_more))
+                        }
+                        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(if (exercise.archived) R.string.exercise_restore else R.string.exercise_remove)) },
+                                leadingIcon = { Icon(if (exercise.archived) RangeIcons.Add else RangeIcons.Delete, contentDescription = null) },
+                                onClick = {
+                                    menu = false
+                                    if (exercise.archived) onRestore() else removing = true
+                                },
+                            )
+                        }
+                    }
+                },
             )
         },
     ) { padding ->
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = padding.calculateTopPadding(), bottom = padding.calculateBottomPadding() + RangeSpace.s4)) {
+            if (exercise?.archived == true) {
+                item(key = "removed") {
+                    Text(
+                        stringResource(R.string.exercise_removed_note),
+                        modifier = Modifier.padding(horizontal = RangeSpace.gutter, vertical = RangeSpace.s2),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
             item(key = "stats") {
                 StatsCard {
-                    Stat(stringResource(R.string.exercise_best_set), state.best?.let(format::set) ?: "–")
-                    Stat(stringResource(R.string.exercise_one_rep_max), state.best?.estimatedMax?.let { format.kg(Math.round(it).toDouble()) } ?: "–")
+                    Stat(stringResource(R.string.exercise_best_set), state.best?.let { exercise?.let { e -> format.set(it, e) } } ?: "–")
+                    if (exercise?.hasOneRepMax != false) {
+                        Stat(stringResource(R.string.exercise_one_rep_max), state.best?.estimatedMax?.let { format.kg(Math.round(it).toDouble()) } ?: "–")
+                    }
                     Stat(stringResource(R.string.exercise_sessions), state.sessions.size.toString())
                 }
             }
@@ -162,11 +212,29 @@ fun ExerciseDetailScreen(state: ExerciseDetailState, today: LocalDate, onBack: (
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                            Text(format.set(set), style = MaterialTheme.typography.bodyMedium)
+                            Text(exercise?.let { format.set(set, it) }.orEmpty(), style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                 }
             }
         }
+    }
+
+    if (removing && exercise != null) {
+        AlertDialog(
+            onDismissRequest = { removing = false },
+            icon = { Icon(RangeIcons.Delete, contentDescription = null) },
+            title = { Text(stringResource(R.string.exercise_remove_title, format.name(exercise))) },
+            text = { Text(stringResource(R.string.exercise_remove_text)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        removing = false
+                        onRemove()
+                    },
+                ) { Text(stringResource(R.string.exercise_remove_confirm)) }
+            },
+            dismissButton = { TextButton(onClick = { removing = false }) { Text(stringResource(R.string.dialog_cancel)) } },
+        )
     }
 }

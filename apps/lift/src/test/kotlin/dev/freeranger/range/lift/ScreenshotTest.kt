@@ -7,6 +7,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
 import com.github.takahirom.roborazzi.captureScreenRoboImage
 import dev.freeranger.range.lift.data.BuiltInExercises
@@ -20,6 +22,7 @@ import dev.freeranger.range.lift.data.previousSets
 import dev.freeranger.range.lift.data.workoutLogs
 import dev.freeranger.range.lift.ui.exercise.ExerciseDetailScreen
 import dev.freeranger.range.lift.ui.exercise.ExerciseDetailState
+import dev.freeranger.range.lift.ui.exercise.ExerciseEditScreen
 import dev.freeranger.range.lift.ui.exercise.ExercisePickerScreen
 import dev.freeranger.range.lift.ui.exercise.Session
 import dev.freeranger.range.lift.ui.home.HomeActions
@@ -66,8 +69,8 @@ class ScreenshotTest {
     private fun at(time: LocalDateTime): Instant = time.atZone(ZoneId.systemDefault()).toInstant()
     private val now = at(friday.atTime(18, 40))
 
-    private val exercises = BuiltInExercises.all.mapIndexed { i, (key, muscle) -> Exercise(id = i + 1L, key = key, muscle = muscle) } +
-        Exercise(id = 100, name = "Landmine press", muscle = Muscle.Shoulders)
+    private val exercises = BuiltInExercises.all.mapIndexed { i, builtIn -> builtIn.toExercise().copy(id = i + 1L) } +
+        Exercise(id = 100, name = "Landmine press", muscle = Muscle.Shoulders, perSide = true)
     private fun id(key: String) = exercises.first { it.key == key }.id
 
     private val workouts = listOf(
@@ -83,8 +86,9 @@ class ScreenshotTest {
         WorkoutExercise(4, 3, id("bench_press"), 0),
         WorkoutExercise(5, 3, id("overhead_press"), 1),
         WorkoutExercise(6, 3, id("dip"), 2),
-        WorkoutExercise(7, 4, id("deadlift"), 0),
+        WorkoutExercise(7, 4, id("bench_press"), 0),
         WorkoutExercise(8, 4, id("pull_up"), 1),
+        WorkoutExercise(9, 4, id("plank"), 2),
     )
     private var nextSet = 1L
     private fun sets(entry: Long, vararg sets: Pair<Double?, Int>, done: Int = sets.size) =
@@ -95,8 +99,16 @@ class ScreenshotTest {
         sets(4, 80.0 to 5, 80.0 to 5, 80.0 to 5) +
         sets(5, 47.5 to 6, 47.5 to 6, 45.0 to 7) +
         sets(6, null to 12, null to 10) +
-        sets(7, 120.0 to 5, 130.0 to 3, 140.0 to 1, 140.0 to 1, done = 2) +
-        sets(8, null to 8, null to 8, done = 0)
+        // The workout in progress: one set done of each, the rest empty with last time's numbers showing.
+        listOf(
+            WorkoutSet(nextSet++, 7, 0, 82.5, 5, done = true),
+            WorkoutSet(nextSet++, 7, 1),
+            WorkoutSet(nextSet++, 7, 2),
+            WorkoutSet(nextSet++, 8, 0, 5.0, 8, done = true),
+            WorkoutSet(nextSet++, 8, 1),
+            WorkoutSet(nextSet++, 9, 0, seconds = 75, done = true),
+            WorkoutSet(nextSet++, 9, 1),
+        )
     private val logs = workoutLogs(workouts, entries, sets, exercises)
     private val home = HomeState(logs, exercises, loaded = true)
     private val active = logs.first { !it.workout.isFinished }
@@ -129,7 +141,14 @@ class ScreenshotTest {
     fun exercisesSwedish() = capture { HomeScreen(home, now, HomeActions(), initialTab = HomeTab.Exercises) }
 
     @Test
-    fun newExercise() = capture { HomeScreen(home, now, HomeActions(), initialTab = HomeTab.Exercises, initiallyAdding = true) }
+    fun newExercise() = capture { ExerciseEditScreen(exercise = null, onSave = {}, onCancel = {}, autoFocus = false) }
+
+    @Test
+    fun editExercise() = capture { ExerciseEditScreen(exercises.first { it.key == "pull_up" }, onSave = {}, onCancel = {}) }
+
+    @Test
+    @Config(qualifiers = "sv-rSE-$PHONE")
+    fun editExerciseSwedish() = capture { ExerciseEditScreen(exercises.first { it.key == "side_plank" }, onSave = {}, onCancel = {}) }
 
     @Test
     fun workout() = capture { WorkoutScreen(activeState, now, WorkoutActions()) }
@@ -151,7 +170,12 @@ class ScreenshotTest {
     }
 
     @Test
-    fun workoutFinishing() = capture { WorkoutScreen(activeState, now, WorkoutActions(), initialDialog = WorkoutDialog.Finish) }
+    fun workoutSetsLeft() = capture(
+        then = {
+            compose.onNodeWithText("Finish").performClick()
+            compose.waitForIdle()
+        },
+    ) { WorkoutScreen(activeState, now, WorkoutActions()) }
 
     @Test
     fun workoutRenaming() = capture { WorkoutScreen(activeState, now, WorkoutActions(), initialDialog = WorkoutDialog.Rename) }
@@ -160,10 +184,13 @@ class ScreenshotTest {
     fun workoutFinished() = capture { WorkoutScreen(finishedState, now, WorkoutActions()) }
 
     @Test
-    fun exercisePicker() = capture { ExercisePickerScreen(exercises, bestSets(logs), onPick = {}, onCreate = { _, _ -> }, onBack = {}) }
+    fun exercisePicker() = capture { ExercisePickerScreen(exercises, bestSets(logs), onPick = {}, onCreate = {}, onBack = {}) }
 
     @Test
     fun exerciseDetail() = capture { ExerciseDetailScreen(benchDetail, friday, onBack = {}) }
+
+    @Test
+    fun exerciseDetailRemoving() = capture { ExerciseDetailScreen(benchDetail, friday, onBack = {}, initiallyRemoving = true) }
 
     @Test
     fun exerciseDetailEmpty() = capture { ExerciseDetailScreen(ExerciseDetailState(exercises.first { it.key == "face_pull" }), friday, onBack = {}) }
@@ -195,9 +222,14 @@ class ScreenshotTest {
     fun license() = capture { RangeLicenseScreen(RangeLicense.Gpl3, onBack = {}) }
 
     /** Material You is off so screenshots don't depend on a wallpaper. */
-    private fun capture(appearance: RangeAppearance = RangeAppearance(dynamicColor = false), content: @Composable () -> Unit) {
+    private fun capture(
+        appearance: RangeAppearance = RangeAppearance(dynamicColor = false),
+        then: () -> Unit = {},
+        content: @Composable () -> Unit,
+    ) {
         compose.setContent { RangeTheme(accent = RangeAccents.Lift, appearance = appearance, content = content) }
         compose.waitForIdle()
+        then()
         captureScreenRoboImage()
     }
 }

@@ -13,11 +13,14 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import dev.freeranger.range.lift.ui.exercise.ExerciseDetailRoute
+import dev.freeranger.range.lift.ui.exercise.ExerciseEditRoute
 import dev.freeranger.range.lift.ui.exercise.ExercisePickerRoute
 import dev.freeranger.range.lift.ui.home.HomeRoute
 import dev.freeranger.range.lift.ui.workout.WorkoutRoute
 import dev.freeranger.range.ui.settings.RangeAboutScreen
 import dev.freeranger.range.ui.settings.RangeAppearance
+import dev.freeranger.range.ui.settings.RangeComponent
+import dev.freeranger.range.ui.settings.RangeComponents
 import dev.freeranger.range.ui.settings.RangeComponentsScreen
 import dev.freeranger.range.ui.settings.RangeLicense
 import dev.freeranger.range.ui.settings.RangeLicenseScreen
@@ -40,6 +43,10 @@ data class ExercisePickerKey(val workoutId: Long) : NavKey
 
 @Serializable
 data class ExerciseKey(val id: Long) : NavKey
+
+/** Editing exercise [id], or adding a new one when it's null: straight into workout [workoutId], if given. */
+@Serializable
+data class ExerciseEditKey(val id: Long? = null, val workoutId: Long? = null) : NavKey
 
 @Serializable
 data object SettingsKey : NavKey
@@ -77,6 +84,7 @@ fun LiftApp() {
                 HomeRoute(
                     onOpenWorkout = { backStack.add(WorkoutKey(it)) },
                     onOpenExercise = openExercise,
+                    onNewExercise = { backStack.add(ExerciseEditKey()) },
                     onOpenSettings = { backStack.add(SettingsKey) },
                 )
             }
@@ -89,10 +97,26 @@ fun LiftApp() {
                 )
             }
             entry<ExercisePickerKey> { key ->
-                ExercisePickerRoute(workoutId = key.workoutId, onDone = back)
+                ExercisePickerRoute(
+                    workoutId = key.workoutId,
+                    onDone = back,
+                    onCreate = { backStack.add(ExerciseEditKey(workoutId = key.workoutId)) },
+                )
             }
             entry<ExerciseKey> { key ->
-                ExerciseDetailRoute(id = key.id, onBack = back)
+                ExerciseDetailRoute(id = key.id, onBack = back, onEdit = { backStack.add(ExerciseEditKey(id = key.id)) })
+            }
+            entry<ExerciseEditKey> { key ->
+                ExerciseEditRoute(
+                    id = key.id,
+                    workoutId = key.workoutId,
+                    onSaved = {
+                        back()
+                        // A new exercise went straight into the workout, so the picker is done too.
+                        if (key.workoutId != null && backStack.lastOrNull() is ExercisePickerKey) back()
+                    },
+                    onCancel = back,
+                )
             }
             entry<SettingsKey> {
                 val store = LocalAppContainer.current.appearance
@@ -116,7 +140,11 @@ fun LiftApp() {
                 )
             }
             entry<ComponentsKey> {
-                RangeComponentsScreen(onBack = back, onOpenLicense = openLicense)
+                RangeComponentsScreen(
+                    onBack = back,
+                    onOpenLicense = openLicense,
+                    components = RangeComponents + RangeComponent("Reorderable", "Calvin Liang", RangeLicense.Apache2),
+                )
             }
             entry<LicenseKey> { key ->
                 RangeLicenseScreen(license = RangeLicense.valueOf(key.license), onBack = back)

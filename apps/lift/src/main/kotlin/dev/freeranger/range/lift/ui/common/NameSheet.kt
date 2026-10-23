@@ -2,7 +2,6 @@ package dev.freeranger.range.lift.ui.common
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -33,8 +32,8 @@ import dev.freeranger.range.ui.theme.RangeSpace
 import kotlinx.coroutines.launch
 
 /**
- * A sheet for naming something, like Tasks' quick-add sheet: a borderless title field, anything
- * else to pick in [extra], and a save button. Blank names are saved only if [blankAllowed].
+ * A sheet for naming something, like Tasks' quick-add sheet: a borderless title field and a save
+ * button. Blank names are saved only if [blankAllowed].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,17 +44,14 @@ fun NameSheet(
     onDismiss: () -> Unit,
     initial: String = "",
     blankAllowed: Boolean = false,
-    /** Whatever [extra] asks for has been picked. */
-    ready: Boolean = true,
     autoFocus: Boolean = true,
-    extra: @Composable ColumnScope.() -> Unit = {},
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
     val name = rememberTextFieldState()
     LaunchedEffect(Unit) { name.setTextAndPlaceCursorAtEnd(initial) }
     val focus = remember { FocusRequester() }
-    val canSave = ready && (blankAllowed || name.text.isNotBlank())
+    val canSave = blankAllowed || name.text.isNotBlank()
     val save = {
         if (canSave) {
             onSave(name.text.toString())
@@ -90,7 +86,6 @@ fun NameSheet(
                 onKeyboardAction = { save() },
                 colors = bare,
             )
-            Column(Modifier.padding(horizontal = RangeSpace.s3), content = extra)
             Row(Modifier.fillMaxWidth().padding(horizontal = RangeSpace.s3), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
                 Button(onClick = save, enabled = canSave) { Text(saveLabel) }
             }

@@ -1,6 +1,7 @@
 package dev.freeranger.range.lift.data
 
 import android.content.Context
+import androidx.room3.AutoMigration
 import androidx.room3.ColumnTypeConverter
 import androidx.room3.ColumnTypeConverters
 import androidx.room3.Dao
@@ -12,6 +13,8 @@ import androidx.room3.Room
 import androidx.room3.RoomDatabase
 import androidx.room3.Transaction
 import androidx.room3.Update
+import androidx.room3.migration.AutoMigrationSpec
+import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.driver.AndroidSQLiteDriver
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
@@ -32,6 +35,12 @@ abstract class LiftDao {
 
     @Insert
     abstract suspend fun insert(exercise: Exercise): Long
+
+    @Update
+    abstract suspend fun update(exercise: Exercise)
+
+    @Query("SELECT * FROM exercises WHERE id = :id")
+    abstract suspend fun exercise(id: Long): Exercise?
 
     /** Built-in exercises already there are kept as they are. */
     @Insert(onConflict = OnConflictStrategy.IGNORE)
@@ -61,6 +70,15 @@ abstract class LiftDao {
 
     @Query("DELETE FROM workout_exercises WHERE id = :id")
     abstract suspend fun deleteEntry(id: Long)
+
+    @Query("UPDATE workout_exercises SET position = :position WHERE id = :id")
+    abstract suspend fun setPosition(id: Long, position: Int)
+
+    /** Puts a workout's exercises in the order given. */
+    @Transaction
+    open suspend fun reorder(entryIds: List<Long>) {
+        entryIds.forEachIndexed { position, id -> setPosition(id, position) }
+    }
 
     @Query("SELECT * FROM sets WHERE workoutExerciseId = :entryId ORDER BY position")
     abstract suspend fun sets(entryId: Long): List<WorkoutSet>
@@ -116,12 +134,35 @@ abstract class LiftDao {
 
 @Database(
     entities = [Exercise::class, Workout::class, WorkoutExercise::class, WorkoutSet::class],
-    version = 1,
+    version = 2,
     exportSchema = true,
+    autoMigrations = [
+        AutoMigration(from = 1, to = 2, spec = LiftDatabase.ExerciseTypes::class),
+    ],
 )
 @ColumnTypeConverters(Converters::class)
 abstract class LiftDatabase : RoomDatabase() {
     abstract fun lift(): LiftDao
+
+    /**
+     * v2: exercises say how they're measured (reps or time), what their weight means, whether
+     * they're done a side at a time, and whether they were removed; sets can be timed. Built-in
+     * exercises already in the library get their types; new ones arrive on the next launch.
+     */
+    class ExerciseTypes : AutoMigrationSpec {
+        override suspend fun onPostMigrate(connection: SQLiteConnection) {
+            connection.prepare("UPDATE exercises SET measure = ?, load = ?, perSide = ? WHERE `key` = ?").use {
+                BuiltInExercises.all.forEach { builtIn ->
+                    it.bindText(1, builtIn.measure.name)
+                    it.bindText(2, builtIn.load.name)
+                    it.bindLong(3, if (builtIn.perSide) 1 else 0)
+                    it.bindText(4, builtIn.key)
+                    it.step()
+                    it.reset()
+                }
+            }
+        }
+    }
 
     companion object {
         fun create(context: Context): LiftDatabase =
@@ -138,4 +179,8 @@ internal object Converters {
     /** By name, so reordering the enum never changes what's stored. */
     @ColumnTypeConverter fun fromMuscle(value: Muscle): String = value.name
     @ColumnTypeConverter fun toMuscle(value: String): Muscle = Muscle.valueOf(value)
+    @ColumnTypeConverter fun fromMeasure(value: Measure): String = value.name
+    @ColumnTypeConverter fun toMeasure(value: String): Measure = Measure.valueOf(value)
+    @ColumnTypeConverter fun fromLoad(value: Load): String = value.name
+    @ColumnTypeConverter fun toLoad(value: String): Load = Load.valueOf(value)
 }

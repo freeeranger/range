@@ -1,6 +1,7 @@
 package dev.freeranger.range.lift.ui.workout
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -14,15 +15,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -32,47 +36,70 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.freeranger.range.lift.LocalAppContainer
 import dev.freeranger.range.lift.R
+import dev.freeranger.range.lift.data.Exercise
 import dev.freeranger.range.lift.data.LoggedExercise
+import dev.freeranger.range.lift.data.Measure
 import dev.freeranger.range.lift.data.WorkoutLog
 import dev.freeranger.range.lift.data.WorkoutSet
+import dev.freeranger.range.lift.data.filledFrom
+import dev.freeranger.range.lift.data.isComplete
+import dev.freeranger.range.lift.data.placeholders
 import dev.freeranger.range.lift.ui.common.LiftFormat
 import dev.freeranger.range.lift.ui.common.NameSheet
 import dev.freeranger.range.lift.ui.common.Stat
 import dev.freeranger.range.lift.ui.common.StatsCard
 import dev.freeranger.range.lift.ui.common.rememberLiftFormat
 import dev.freeranger.range.lift.ui.common.rememberNow
-import dev.freeranger.range.ui.components.RangeCheckbox
+import dev.freeranger.range.ui.components.RangeNumberCheck
 import dev.freeranger.range.ui.icons.RangeIcons
 import dev.freeranger.range.ui.theme.RangeSpace
+import kotlinx.coroutines.launch
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 import java.time.Instant
 
 @Composable
@@ -82,12 +109,14 @@ fun WorkoutRoute(id: Long, onBack: () -> Unit, onAddExercise: () -> Unit, onOpen
     val state by viewModel.state.collectAsStateWithLifecycle()
     WorkoutScreen(
         state = state,
-        now = rememberNow(),
+        // Each second, for the stopwatch.
+        now = rememberNow(period = 1_000),
         actions = WorkoutActions(
             back = onBack,
             rename = viewModel::rename,
             addExercise = onAddExercise,
             openExercise = onOpenExercise,
+            reorder = viewModel::reorder,
             removeExercise = viewModel::removeExercise,
             addSet = viewModel::addSet,
             updateSet = viewModel::updateSet,
@@ -110,6 +139,7 @@ data class WorkoutActions(
     val rename: (String) -> Unit = {},
     val addExercise: () -> Unit = {},
     val openExercise: (exerciseId: Long) -> Unit = {},
+    val reorder: (entryIds: List<Long>) -> Unit = {},
     val removeExercise: (entryId: Long) -> Unit = {},
     val addSet: (entryId: Long) -> Unit = {},
     val updateSet: (WorkoutSet) -> Unit = {},
@@ -118,11 +148,12 @@ data class WorkoutActions(
     val delete: () -> Unit = {},
 )
 
-enum class WorkoutDialog { Rename, Finish, Delete }
+enum class WorkoutDialog { Rename, Delete }
 
 /**
- * A workout. In progress, it's where sets are logged: each exercise lists its sets with what was
- * done last time beside them, ready to adjust and tick off. Finished, it's a read-only summary.
+ * A workout. In progress, it's where sets are logged: a card per exercise, dragged by its handle
+ * into any order, each set with last time's numbers as placeholders and its number to tap once
+ * it's done. Finishing needs every set ticked off. Finished, it's a read-only summary.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -139,21 +170,22 @@ fun WorkoutScreen(
     val today = now.atZone(format.zone).toLocalDate()
     var dialog by rememberSaveable { mutableStateOf(initialDialog) }
     var menu by remember { mutableStateOf(false) }
+    val snackbar = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val left = log.exercises.sumOf { logged -> logged.sets.count { !it.done } }
+    val leftMessage = pluralStringResource(R.plurals.workout_sets_left, left, left)
 
     Scaffold(
         modifier = modifier,
+        snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             TopAppBar(
                 title = {
                     Column {
                         Text(format.name(workout), maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(
-                            if (workout.isFinished) {
-                                format.day(workout.startedAt, today)
-                            } else {
-                                stringResource(R.string.workout_started, format.time(workout.startedAt), format.duration(workout.startedAt, now))
-                            },
-                            style = MaterialTheme.typography.bodyMedium,
+                            if (workout.isFinished) format.day(workout.startedAt, today) else format.stopwatch(workout.startedAt, now),
+                            style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = "tnum"),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
@@ -164,8 +196,17 @@ fun WorkoutScreen(
                 actions = {
                     if (!workout.isFinished) {
                         Button(
-                            onClick = { if (log.exercises.any { e -> e.sets.any { !it.done } }) dialog = WorkoutDialog.Finish else actions.finish() },
-                            enabled = log.doneSets.isNotEmpty(),
+                            onClick = {
+                                if (left == 0) {
+                                    actions.finish()
+                                } else {
+                                    scope.launch {
+                                        snackbar.currentSnackbarData?.dismiss()
+                                        snackbar.showSnackbar(leftMessage)
+                                    }
+                                }
+                            },
+                            enabled = log.exercises.any { it.sets.isNotEmpty() },
                         ) {
                             Text(stringResource(R.string.workout_finish))
                         }
@@ -197,15 +238,11 @@ fun WorkoutScreen(
             )
         },
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().imePadding(),
-            contentPadding = PaddingValues(top = padding.calculateTopPadding(), bottom = padding.calculateBottomPadding() + RangeSpace.s6),
-        ) {
-            if (workout.isFinished) {
-                finishedWorkout(log, format, actions)
-            } else {
-                workoutInProgress(log, state.previous, format, actions)
-            }
+        val contentPadding = PaddingValues(top = padding.calculateTopPadding(), bottom = padding.calculateBottomPadding() + RangeSpace.s6)
+        if (workout.isFinished) {
+            FinishedWorkout(log, format, actions, contentPadding)
+        } else {
+            WorkoutInProgress(log, state.previous, format, actions, contentPadding)
         }
     }
 
@@ -221,121 +258,169 @@ fun WorkoutScreen(
             // Screenshots show the sheet without a keyboard.
             autoFocus = initialDialog != WorkoutDialog.Rename,
         )
-        WorkoutDialog.Finish -> ConfirmDialog(
-            title = stringResource(R.string.workout_finish_title),
-            text = stringResource(R.string.workout_finish_text),
-            confirm = stringResource(R.string.workout_finish),
-            dismiss = stringResource(R.string.workout_keep_going),
-            onConfirm = {
-                dialog = null
-                actions.finish()
+        WorkoutDialog.Delete -> AlertDialog(
+            onDismissRequest = { dialog = null },
+            title = { Text(stringResource(if (workout.isFinished) R.string.workout_delete_title else R.string.workout_discard_title)) },
+            text = { Text(stringResource(if (workout.isFinished) R.string.workout_delete_text else R.string.workout_discard_text)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        dialog = null
+                        actions.delete()
+                    },
+                ) { Text(stringResource(if (workout.isFinished) R.string.workout_delete_confirm else R.string.workout_discard_confirm)) }
             },
-            onDismiss = { dialog = null },
-        )
-        WorkoutDialog.Delete -> ConfirmDialog(
-            title = stringResource(if (workout.isFinished) R.string.workout_delete_title else R.string.workout_discard_title),
-            text = stringResource(if (workout.isFinished) R.string.workout_delete_text else R.string.workout_discard_text),
-            confirm = stringResource(if (workout.isFinished) R.string.workout_delete_confirm else R.string.workout_discard_confirm),
-            dismiss = stringResource(R.string.dialog_cancel),
-            onConfirm = {
-                dialog = null
-                actions.delete()
-            },
-            onDismiss = { dialog = null },
+            dismissButton = { TextButton(onClick = { dialog = null }) { Text(stringResource(R.string.dialog_cancel)) } },
         )
         null -> {}
     }
 }
 
-private val SetColumn = 32.dp
-private val WeightColumn = 76.dp
-private val RepsColumn = 60.dp
-private val CheckColumn = 48.dp
+private val SetColumn = 48.dp
 
-private fun LazyListScope.workoutInProgress(
+@Composable
+private fun WorkoutInProgress(
     log: WorkoutLog,
     previous: Map<Long, List<WorkoutSet>>,
     format: LiftFormat,
     actions: WorkoutActions,
+    contentPadding: PaddingValues,
 ) {
-    log.exercises.forEach { logged ->
-        val entryId = logged.entry.id
-        item(key = "exercise $entryId") { ExerciseHeader(logged, format, actions, removable = true) }
-        item(key = "columns $entryId") { ColumnHeaders() }
-        itemsIndexed(logged.sets, key = { _, set -> set.id }) { index, set ->
-            SetRow(index, set, previous[entryId]?.getOrNull(index), format, actions)
-        }
-        item(key = "add set $entryId") {
-            TextButton(onClick = { actions.addSet(entryId) }, modifier = Modifier.padding(start = RangeSpace.s2)) {
-                Icon(RangeIcons.Add, contentDescription = null)
-                Text(stringResource(R.string.workout_add_set), modifier = Modifier.padding(start = RangeSpace.s2))
-            }
-        }
-    }
-    item(key = "add exercise") {
-        Column(Modifier.padding(horizontal = RangeSpace.gutter, vertical = RangeSpace.s4)) {
-            if (log.exercises.isEmpty()) {
-                Text(
-                    stringResource(R.string.workout_empty),
-                    modifier = Modifier.fillMaxWidth().padding(vertical = RangeSpace.s6),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                )
-            }
-            FilledTonalButton(onClick = actions.addExercise, modifier = Modifier.fillMaxWidth()) {
-                Icon(RangeIcons.Add, contentDescription = null)
-                Text(stringResource(R.string.workout_add_exercise), modifier = Modifier.padding(start = RangeSpace.s2))
-            }
-        }
-    }
-}
+    val haptics = LocalHapticFeedback.current
+    val byEntry = log.exercises.associateBy { it.entry.id }
+    // The order on screen, moved as cards are dragged and saved when one is dropped.
+    val saved = log.exercises.map { it.entry.id }
+    var order by remember { mutableStateOf(saved) }
+    LaunchedEffect(saved) { order = saved }
 
-private fun LazyListScope.finishedWorkout(log: WorkoutLog, format: LiftFormat, actions: WorkoutActions) {
-    val workout = log.workout
-    item(key = "stats") {
-        StatsCard {
-            Stat(stringResource(R.string.stat_duration), format.duration(workout.startedAt, workout.finishedAt ?: workout.startedAt))
-            Stat(stringResource(R.string.stat_sets), log.doneSets.size.toString())
-            Stat(stringResource(R.string.stat_volume), format.volume(log.volume))
+    val listState = rememberLazyListState()
+    val reorderState = rememberReorderableLazyListState(listState) { from, to ->
+        val fromIndex = order.indexOf(from.key)
+        val toIndex = order.indexOf(to.key)
+        if (fromIndex >= 0 && toIndex >= 0) {
+            order = order.toMutableList().apply { add(toIndex, removeAt(fromIndex)) }
+            haptics.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
         }
     }
-    log.exercises.forEach { logged ->
-        item(key = "exercise ${logged.entry.id}") { ExerciseHeader(logged, format, actions, removable = false) }
-        itemsIndexed(logged.sets, key = { _, set -> set.id }) { index, set ->
-            Row(Modifier.padding(horizontal = RangeSpace.gutter, vertical = RangeSpace.s1)) {
-                Text(
-                    "${index + 1}",
-                    modifier = Modifier.width(SetColumn),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().imePadding(),
+        state = listState,
+        contentPadding = contentPadding,
+    ) {
+        items(order.mapNotNull(byEntry::get), key = { it.entry.id }) { logged ->
+            ReorderableItem(reorderState, key = logged.entry.id) { dragging ->
+                val elevation by animateDpAsState(if (dragging) 8.dp else 0.dp, label = "cardElevation")
+                val handle = Modifier.draggableHandle(
+                    onDragStarted = { haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate) },
+                    onDragStopped = { actions.reorder(order) },
                 )
-                Text(format.set(set), style = MaterialTheme.typography.bodyLarge)
+                ExerciseCard(elevation) {
+                    ExerciseHeader(logged, format, actions) { DragHandle(handle) }
+                    ColumnHeaders(logged.exercise, format)
+                    val shown = placeholders(logged.sets, previous[logged.entry.id].orEmpty())
+                    logged.sets.forEachIndexed { index, set ->
+                        key(set.id) { SetRow(index, set, shown[index], logged.exercise, format, actions) }
+                    }
+                    TextButton(onClick = { actions.addSet(logged.entry.id) }, modifier = Modifier.padding(start = RangeSpace.s2, bottom = RangeSpace.s1)) {
+                        Icon(RangeIcons.Add, contentDescription = null)
+                        Text(stringResource(R.string.workout_add_set), modifier = Modifier.padding(start = RangeSpace.s2))
+                    }
+                }
+            }
+        }
+        item(key = "add exercise") {
+            Column(Modifier.padding(horizontal = RangeSpace.gutter, vertical = RangeSpace.s4)) {
+                if (log.exercises.isEmpty()) {
+                    Text(
+                        stringResource(R.string.workout_empty),
+                        modifier = Modifier.fillMaxWidth().padding(vertical = RangeSpace.s6),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+                FilledTonalButton(onClick = actions.addExercise, modifier = Modifier.fillMaxWidth()) {
+                    Icon(RangeIcons.Add, contentDescription = null)
+                    Text(stringResource(R.string.workout_add_exercise), modifier = Modifier.padding(start = RangeSpace.s2))
+                }
             }
         }
     }
 }
 
 @Composable
-private fun ExerciseHeader(logged: LoggedExercise, format: LiftFormat, actions: WorkoutActions, removable: Boolean) {
+private fun FinishedWorkout(log: WorkoutLog, format: LiftFormat, actions: WorkoutActions, contentPadding: PaddingValues) {
+    val workout = log.workout
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = contentPadding) {
+        item(key = "stats") {
+            StatsCard {
+                Stat(stringResource(R.string.stat_duration), format.duration(workout.startedAt, workout.finishedAt ?: workout.startedAt))
+                Stat(stringResource(R.string.stat_sets), log.doneSets.size.toString())
+                Stat(stringResource(R.string.stat_volume), format.volume(log.volume))
+            }
+        }
+        items(log.exercises, key = { it.entry.id }) { logged ->
+            ExerciseCard(elevation = 0.dp) {
+                ExerciseHeader(logged, format, actions)
+                logged.sets.forEachIndexed { index, set ->
+                    Row(Modifier.padding(horizontal = RangeSpace.s4).padding(bottom = RangeSpace.s2)) {
+                        Text(
+                            "${index + 1}",
+                            modifier = Modifier.width(32.dp),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(format.set(set, logged.exercise), style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ExerciseCard(elevation: Dp, content: @Composable () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = RangeSpace.s3, vertical = RangeSpace.s1),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        elevation = CardDefaults.cardElevation(defaultElevation = elevation),
+    ) {
+        content()
+    }
+}
+
+/** The exercise's name, opening its page, with a drag [handle] and a menu while the workout is in progress. */
+@Composable
+private fun ExerciseHeader(logged: LoggedExercise, format: LiftFormat, actions: WorkoutActions, handle: (@Composable () -> Unit)? = null) {
     var menu by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = RangeSpace.s4)
-            .padding(start = RangeSpace.gutter, end = RangeSpace.s1)
-            .height(48.dp),
+            .padding(start = if (handle != null) 0.dp else RangeSpace.s4, end = RangeSpace.s1)
+            .height(56.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            format.name(logged.exercise),
-            modifier = Modifier
+        handle?.invoke()
+        Column(
+            Modifier
                 .weight(1f)
                 .clickable { actions.openExercise(logged.exercise.id) },
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.primary,
-        )
-        if (removable) {
+        ) {
+            Text(
+                format.name(logged.exercise),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            format.kind(logged.exercise)?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        if (handle != null) {
             Box {
                 IconButton(onClick = { menu = true }) {
                     Icon(RangeIcons.MoreVert, contentDescription = stringResource(R.string.action_more))
@@ -355,37 +440,78 @@ private fun ExerciseHeader(logged: LoggedExercise, format: LiftFormat, actions: 
     }
 }
 
+/** Pressed and dragged to move its card; [modifier] carries the reorder library's drag handling. */
 @Composable
-private fun ColumnHeaders() {
-    val style = MaterialTheme.typography.labelMedium
-    val color = MaterialTheme.colorScheme.onSurfaceVariant
-    Row(
-        modifier = Modifier.padding(horizontal = RangeSpace.gutter),
-        horizontalArrangement = Arrangement.spacedBy(RangeSpace.s2),
-    ) {
-        Text(stringResource(R.string.workout_column_set), Modifier.width(SetColumn), style = style, color = color, textAlign = TextAlign.Center)
-        Text(stringResource(R.string.workout_column_previous), Modifier.weight(1f), style = style, color = color)
-        Text(stringResource(R.string.unit_kg_label), Modifier.width(WeightColumn), style = style, color = color, textAlign = TextAlign.Center)
-        Text(stringResource(R.string.workout_column_reps), Modifier.width(RepsColumn), style = style, color = color, textAlign = TextAlign.Center)
-        Box(Modifier.width(CheckColumn))
+private fun DragHandle(modifier: Modifier) {
+    Box(modifier.size(48.dp), contentAlignment = Alignment.Center) {
+        Icon(
+            RangeIcons.DragIndicator,
+            contentDescription = stringResource(R.string.workout_drag),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
-/** One set: last time's numbers, this time's weight and reps, and a tick. Swipe it away to delete it. */
+@Composable
+private fun ColumnHeaders(exercise: Exercise, format: LiftFormat) {
+    val style = MaterialTheme.typography.labelMedium
+    val color = MaterialTheme.colorScheme.onSurfaceVariant
+    Row(
+        modifier = Modifier.padding(start = RangeSpace.s1, end = RangeSpace.s4),
+        horizontalArrangement = Arrangement.spacedBy(RangeSpace.s3),
+    ) {
+        Text(stringResource(R.string.workout_column_set), Modifier.width(SetColumn), style = style, color = color, textAlign = TextAlign.Center)
+        if (exercise.weighted) {
+            Text(format.weightLabel(exercise.load), Modifier.weight(1f), style = style, color = color, textAlign = TextAlign.Center)
+        }
+        Text(format.measure(exercise.measure), Modifier.weight(1f), style = style, color = color, textAlign = TextAlign.Center)
+    }
+}
+
+/**
+ * One set: its number, tapped once it's done, then the weight and reps or time. Empty fields show
+ * [placeholder] and take its numbers when the set is ticked off. Swipe it away to delete it.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SetRow(index: Int, set: WorkoutSet, previous: WorkoutSet?, format: LiftFormat, actions: WorkoutActions) {
+private fun SetRow(index: Int, set: WorkoutSet, placeholder: WorkoutSet?, exercise: Exercise, format: LiftFormat, actions: WorkoutActions) {
     val colors = MaterialTheme.colorScheme
     val number = index + 1
+    val timed = exercise.measure == Measure.Time
+    fun amountText(set: WorkoutSet?) = (if (timed) set?.seconds?.let(::timeDigits) else set?.reps?.toString()).orEmpty()
+
     // Typed text is kept here, not re-read from the database, so the cursor never jumps while typing.
     var weight by remember(set.id) { mutableStateOf(set.weight?.let(format::number).orEmpty()) }
-    var reps by remember(set.id) { mutableStateOf(set.reps?.toString().orEmpty()) }
-    val save = { done: Boolean -> actions.updateSet(set.copy(weight = format.parseWeight(weight), reps = reps.toIntOrNull(), done = done)) }
+    var amount by remember(set.id) { mutableStateOf(amountText(set)) }
+    val amountFocus = remember { FocusRequester() }
+    fun typed(done: Boolean) = set.copy(
+        weight = if (exercise.weighted) format.parseWeight(weight) else null,
+        reps = if (timed) set.reps else amount.toIntOrNull(),
+        seconds = if (timed) parseTimeDigits(amount) else set.seconds,
+        done = done,
+    )
+    val tick: (Boolean) -> Unit = { checked ->
+        if (!checked) {
+            actions.updateSet(typed(false))
+        } else {
+            val filled = typed(true).filledFrom(placeholder)
+            if (filled.isComplete(exercise)) {
+                weight = filled.weight?.let(format::number).orEmpty()
+                amount = amountText(filled)
+                actions.updateSet(filled)
+            } else {
+                // Nothing to go on: ask for the reps or time first.
+                amountFocus.requestFocus()
+            }
+        }
+    }
 
     val dismiss = rememberSwipeToDismissBoxState()
+    val card = colors.surfaceContainer
     // A light wash of the accent, opaque so the delete background stays hidden until swiped.
-    val done = colors.secondaryContainer.copy(alpha = 0.35f).compositeOver(colors.surface)
-    val background by animateColorAsState(if (set.done) done else colors.surface, label = "setBackground")
+    // Dark containers are deeper, so dark themes take less of it.
+    val done = colors.secondaryContainer.copy(alpha = if (card.luminance() < 0.5f) 0.3f else 0.45f).compositeOver(card)
+    val background by animateColorAsState(if (set.done) done else card, label = "setBackground")
     SwipeToDismissBox(
         state = dismiss,
         enableDismissFromStartToEnd = false,
@@ -406,57 +532,63 @@ private fun SetRow(index: Int, set: WorkoutSet, previous: WorkoutSet?, format: L
             modifier = Modifier
                 .fillMaxWidth()
                 .background(background)
-                .padding(horizontal = RangeSpace.gutter, vertical = RangeSpace.s1),
-            horizontalArrangement = Arrangement.spacedBy(RangeSpace.s2),
+                .padding(start = RangeSpace.s1, end = RangeSpace.s4),
+            horizontalArrangement = Arrangement.spacedBy(RangeSpace.s3),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("$number", Modifier.width(SetColumn), style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center)
-            Text(
-                previous?.let(format::setShort) ?: "–",
-                modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.onSurfaceVariant,
-                maxLines = 1,
+            RangeNumberCheck(
+                number = number,
+                checked = set.done,
+                onCheckedChange = tick,
+                contentDescription = stringResource(R.string.workout_set_done, number),
             )
-            NumberField(
-                value = weight,
-                onValueChange = {
-                    if (it.length <= 6 && it.all { c -> c.isDigit() || c == '.' || c == ',' } && it.count { c -> c == '.' || c == ',' } <= 1) {
-                        weight = it
-                        save(set.done)
-                    }
-                },
-                description = stringResource(R.string.workout_set_weight, number),
-                keyboardType = KeyboardType.Decimal,
-                modifier = Modifier.width(WeightColumn),
-            )
-            NumberField(
-                value = reps,
-                onValueChange = {
-                    if (it.length <= 3 && it.all(Char::isDigit)) {
-                        reps = it
-                        save(set.done)
-                    }
-                },
-                description = stringResource(R.string.workout_set_reps, number),
-                keyboardType = KeyboardType.Number,
-                modifier = Modifier.width(RepsColumn),
-            )
-            Box(Modifier.width(CheckColumn), contentAlignment = Alignment.Center) {
-                RangeCheckbox(
-                    checked = set.done,
-                    onCheckedChange = { save(it) },
-                    contentDescription = stringResource(R.string.workout_set_done, number),
+            if (exercise.weighted) {
+                NumberField(
+                    value = weight,
+                    onValueChange = {
+                        if (it.length <= 6 && it.all { c -> c.isDigit() || c == '.' || c == ',' } && it.count { c -> c == '.' || c == ',' } <= 1) {
+                            weight = it
+                            actions.updateSet(typed(set.done))
+                        }
+                    },
+                    placeholder = placeholder?.weight?.let(format::number),
+                    description = stringResource(R.string.workout_set_weight, number),
+                    keyboardType = KeyboardType.Decimal,
+                    modifier = Modifier.weight(1f),
                 )
             }
+            NumberField(
+                value = amount,
+                onValueChange = {
+                    if (it.length <= (if (timed) 4 else 3) && it.all(Char::isDigit)) {
+                        amount = it
+                        actions.updateSet(typed(set.done))
+                    }
+                },
+                placeholder = if (timed) placeholder?.seconds?.let(format::seconds) else placeholder?.reps?.toString(),
+                description = stringResource(if (timed) R.string.workout_set_time else R.string.workout_set_reps, number),
+                keyboardType = KeyboardType.Number,
+                visualTransformation = if (timed) TimeDigits else VisualTransformation.None,
+                modifier = Modifier
+                    .weight(1f)
+                    .focusRequester(amountFocus),
+            )
         }
     }
 }
 
-/** A compact Material text field for a number in a set row. */
+/** A compact Material text field for a number in a set row, showing [placeholder] while empty. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun NumberField(value: String, onValueChange: (String) -> Unit, description: String, keyboardType: KeyboardType, modifier: Modifier = Modifier) {
+private fun NumberField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String?,
+    description: String,
+    keyboardType: KeyboardType,
+    modifier: Modifier = Modifier,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+) {
     val colors = MaterialTheme.colorScheme
     val interactions = remember { MutableInteractionSource() }
     val fieldColors = OutlinedTextFieldDefaults.colors(
@@ -464,6 +596,7 @@ private fun NumberField(value: String, onValueChange: (String) -> Unit, descript
         focusedContainerColor = colors.surfaceContainerHighest,
         unfocusedBorderColor = Color.Transparent,
     )
+    val textStyle = MaterialTheme.typography.bodyLarge.copy(color = colors.onSurface, textAlign = TextAlign.Center, fontFeatureSettings = "tnum")
     BasicTextField(
         value = value,
         onValueChange = onValueChange,
@@ -471,9 +604,10 @@ private fun NumberField(value: String, onValueChange: (String) -> Unit, descript
             .height(40.dp)
             .semantics { contentDescription = description },
         singleLine = true,
-        textStyle = MaterialTheme.typography.bodyLarge.copy(color = colors.onSurface, textAlign = TextAlign.Center, fontFeatureSettings = "tnum"),
+        textStyle = textStyle,
         cursorBrush = SolidColor(colors.primary),
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = ImeAction.Next),
+        visualTransformation = visualTransformation,
         interactionSource = interactions,
         decorationBox = { field ->
             OutlinedTextFieldDefaults.DecorationBox(
@@ -481,8 +615,11 @@ private fun NumberField(value: String, onValueChange: (String) -> Unit, descript
                 innerTextField = field,
                 enabled = true,
                 singleLine = true,
-                visualTransformation = VisualTransformation.None,
+                visualTransformation = visualTransformation,
                 interactionSource = interactions,
+                placeholder = placeholder?.let {
+                    { Text(it, Modifier.fillMaxWidth(), style = textStyle.copy(color = colors.onSurfaceVariant.copy(alpha = 0.6f))) }
+                },
                 colors = fieldColors,
                 contentPadding = PaddingValues(horizontal = RangeSpace.s1),
                 container = {
@@ -499,13 +636,27 @@ private fun NumberField(value: String, onValueChange: (String) -> Unit, descript
     )
 }
 
-@Composable
-private fun ConfirmDialog(title: String, text: String, confirm: String, dismiss: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = { Text(text) },
-        confirmButton = { TextButton(onClick = onConfirm) { Text(confirm) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(dismiss) } },
-    )
+/** A time as typed: digits only, the last two being seconds, so "130" is 1:30 and "45" is 45 seconds. */
+private fun timeDigits(seconds: Int): String =
+    if (seconds < 60) seconds.toString() else "${seconds / 60}${(seconds % 60).toString().padStart(2, '0')}"
+
+private fun parseTimeDigits(digits: String): Int? {
+    val n = digits.toIntOrNull() ?: return null
+    return if (digits.length <= 2) n else n / 100 * 60 + n % 100
+}
+
+/** Shows typed time digits with a colon before the seconds: "130" reads "1:30". */
+private object TimeDigits : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        val digits = text.text
+        if (digits.length < 3) return TransformedText(text, OffsetMapping.Identity)
+        val cut = digits.length - 2
+        return TransformedText(
+            AnnotatedString(digits.substring(0, cut) + ":" + digits.substring(cut)),
+            object : OffsetMapping {
+                override fun originalToTransformed(offset: Int) = if (offset <= cut) offset else offset + 1
+                override fun transformedToOriginal(offset: Int) = if (offset <= cut) offset else offset - 1
+            },
+        )
+    }
 }

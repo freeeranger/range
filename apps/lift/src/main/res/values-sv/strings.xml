@@ -29,21 +29,21 @@
     <string name="workout_delete_title">Radera passet?</string>
     <string name="workout_delete_text">Passet och dess set raderas för gott.</string>
     <string name="workout_delete_confirm">Radera</string>
-    <string name="workout_finish_title">Avsluta passet?</string>
-    <string name="workout_finish_text">Set du inte bockat av sparas inte.</string>
-    <string name="workout_keep_going">Fortsätt</string>
     <string name="workout_empty">Lägg till en övning för att börja logga set.</string>
     <string name="workout_add_exercise">Lägg till övning</string>
     <string name="workout_add_set">Lägg till set</string>
     <string name="workout_remove_exercise">Ta bort övning</string>
     <string name="workout_column_set">Set</string>
-    <string name="workout_column_previous">Förra</string>
-    <string name="workout_column_reps">Reps</string>
     <string name="workout_set_done">Set %1$d klart</string>
     <string name="workout_set_weight">Vikt för set %1$d</string>
     <string name="workout_set_reps">Reps för set %1$d</string>
+    <string name="workout_set_time">Tid för set %1$d</string>
+    <string name="workout_drag">Dra för att flytta</string>
+    <plurals name="workout_sets_left">
+        <item quantity="one">Bocka av alla set för att avsluta. %1$d set kvar.</item>
+        <item quantity="other">Bocka av alla set för att avsluta. %1$d set kvar.</item>
+    </plurals>
     <string name="workout_delete_set">Radera set</string>
-    <string name="workout_started">Startade %1$s · %2$s</string>
     <string name="stat_duration">Tid</string>
     <string name="stat_sets">Set</string>
     <string name="stat_volume">Volym</string>
@@ -53,7 +53,6 @@
     <string name="exercises_none_found">Inga övningar matchar ”%1$s”.</string>
     <string name="exercise_new">Ny övning</string>
     <string name="exercise_muscle">Muskelgrupp</string>
-    <string name="exercise_add">Lägg till</string>
     <string name="exercise_best">Bäst: %1$s</string>
     <string name="exercise_best_set">Bästa set</string>
     <string name="exercise_one_rep_max">Uppsk. 1RM</string>
@@ -61,6 +60,32 @@
     <string name="exercise_history">Historik</string>
     <string name="exercise_no_history">Inga set loggade än.</string>
     <string name="exercise_pick_title">Lägg till övning</string>
+    <string name="exercise_edit">Redigera övning</string>
+    <string name="exercise_edit_title">Redigera övning</string>
+    <string name="exercise_save">Spara</string>
+    <string name="exercise_name">Namn</string>
+    <string name="exercise_measure">Mäts i</string>
+    <string name="exercise_load">Vikt</string>
+    <string name="exercise_more">Mer</string>
+    <string name="exercise_each_side">Varje sida</string>
+    <string name="exercise_each_side_hint">Logga en sida i taget, som utfall eller enarmsrodd</string>
+    <string name="exercise_remove">Ta bort ur biblioteket</string>
+    <string name="exercise_remove_title">Ta bort %1$s?</string>
+    <string name="exercise_remove_text">Den föreslås inte längre för nya pass. Tidigare pass behåller sina set.</string>
+    <string name="exercise_remove_confirm">Ta bort</string>
+    <string name="exercise_restore">Lägg tillbaka i biblioteket</string>
+    <string name="exercise_removed_note">Borttagen ur ditt bibliotek. Tidigare pass visar den fortfarande.</string>
+
+    <string name="measure_reps">Reps</string>
+    <string name="measure_time">Tid</string>
+    <string name="load_weight">Vikt</string>
+    <string name="load_weight_hint">Skivstång, hantlar eller maskin</string>
+    <string name="load_bodyweight">Kroppsvikt</string>
+    <string name="load_bodyweight_hint">Ingen vikt att logga, som armhävningar</string>
+    <string name="load_extra_weight">Kroppsvikt + extra</string>
+    <string name="load_extra_weight_hint">Lägg på vikt när du vill, som pull-ups med vikt</string>
+    <string name="load_assisted">Assisterad</string>
+    <string name="load_assisted_hint">Logga hjälpen från band eller maskin. Mindre är bättre.</string>
 
     <string name="muscle_chest">Bröst</string>
     <string name="muscle_back">Rygg</string>
@@ -72,7 +97,11 @@
     <!-- Units -->
     <string name="unit_kg">%1$s kg</string>
     <string name="unit_kg_label">kg</string>
-    <string name="set_weight_reps">%1$s × %2$d</string>
+    <string name="unit_kg_extra">+%1$s kg</string>
+    <string name="unit_kg_extra_label">+kg</string>
+    <string name="unit_kg_assist">−%1$s kg</string>
+    <string name="unit_kg_assist_label">−kg</string>
+    <string name="set_weight_amount">%1$s × %2$s</string>
     <plurals name="set_reps">
         <item quantity="one">%1$d rep</item>
         <item quantity="other">%1$d reps</item>
@@ -117,4 +146,8 @@
     <string name="exercise_hanging_leg_raise">Hängande benlyft</string>
     <string name="exercise_cable_crunch">Crunches i kabel</string>
     <string name="exercise_ab_wheel">Magrulle</string>
+    <string name="exercise_assisted_pull_up">Assisterade pull-ups</string>
+    <string name="exercise_one_arm_dumbbell_row">Enarmsrodd med hantel</string>
+    <string name="exercise_plank">Planka</string>
+    <string name="exercise_side_plank">Sidoplanka</string>
 </resources>

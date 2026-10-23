@@ -10,6 +10,8 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import dev.freeranger.range.lift.R
 import dev.freeranger.range.lift.data.Exercise
+import dev.freeranger.range.lift.data.Load
+import dev.freeranger.range.lift.data.Measure
 import dev.freeranger.range.lift.data.Muscle
 import dev.freeranger.range.lift.data.Workout
 import dev.freeranger.range.lift.data.WorkoutSet
@@ -49,7 +51,10 @@ class LiftFormat(context: Context) {
     /** Sorts names the way this language does, so "Ö" comes after "Z" in Swedish. */
     val byName: Comparator<String> = Comparator { a, b -> collator.compare(a, b) }
 
-    fun name(exercise: Exercise): String = exercise.key?.let(BUILT_IN_NAMES::get)?.let(res::getString) ?: exercise.name
+    fun name(exercise: Exercise): String = exercise.name.ifEmpty { builtInName(exercise).orEmpty() }
+
+    /** A built-in exercise's name in the app's language, whatever the user renamed it to. Null for the user's own. */
+    fun builtInName(exercise: Exercise): String? = exercise.key?.let(BUILT_IN_NAMES::get)?.let(res::getString)
 
     fun name(workout: Workout): String = workout.name.ifEmpty { res.getString(R.string.workout_default_name) }
 
@@ -61,6 +66,41 @@ class LiftFormat(context: Context) {
             Muscle.Shoulders -> R.string.muscle_shoulders
             Muscle.Arms -> R.string.muscle_arms
             Muscle.Core -> R.string.muscle_core
+        },
+    )
+
+    fun measure(measure: Measure): String = res.getString(
+        when (measure) {
+            Measure.Reps -> R.string.measure_reps
+            Measure.Time -> R.string.measure_time
+        },
+    )
+
+    fun load(load: Load): String = res.getString(
+        when (load) {
+            Load.Weight -> R.string.load_weight
+            Load.Bodyweight -> R.string.load_bodyweight
+            Load.ExtraWeight -> R.string.load_extra_weight
+            Load.Assisted -> R.string.load_assisted
+        },
+    )
+
+    /** "Bodyweight · Time · Each side": anything unusual about how the exercise is logged. Null for weight and reps. */
+    fun kind(exercise: Exercise): String? = listOfNotNull(
+        load(exercise.load).takeIf { exercise.load != Load.Weight },
+        measure(Measure.Time).takeIf { exercise.measure == Measure.Time },
+        res.getString(R.string.exercise_each_side).takeIf { exercise.perSide },
+    ).joinToString(" · ").ifEmpty { null }
+
+    /** "Legs · Each side": what the exercise trains, and how it's logged if that's unusual. */
+    fun about(exercise: Exercise): String = listOfNotNull(muscle(exercise.muscle), kind(exercise)).joinToString(" · ")
+
+    /** The weight column's heading: "kg", "+kg" for extra weight, "−kg" for help taken off. */
+    fun weightLabel(load: Load): String = res.getString(
+        when (load) {
+            Load.Assisted -> R.string.unit_kg_assist_label
+            Load.ExtraWeight -> R.string.unit_kg_extra_label
+            else -> R.string.unit_kg_label
         },
     )
 
@@ -89,6 +129,19 @@ class LiftFormat(context: Context) {
         }
     }
 
+    /** "01:05:09": how long a workout has been going, as a stopwatch shows it. */
+    fun stopwatch(from: Instant, to: Instant): String {
+        val seconds = Duration.between(from, to).seconds.coerceAtLeast(0)
+        return "%02d:%02d:%02d".format(locale, seconds / 3600, seconds / 60 % 60, seconds % 60)
+    }
+
+    /** "0:45", "1:30" or "1:02:00": a timed set. */
+    fun seconds(seconds: Int): String = if (seconds >= 3600) {
+        "%d:%02d:%02d".format(locale, seconds / 3600, seconds / 60 % 60, seconds % 60)
+    } else {
+        "%d:%02d".format(locale, seconds / 60, seconds % 60)
+    }
+
     /** "62.5" or "62,5": a weight without its unit, as typed into a set. */
     fun number(kg: Double): String = weightFormat.format(kg)
 
@@ -97,22 +150,26 @@ class LiftFormat(context: Context) {
     /** "4,320 kg" moved in a workout. */
     fun volume(kg: Double): String = res.getString(R.string.unit_kg, volumeFormat.format(kg))
 
-    /** "80 kg × 5", or "8 reps" for a bodyweight set. */
-    fun set(set: WorkoutSet): String {
-        val weight = set.weight?.takeIf { it > 0 }
-        val reps = set.reps ?: 0
-        return when {
-            weight == null -> res.getQuantityString(R.plurals.set_reps, reps, reps)
-            set.reps == null -> kg(weight)
-            else -> res.getString(R.string.set_weight_reps, kg(weight), reps)
-        }
+    /** A weight as [load] means it: "80 kg", "+10 kg" extra, or "−20 kg" of help. */
+    fun weight(kg: Double, load: Load): String = when (load) {
+        Load.ExtraWeight -> res.getString(R.string.unit_kg_extra, number(kg))
+        Load.Assisted -> res.getString(R.string.unit_kg_assist, number(kg))
+        else -> kg(kg)
     }
 
-    /** "80 × 5": a set in the narrow Previous column. */
-    fun setShort(set: WorkoutSet): String {
-        val weight = set.weight?.takeIf { it > 0 }
-        val reps = set.reps ?: 0
-        return if (weight == null) res.getQuantityString(R.plurals.set_reps, reps, reps) else res.getString(R.string.set_weight_reps, number(weight), reps)
+    /** "80 kg × 5", "8 reps", "+10 kg × 8", "1:30" or "20 kg × 0:45", as the exercise measures it. */
+    fun set(set: WorkoutSet, exercise: Exercise): String {
+        val weight = set.weight?.takeIf { it > 0 && exercise.weighted }
+        val amount = when (exercise.measure) {
+            Measure.Reps -> set.reps?.toString()
+            Measure.Time -> set.seconds?.let(::seconds)
+        }
+        return when {
+            weight == null && exercise.measure == Measure.Reps -> (set.reps ?: 0).let { res.getQuantityString(R.plurals.set_reps, it, it) }
+            weight == null -> amount.orEmpty()
+            amount == null -> weight(weight, exercise.load)
+            else -> res.getString(R.string.set_weight_amount, weight(weight, exercise.load), amount)
+        }
     }
 
     fun sets(count: Int): String = res.getQuantityString(R.plurals.sets_count, count, count)
@@ -161,6 +218,10 @@ class LiftFormat(context: Context) {
             "hanging_leg_raise" to R.string.exercise_hanging_leg_raise,
             "cable_crunch" to R.string.exercise_cable_crunch,
             "ab_wheel" to R.string.exercise_ab_wheel,
+            "assisted_pull_up" to R.string.exercise_assisted_pull_up,
+            "one_arm_dumbbell_row" to R.string.exercise_one_arm_dumbbell_row,
+            "plank" to R.string.exercise_plank,
+            "side_plank" to R.string.exercise_side_plank,
         )
     }
 }
@@ -173,13 +234,13 @@ fun rememberLiftFormat(): LiftFormat {
     return remember(context, configuration) { LiftFormat(context) }
 }
 
-/** The current time, updated each minute, so a running workout's duration stays right. */
+/** The current time, updated each [period] (a minute unless a stopwatch needs seconds), on the dot. */
 @Composable
-fun rememberNow(): Instant {
-    val now by produceState(Instant.now()) {
+fun rememberNow(period: Long = 60_000): Instant {
+    val now by produceState(Instant.now(), period) {
         while (true) {
             value = Instant.now()
-            delay(60_000 - value.toEpochMilli() % 60_000 + 50)
+            delay(period - value.toEpochMilli() % period + 5)
         }
     }
     return now

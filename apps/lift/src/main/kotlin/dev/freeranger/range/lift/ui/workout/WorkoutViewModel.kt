@@ -15,7 +15,7 @@ import kotlinx.coroutines.launch
 
 data class WorkoutState(
     val log: WorkoutLog? = null,
-    /** For each exercise in the workout (by entry id), what was done last time, for the Previous column. */
+    /** For each exercise in the workout (by entry id), what was done last time: the placeholders in its sets. */
     val previous: Map<Long, List<WorkoutSet>> = emptyMap(),
 )
 
@@ -45,6 +45,10 @@ class WorkoutViewModel(
 
     fun deleteSet(setId: Long) {
         viewModelScope.launch { repository.deleteSet(setId) }
+    }
+
+    fun reorder(entryIds: List<Long>) {
+        appScope.launch { repository.reorder(entryIds) }
     }
 
     fun removeExercise(entryId: Long) {

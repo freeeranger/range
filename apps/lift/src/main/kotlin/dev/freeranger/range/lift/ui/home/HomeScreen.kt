@@ -40,13 +40,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.freeranger.range.lift.LocalAppContainer
 import dev.freeranger.range.lift.R
-import dev.freeranger.range.lift.data.Muscle
 import dev.freeranger.range.lift.data.WorkoutLog
 import dev.freeranger.range.lift.ui.common.LiftFormat
 import dev.freeranger.range.lift.ui.common.rememberLiftFormat
 import dev.freeranger.range.lift.ui.common.rememberNow
 import dev.freeranger.range.lift.ui.exercise.ExerciseList
-import dev.freeranger.range.lift.ui.exercise.NewExerciseSheet
 import dev.freeranger.range.ui.components.RangeSectionHeader
 import dev.freeranger.range.ui.icons.RangeIcons
 import dev.freeranger.range.ui.theme.RangeSpace
@@ -54,7 +52,7 @@ import java.time.Instant
 import java.time.LocalDate
 
 @Composable
-fun HomeRoute(onOpenWorkout: (Long) -> Unit, onOpenExercise: (Long) -> Unit, onOpenSettings: () -> Unit) {
+fun HomeRoute(onOpenWorkout: (Long) -> Unit, onOpenExercise: (Long) -> Unit, onNewExercise: () -> Unit, onOpenSettings: () -> Unit) {
     val container = LocalAppContainer.current
     val viewModel = viewModel { HomeViewModel(container.repository) }
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -65,7 +63,7 @@ fun HomeRoute(onOpenWorkout: (Long) -> Unit, onOpenExercise: (Long) -> Unit, onO
             start = { viewModel.start(onOpenWorkout) },
             openWorkout = onOpenWorkout,
             openExercise = onOpenExercise,
-            addExercise = viewModel::addExercise,
+            newExercise = onNewExercise,
             openSettings = onOpenSettings,
         ),
     )
@@ -76,7 +74,7 @@ data class HomeActions(
     val start: () -> Unit = {},
     val openWorkout: (id: Long) -> Unit = {},
     val openExercise: (id: Long) -> Unit = {},
-    val addExercise: (name: String, muscle: Muscle) -> Unit = { _, _ -> },
+    val newExercise: () -> Unit = {},
     val openSettings: () -> Unit = {},
 )
 
@@ -91,11 +89,9 @@ fun HomeScreen(
     actions: HomeActions,
     modifier: Modifier = Modifier,
     initialTab: HomeTab = HomeTab.Workouts,
-    initiallyAdding: Boolean = false,
 ) {
     val format = rememberLiftFormat()
     var tab by rememberSaveable { mutableStateOf(initialTab) }
-    var adding by rememberSaveable { mutableStateOf(initiallyAdding) }
 
     Scaffold(
         modifier = modifier,
@@ -137,7 +133,7 @@ fun HomeScreen(
                     containerColor = container,
                     contentColor = content,
                 )
-                HomeTab.Exercises -> FloatingActionButton(onClick = { adding = true }, containerColor = container, contentColor = content) {
+                HomeTab.Exercises -> FloatingActionButton(onClick = actions.newExercise, containerColor = container, contentColor = content) {
                     Icon(RangeIcons.Add, contentDescription = stringResource(R.string.exercise_new))
                 }
             }
@@ -154,15 +150,6 @@ fun HomeScreen(
                 contentPadding = contentPadding,
             )
         }
-    }
-
-    if (adding) {
-        NewExerciseSheet(
-            onAdd = actions.addExercise,
-            onDismiss = { adding = false },
-            // Screenshots show the sheet without a keyboard.
-            autoFocus = !initiallyAdding,
-        )
     }
 }
 
@@ -216,17 +203,16 @@ private fun WorkoutCard(log: WorkoutLog, today: LocalDate, format: LiftFormat, o
             )
             if (log.exercises.isNotEmpty()) Spacer(Modifier.height(RangeSpace.s3))
             log.exercises.forEach { logged ->
-                val done = logged.sets.filter { it.done }
                 Row(horizontalArrangement = Arrangement.spacedBy(RangeSpace.s3)) {
                     Text(
-                        "${done.size} × ${format.name(logged.exercise)}",
+                        "${logged.sets.count { it.done }} × ${format.name(logged.exercise)}",
                         modifier = Modifier.weight(1f),
                         style = MaterialTheme.typography.bodyMedium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    done.maxByOrNull { it.estimatedMax ?: 0.0 }?.let {
-                        Text(format.set(it), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    logged.best?.let {
+                        Text(format.set(it, logged.exercise), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }

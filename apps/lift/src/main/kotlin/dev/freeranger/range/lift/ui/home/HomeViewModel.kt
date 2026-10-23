@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.freeranger.range.lift.data.Exercise
 import dev.freeranger.range.lift.data.LiftRepository
-import dev.freeranger.range.lift.data.Muscle
 import dev.freeranger.range.lift.data.WorkoutLog
 import dev.freeranger.range.lift.data.WorkoutSet
 import dev.freeranger.range.lift.data.bestSets
@@ -33,9 +32,5 @@ class HomeViewModel(private val repository: LiftRepository) : ViewModel() {
     /** Starts a workout, or picks up the one in progress, and hands over its id to open it. */
     fun start(onStarted: (Long) -> Unit) {
         viewModelScope.launch { onStarted(repository.start()) }
-    }
-
-    fun addExercise(name: String, muscle: Muscle) {
-        viewModelScope.launch { repository.addExercise(name, muscle) }
     }
 }

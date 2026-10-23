@@ -20,10 +20,22 @@ class LiftRepository(
 
     /** Adds any built-in exercise the library doesn't have yet. Run at every launch; cheap when there's nothing to add. */
     suspend fun addBuiltInExercises() {
-        dao.insertBuiltIn(BuiltInExercises.all.map { (key, muscle) -> Exercise(key = key, muscle = muscle) })
+        dao.insertBuiltIn(BuiltInExercises.all.map { it.toExercise() })
     }
 
-    suspend fun addExercise(name: String, muscle: Muscle): Long = dao.insert(Exercise(name = name.trim(), muscle = muscle))
+    suspend fun addExercise(exercise: Exercise): Long = dao.insert(exercise.copy(id = 0, key = null, name = exercise.name.trim()))
+
+    /** Saves changes to an exercise's name and type. Its key and whether it's removed stay as they are. */
+    suspend fun updateExercise(exercise: Exercise) {
+        val stored = dao.exercise(exercise.id) ?: return
+        dao.update(exercise.copy(key = stored.key, name = exercise.name.trim(), archived = stored.archived))
+    }
+
+    /** Takes an exercise out of the library, or puts it back. Past workouts keep it either way. */
+    suspend fun setRemoved(exerciseId: Long, removed: Boolean) {
+        val stored = dao.exercise(exerciseId) ?: return
+        dao.update(stored.copy(archived = removed))
+    }
 
     /** Starts a workout, or returns the one already in progress: only one runs at a time. */
     suspend fun start(): Long = dao.inProgress()?.id ?: dao.insert(Workout(startedAt = clock().instant()))
@@ -34,30 +46,32 @@ class LiftRepository(
     }
 
     /**
-     * Adds an exercise to a workout with last time's sets filled in, ready to tick off or adjust,
-     * or one empty set the first time.
+     * Adds an exercise to a workout with as many empty sets as were done last time, or one the
+     * first time. Last time's numbers show in them as placeholders, not values.
      */
     suspend fun addToWorkout(workoutId: Long, exerciseId: Long) {
         val position = (dao.lastPosition(workoutId) ?: -1) + 1
-        val sets = dao.lastSets(exerciseId)
-            .mapIndexed { i, set -> WorkoutSet(workoutExerciseId = 0, position = i, weight = set.weight, reps = set.reps) }
-            .ifEmpty { listOf(WorkoutSet(workoutExerciseId = 0, position = 0)) }
+        val count = dao.lastSets(exerciseId).size.coerceAtLeast(1)
+        val sets = List(count) { WorkoutSet(workoutExerciseId = 0, position = it) }
         dao.insert(WorkoutExercise(workoutId = workoutId, exerciseId = exerciseId, position = position), sets)
     }
 
     suspend fun removeFromWorkout(entryId: Long) = dao.deleteEntry(entryId)
 
-    /** Adds a set copying the one above it, since the next set is usually the same again. */
+    /** Puts a workout's exercises in the order of [entryIds]. */
+    suspend fun reorder(entryIds: List<Long>) = dao.reorder(entryIds)
+
+    /** Adds an empty set at the end. */
     suspend fun addSet(entryId: Long) {
         val last = dao.sets(entryId).lastOrNull()
-        dao.insert(WorkoutSet(workoutExerciseId = entryId, position = (last?.position ?: -1) + 1, weight = last?.weight, reps = last?.reps))
+        dao.insert(WorkoutSet(workoutExerciseId = entryId, position = (last?.position ?: -1) + 1))
     }
 
     suspend fun updateSet(set: WorkoutSet) = dao.update(set)
 
     suspend fun deleteSet(id: Long) = dao.deleteSet(id)
 
-    /** Ends a workout, keeping only the sets that were ticked off. */
+    /** Ends a workout. Every set should be ticked off by now; any that aren't are dropped. */
     suspend fun finish(workoutId: Long) {
         val workout = dao.workout(workoutId) ?: return
         if (!workout.isFinished) dao.finish(workout.copy(finishedAt = clock().instant()))
