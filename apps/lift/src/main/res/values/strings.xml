@@ -30,6 +30,8 @@
     <string name="workout_start">Start workout</string>
     <string name="workout_continue">Continue workout</string>
     <string name="workouts_empty">No workouts yet.</string>
+    <string name="workouts_rest_day">Rest day</string>
+    <string name="action_go_to_date">Go to date</string>
     <string name="workout_summary">%1$s · %2$s · %3$s</string>
 
     <!-- Workout -->

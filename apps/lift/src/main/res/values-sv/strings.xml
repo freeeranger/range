@@ -27,6 +27,8 @@
     <string name="workout_start">Starta pass</string>
     <string name="workout_continue">Fortsätt passet</string>
     <string name="workouts_empty">Inga pass än.</string>
+    <string name="workouts_rest_day">Vilodag</string>
+    <string name="action_go_to_date">Gå till datum</string>
     <string name="workout_summary">%1$s · %2$s · %3$s</string>
 
     <!-- Workout -->

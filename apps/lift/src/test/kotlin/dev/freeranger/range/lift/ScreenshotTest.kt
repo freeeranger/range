@@ -200,6 +200,9 @@ class ScreenshotTest {
     fun workouts() = capture { HomeScreen(home, now, HomeActions(), initialTab = HomeTab.Workouts) }
 
     @Test
+    fun workoutsRestDay() = capture { HomeScreen(home, now, HomeActions(), initialTab = HomeTab.Workouts, initialDay = friday.minusDays(2)) }
+
+    @Test
     @Config(qualifiers = "sv-rSE-$PHONE")
     fun workoutsSwedish() = capture { HomeScreen(home, now, HomeActions(), initialTab = HomeTab.Workouts) }
 

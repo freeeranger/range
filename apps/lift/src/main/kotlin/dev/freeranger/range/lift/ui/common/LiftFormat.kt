@@ -25,6 +25,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle
 import java.time.temporal.WeekFields
 import java.util.Locale
 import kotlin.math.abs
@@ -47,7 +48,9 @@ class LiftFormat(context: Context) {
     private val timeFormat = pattern(if (DateFormat.is24HourFormat(context)) "Hm" else "hma")
     private val dateFormat = pattern("EEEEdMMMM")
     private val dateYearFormat = pattern("EEEEdMMMMy")
-    private val monthFormat = pattern("LLLLy")
+    private val monthFormat = pattern("LLLL")
+    private val monthYearFormat = pattern("LLLLy")
+    private val headerFormat = pattern("EEEEdMMMM")
     private val shortDateFormat = pattern("MMMd")
     private val weightFormat = NumberFormat.getNumberInstance(locale).apply { maximumFractionDigits = 2 }
     private val volumeFormat = NumberFormat.getIntegerInstance(locale)
@@ -128,8 +131,16 @@ class LiftFormat(context: Context) {
     /** "Oct 12": a date on a chart's axis. */
     fun shortDate(date: LocalDate): String = date.format(shortDateFormat)
 
-    /** "October 2026", heading a month of workouts. */
-    fun month(date: LocalDate): String = date.format(monthFormat).capitalized()
+    /** "October" above the week strip, with the year when it isn't this one: "January 2025". */
+    fun month(date: LocalDate, today: LocalDate): String =
+        date.format(if (date.year == today.year) monthFormat else monthYearFormat).capitalized()
+
+    /** "Thu": a day in the week strip. */
+    fun weekdayShort(date: LocalDate): String =
+        date.dayOfWeek.getDisplayName(TextStyle.SHORT, locale).removeSuffix(".").capitalized()
+
+    /** "Thursday 22 October": a day read out in full. */
+    fun header(date: LocalDate): String = date.format(headerFormat).capitalized()
 
     fun duration(from: Instant, to: Instant): String {
         val minutes = Duration.between(from, to).toMinutes().coerceAtLeast(0)
