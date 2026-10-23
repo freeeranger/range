@@ -12,6 +12,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import dev.freeranger.range.ui.theme.RangeTransitions
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 import kotlin.math.abs
@@ -43,8 +44,9 @@ fun RangeDayPager(
 }
 
 /**
- * Keeps [state] on [page] and reports the page a swipe settles on. Jumps of more than one page
- * happen at once rather than scrolling through every page in between. Only a swipe reports:
+ * Keeps [state] on [page] and reports the page a swipe settles on. Every change is the same
+ * short slide: a far jump starts from the page next to the target rather than racing through
+ * every page in between. Only a swipe reports:
  * a scroll made here to follow the selection can stop part-way when the selection changes
  * again, and that stop mustn't be taken as a new selection.
  */
@@ -59,7 +61,8 @@ internal fun FollowSelection(state: PagerState, page: Int, onSettle: (Int) -> Un
     LaunchedEffect(page) {
         if (state.currentPage == page) return@LaunchedEffect
         swipe.pending = false
-        if (abs(state.currentPage - page) > 1) state.scrollToPage(page) else state.animateScrollToPage(page)
+        if (abs(state.currentPage - page) > 1) state.scrollToPage(if (page > state.currentPage) page - 1 else page + 1)
+        state.animateScrollToPage(page, animationSpec = RangeTransitions.pageSlide)
     }
     LaunchedEffect(state) {
         snapshotFlow { state.settledPage }.collect {

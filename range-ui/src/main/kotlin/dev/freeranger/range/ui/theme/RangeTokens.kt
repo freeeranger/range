@@ -1,6 +1,7 @@
 package dev.freeranger.range.ui.theme
 
 import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.LinearEasing
@@ -36,6 +37,9 @@ object RangeTransitions {
     /** How far the page underneath moves, as a fraction of the width. */
     private const val PARALLAX = 4
     private const val DIM = 0.4f
+
+    /** A pager sliding to a page picked elsewhere, with the same timing as a page transition. */
+    val pageSlide: AnimationSpec<Float> = tween(DURATION, easing = emphasized)
 
     fun forward(): ContentTransform = ContentTransform(
         targetContentEnter = slideInHorizontally(tween(DURATION, easing = emphasized)) { it },
