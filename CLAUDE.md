@@ -2,6 +2,7 @@
 
 The user never writes code here; Claude does all of it and shows results as screenshots or builds on the phone.
 
+- Keep text to what's needed: no hints, explanations or empty-state sentences when the screen speaks for itself.
 - Screens are built from Material 3 components (top bars, list items, chips, buttons, sheets, dialogs) so the apps feel native. `RangeTheme` sets Space Grotesk and the colours: Material You by default, the app's `RangeAccents` fallback otherwise, light/dark/pure black per the user's Appearance settings. Use `MaterialTheme.colorScheme`/`typography`, never hard-coded colours or fonts.
 - Write a custom component only when Material has none (e.g. `RangeCheckbox`, `RangeStepper`), and put it in `range-ui`.
 - Each app differs only by its accent (`RangeAccents`) and its screens. Page transitions come from `RangeTransitions`.
@@ -18,7 +19,7 @@ The user never writes code here; Claude does all of it and shows results as scre
 - Every tick in the list offers Undo via a snackbar; keep that the one way to take back a tick from the list.
 - The task list shows one day at a time (`dayView` in Tasks). Future days list every repeat that falls on them as untickable previews, plus undated (Anytime) tasks, which show on every day until done; past days list what was ticked off on them, read-only. Keep that logic in `DayView.kt`, covered by `DayViewTest`.
 - Lift: a workout's sets count only once ticked off, and Finish needs every set ticked; ticking an empty set takes the placeholder (last time's set, else the set above). At most one workout is in progress. An exercise's `Measure` (reps/time), `Load` and `perSide` decide its columns, best set (`Exercise.setOrder`) and volume. Removing an exercise archives it, so past workouts keep it. Progress graphs, records and the finish screen's comparisons all pick their number per exercise through `progressMetric`/`recordMetrics` in `Progress.kt`; a first time is never a record. Built-in exercises are rows with a `key`, named in the app's language through `LiftFormat.BUILT_IN_NAMES` unless renamed; add new ones to `BuiltInExercises`, which fills them in on launch without a migration.
-- Lift's rest timer lives on the workout row (`restEndsAt`), started when a set is ticked; `RestAlarm` mirrors it to an exact alarm and a self-counting notification so it works with the app closed. Templates keep exercises and set counts only; the numbers come from last time as placeholders.
+- Lift's rest stopwatch counts up from the workout's `lastSetAt`, set when a set is ticked; `RestStopwatch` mirrors it to a notification whose clock counts on its own, so it works with the app closed. Templates keep exercises and set counts only; the numbers come from last time as placeholders.
 
 ## Commits
 
