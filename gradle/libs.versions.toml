@@ -16,6 +16,7 @@ junit = "4.13.2"
 robolectric = "4.17"
 roborazzi = "1.77.0"
 reorderable = "3.1.0"
+vico = "3.3.1"
 
 [libraries]
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
@@ -45,6 +46,7 @@ room3-compiler = { module = "androidx.room3:room3-compiler", version.ref = "room
 room3-testing = { module = "androidx.room3:room3-testing", version.ref = "room3" }
 sqlite-framework = { module = "androidx.sqlite:sqlite-framework", version.ref = "sqlite" }
 reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
+vico-compose = { module = "com.patrykandpatrick.vico:compose", version.ref = "vico" }
 
 junit = { module = "junit:junit", version.ref = "junit" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
