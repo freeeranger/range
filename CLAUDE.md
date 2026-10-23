@@ -16,7 +16,7 @@ The user never writes code here; Claude does all of it and shows results as scre
 - A repeating task is one row that moves from day to day; never insert a row per occurrence. A task's times are reminders: progress is a tick count (`doneCount`), never per-time state.
 - Finished days are logged in `completions`, one row per finished day, written only by `TaskRepository` alongside the task. It's history for listing what was ticked off on each day, not a task row: never schedule or tick from it.
 - Every tick in the list offers Undo via a snackbar; keep that the one way to take back a tick from the list.
-- The task list shows one day at a time (`dayView` in Tasks). Future days list every repeat that falls on them as untickable previews; past days list what was ticked off on them, read-only. Keep that logic in `DayView.kt`, covered by `DayViewTest`.
+- The task list shows one day at a time (`dayView` in Tasks). Future days list every repeat that falls on them as untickable previews, plus undated (Anytime) tasks, which show on every day until done; past days list what was ticked off on them, read-only. Keep that logic in `DayView.kt`, covered by `DayViewTest`.
 
 ## Commits
 
