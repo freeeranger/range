@@ -17,7 +17,7 @@ The user never writes code here; Claude does all of it and shows results as scre
 - Finished days are logged in `completions`, one row per finished day, written only by `TaskRepository` alongside the task. It's history for listing what was ticked off on each day, not a task row: never schedule or tick from it.
 - Every tick in the list offers Undo via a snackbar; keep that the one way to take back a tick from the list.
 - The task list shows one day at a time (`dayView` in Tasks). Future days list every repeat that falls on them as untickable previews, plus undated (Anytime) tasks, which show on every day until done; past days list what was ticked off on them, read-only. Keep that logic in `DayView.kt`, covered by `DayViewTest`.
-- Lift: a workout's sets count only once ticked off; finishing a workout deletes unticked sets. At most one workout is in progress. Built-in exercises are rows with a `key`, named in the app's language through `LiftFormat.BUILT_IN_NAMES`; add new ones to `BuiltInExercises`, which fills them in on launch without a migration.
+- Lift: a workout's sets count only once ticked off, and Finish needs every set ticked; ticking an empty set takes the placeholder (last time's set, else the set above). At most one workout is in progress. An exercise's `Measure` (reps/time), `Load` and `perSide` decide its columns, best set (`Exercise.setOrder`) and volume. Removing an exercise archives it, so past workouts keep it. Built-in exercises are rows with a `key`, named in the app's language through `LiftFormat.BUILT_IN_NAMES` unless renamed; add new ones to `BuiltInExercises`, which fills them in on launch without a migration.
 
 ## Commits
 
