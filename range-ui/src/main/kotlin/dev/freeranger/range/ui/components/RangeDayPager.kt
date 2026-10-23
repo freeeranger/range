@@ -26,17 +26,19 @@ object RangeDays {
 
 /**
  * One page per day, swiped sideways like a calendar's day view and kept in step with [selected]:
- * swiping selects the day swiped to, and a day selected elsewhere is brought into view.
+ * swiping selects the day swiped to, and a day selected elsewhere is brought into view. Pages end
+ * at [last], e.g. today for a log of what's been done.
  */
 @Composable
 fun RangeDayPager(
     selected: LocalDate,
     onSelect: (LocalDate) -> Unit,
     modifier: Modifier = Modifier,
+    last: LocalDate = RangeDays.last,
     content: @Composable (LocalDate) -> Unit,
 ) {
-    val pages = ChronoUnit.DAYS.between(RangeDays.first, RangeDays.last).toInt() + 1
-    val page = ChronoUnit.DAYS.between(RangeDays.first, selected.coerceIn(RangeDays.first, RangeDays.last)).toInt()
+    val pages = ChronoUnit.DAYS.between(RangeDays.first, last).toInt() + 1
+    val page = ChronoUnit.DAYS.between(RangeDays.first, selected.coerceIn(RangeDays.first, last)).toInt()
     val state = rememberPagerState(initialPage = page) { pages }
     FollowSelection(state, page) { onSelect(RangeDays.first.plusDays(it.toLong())) }
     HorizontalPager(state, modifier, key = { it }, verticalAlignment = Alignment.Top) {

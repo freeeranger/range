@@ -35,8 +35,8 @@ import java.time.temporal.TemporalAdjusters
 
 /**
  * A week of days, swiped a week at a time: weekday above the date, the selected day filled with
- * the accent, today's date in the accent, days already gone grayed out, and a dot under days
- * that have something on them.
+ * the accent, today's date in the accent, [faded] days grayed out (by default those already
+ * gone), and a dot under days that have something on them. Days after [last] can't be picked.
  * Swiping to another week selects the same weekday there. [label] gives the short weekday;
  * [describe] the full date read out by screen readers.
  */
@@ -50,15 +50,17 @@ fun RangeWeekStrip(
     describe: (LocalDate) -> String,
     marked: (LocalDate) -> Boolean,
     modifier: Modifier = Modifier,
+    last: LocalDate = RangeDays.last,
+    faded: (LocalDate) -> Boolean = { it < today },
 ) {
     fun LocalDate.weekStart(): LocalDate = with(TemporalAdjusters.previousOrSame(firstDayOfWeek))
     val origin = RangeDays.first.weekStart()
-    fun pageOf(day: LocalDate) = ChronoUnit.WEEKS.between(origin, day.coerceIn(RangeDays.first, RangeDays.last).weekStart()).toInt()
+    fun pageOf(day: LocalDate) = ChronoUnit.WEEKS.between(origin, day.coerceIn(RangeDays.first, last).weekStart()).toInt()
 
-    val state = rememberPagerState(initialPage = pageOf(selected)) { pageOf(RangeDays.last) + 1 }
+    val state = rememberPagerState(initialPage = pageOf(selected)) { pageOf(last) + 1 }
     FollowSelection(state, pageOf(selected)) { page ->
         val weekday = ChronoUnit.DAYS.between(selected.weekStart(), selected)
-        onSelect(origin.plusWeeks(page.toLong()).plusDays(weekday).coerceIn(RangeDays.first, RangeDays.last))
+        onSelect(origin.plusWeeks(page.toLong()).plusDays(weekday).coerceIn(RangeDays.first, last))
     }
 
     HorizontalPager(state, modifier, key = { it }) { page ->
@@ -78,7 +80,8 @@ fun RangeWeekStrip(
                     description = describe(day),
                     selected = day == selected,
                     today = day == today,
-                    past = day < today,
+                    faded = faded(day) || day > last,
+                    enabled = day in RangeDays.first..last,
                     marked = marked(day),
                     onClick = { onSelect(day) },
                     modifier = Modifier.weight(1f),
@@ -95,14 +98,15 @@ private fun DayCell(
     description: String,
     selected: Boolean,
     today: Boolean,
-    past: Boolean,
+    faded: Boolean,
+    enabled: Boolean,
     marked: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
-    // Faded, not disabled: a past day can still be opened to see what was done on it.
-    val fade = if (past && !selected) PAST_ALPHA else 1f
+    // Faded, not disabled, unless it can't be picked: a past day in Tasks still opens.
+    val fade = if (faded && !selected) FADED_ALPHA else 1f
     val container by animateColorAsState(if (selected) colors.primary else Color.Transparent, label = "dayContainer")
     val content by animateColorAsState(
         when {
@@ -116,7 +120,7 @@ private fun DayCell(
         modifier = modifier
             .clip(RoundedCornerShape(24.dp))
             .background(container)
-            .selectable(selected = selected, role = Role.Tab, onClick = onClick)
+            .selectable(selected = selected, enabled = enabled, role = Role.Tab, onClick = onClick)
             .semantics { contentDescription = description }
             .padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -143,4 +147,4 @@ private fun DayCell(
     }
 }
 
-private const val PAST_ALPHA = 0.45f
+private const val FADED_ALPHA = 0.45f

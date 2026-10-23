@@ -11,6 +11,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
@@ -97,11 +98,23 @@ fun RangeTimePickerDialog(
     }
 }
 
-/** A month calendar whose month and weekday names follow [locale], the app's formatting locale. */
+/**
+ * A month calendar whose month and weekday names follow [locale], the app's formatting locale.
+ * Days after [last] can't be picked, if it's given.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun rememberRangeDatePickerState(initial: LocalDate, locale: Locale): DatePickerState =
-    remember(locale) { DatePickerState(locale = locale, initialSelectedDateMillis = initial.toUtcMillis()) }
+fun rememberRangeDatePickerState(initial: LocalDate, locale: Locale, last: LocalDate? = null): DatePickerState =
+    remember(locale, last) {
+        DatePickerState(
+            locale = locale,
+            initialSelectedDateMillis = initial.toUtcMillis(),
+            selectableDates = object : SelectableDates {
+                override fun isSelectableDate(utcTimeMillis: Long) = last == null || utcTimeMillis <= last.toUtcMillis()
+                override fun isSelectableYear(year: Int) = last == null || year <= last.year
+            },
+        )
+    }
 
 /** The selected day, from Material's UTC-midnight milliseconds. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -118,8 +131,9 @@ fun RangeDatePickerDialog(
     dismissText: String,
     onConfirm: (LocalDate) -> Unit,
     onDismiss: () -> Unit,
+    last: LocalDate? = null,
 ) {
-    val state = rememberRangeDatePickerState(initial, locale)
+    val state = rememberRangeDatePickerState(initial, locale, last)
     DatePickerDialog(
         onDismissRequest = onDismiss,
         confirmButton = { TextButton(onClick = { onConfirm(state.selectedDate ?: initial) }) { Text(confirmText) } },
