@@ -35,7 +35,8 @@ import java.time.temporal.TemporalAdjusters
 
 /**
  * A week of days, swiped a week at a time: weekday above the date, the selected day filled with
- * the accent, today's date in the accent, and a dot under days that have something on them.
+ * the accent, today's date in the accent, days already gone grayed out, and a dot under days
+ * that have something on them.
  * Swiping to another week selects the same weekday there. [label] gives the short weekday;
  * [describe] the full date read out by screen readers.
  */
@@ -77,6 +78,7 @@ fun RangeWeekStrip(
                     description = describe(day),
                     selected = day == selected,
                     today = day == today,
+                    past = day < today,
                     marked = marked(day),
                     onClick = { onSelect(day) },
                     modifier = Modifier.weight(1f),
@@ -93,17 +95,20 @@ private fun DayCell(
     description: String,
     selected: Boolean,
     today: Boolean,
+    past: Boolean,
     marked: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
+    // Faded, not disabled: a past day can still be opened to see what was done on it.
+    val fade = if (past && !selected) PAST_ALPHA else 1f
     val container by animateColorAsState(if (selected) colors.primary else Color.Transparent, label = "dayContainer")
     val content by animateColorAsState(
         when {
             selected -> colors.onPrimary
             today -> colors.primary
-            else -> colors.onSurface
+            else -> colors.onSurface.copy(alpha = fade)
         },
         label = "dayContent",
     )
@@ -117,7 +122,12 @@ private fun DayCell(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Text(weekday, style = MaterialTheme.typography.labelMedium, color = if (selected) content else colors.onSurfaceVariant, maxLines = 1)
+        Text(
+            weekday,
+            style = MaterialTheme.typography.labelMedium,
+            color = if (selected) content else colors.onSurfaceVariant.copy(alpha = fade),
+            maxLines = 1,
+        )
         Text(
             number,
             style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = "tnum"),
@@ -132,3 +142,5 @@ private fun DayCell(
         )
     }
 }
+
+private const val PAST_ALPHA = 0.45f
