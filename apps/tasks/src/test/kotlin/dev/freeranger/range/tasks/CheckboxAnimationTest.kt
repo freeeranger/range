@@ -53,7 +53,7 @@ class CheckboxAnimationTest {
         ticks = 1
         listOf(0L, 80L, 160L, 320L, 700L, 1200L).zipWithNext().forEachIndexed { index, (from, to) ->
             compose.mainClock.advanceTimeBy(to - from)
-            compose.onRoot().captureRoboImage("build/outputs/roborazzi/tick-$index-${to}ms.png")
+            compose.onRoot().captureRoboImage("screenshots/${javaClass.name}.tick-$index-${to}ms.png")
         }
     }
 }
