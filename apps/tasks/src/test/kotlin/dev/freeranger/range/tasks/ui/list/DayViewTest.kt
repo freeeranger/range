@@ -99,8 +99,19 @@ class DayViewTest {
 
     @Test
     fun `the strip marks today for overdue and undated tasks, and every day something falls on`() {
-        val marked = markedDays(listOf(rent, milk, dentist), friday, friday.plusDays(30))
+        val marked = markedDays(listOf(rent, milk, dentist), emptyList(), friday, friday, friday.plusDays(30))
         assertEquals(setOf(friday, friday.plusDays(3)), marked)
-        assertTrue(friday.plusDays(10) in markedDays(listOf(creatine), friday, friday.plusDays(30)))
+        val wednesday = friday.plusDays(5)
+        assertTrue(wednesday in markedDays(listOf(gym), emptyList(), friday, friday, friday.plusDays(30)))
+    }
+
+    @Test
+    fun `everyday repeats mark no days, and past days are marked by what was ticked off`() {
+        val thursday = friday.minusDays(1)
+        val everyDay = markedDays(listOf(creatine), listOf(ticked(creatine, thursday.atTime(8, 5))), friday, friday.minusDays(7), friday.plusDays(30))
+        assertEquals(emptySet<LocalDate>(), everyDay)
+
+        val history = listOf(ticked(gym, thursday.atTime(18, 0)), ticked(rent, friday.minusDays(3).atTime(9, 0)))
+        assertEquals(setOf(thursday, friday.minusDays(3)), markedDays(listOf(gym, rent), history, friday, friday.minusDays(7), thursday))
     }
 }

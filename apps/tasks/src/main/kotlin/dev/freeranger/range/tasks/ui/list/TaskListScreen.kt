@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -60,15 +60,15 @@ import dev.freeranger.range.tasks.ui.common.rememberNow
 import dev.freeranger.range.tasks.ui.common.rememberTaskFormat
 import dev.freeranger.range.ui.components.RangeCheckbox
 import dev.freeranger.range.ui.components.RangeDatePickerDialog
-import dev.freeranger.range.ui.components.RangeDayStrip
+import dev.freeranger.range.ui.components.RangeDayPager
+import dev.freeranger.range.ui.components.RangeDays
 import dev.freeranger.range.ui.components.RangeSectionHeader
+import dev.freeranger.range.ui.components.RangeWeekStrip
 import dev.freeranger.range.ui.icons.RangeIcons
 import dev.freeranger.range.ui.theme.RangeSpace
 import java.time.LocalDate
 import java.time.LocalDateTime
-
-/** How far ahead the day strip reaches; the calendar button goes further. */
-private const val STRIP_DAYS = 90L
+import java.time.temporal.TemporalAdjusters
 
 @Composable
 fun TaskListRoute(onOpenTask: (Long) -> Unit, onOpenSettings: () -> Unit) {
@@ -116,9 +116,9 @@ data class TaskListActions(
 )
 
 /**
- * The task list for one day at a time: today by default, with a strip of days to look ahead.
- * Today shows overdue, today's and undated tasks; later days show what falls on them; earlier
- * days show what was ticked off on them. Every day ends with what was ticked off on it.
+ * The task list for one day at a time: today by default, with a week strip above and the list
+ * swiped sideways a day at a time. Today shows overdue, today's and undated tasks; later days
+ * show what falls on them; earlier days show what was ticked off on them.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -137,13 +137,16 @@ fun TaskListScreen(
     // Null means "today", so the list moves on by itself at midnight.
     var picked by rememberSaveable { mutableStateOf(initiallySelected) }
     val day = picked?.takeIf { it != today } ?: today
+    val select = { date: LocalDate -> picked = date.coerceIn(RangeDays.first, RangeDays.last).takeIf { it != today } }
     var adding by rememberSaveable { mutableStateOf(initiallyAdding) }
     var pickingDate by rememberSaveable { mutableStateOf(false) }
     var showCompleted by rememberSaveable { mutableStateOf(initiallyShowingCompleted) }
 
-    val days = remember(today) { (0 until STRIP_DAYS).map { today.plusDays(it) } }
-    val marked = remember(state.tasks, today) { markedDays(state.tasks, today, today.plusDays(STRIP_DAYS)) }
-    val view = remember(state.tasks, state.completions, day, today) { dayView(state.tasks, state.completions, day, today) }
+    // The selected week and the ones either side, which show while swiping.
+    val week = day.with(TemporalAdjusters.previousOrSame(format.firstDayOfWeek))
+    val marked = remember(state.tasks, state.completions, today, week) {
+        markedDays(state.tasks, state.completions, today, from = week.minusWeeks(1), until = week.plusWeeks(2))
+    }
 
     BackHandler(enabled = day != today) { picked = null }
 
@@ -152,8 +155,11 @@ fun TaskListScreen(
         topBar = {
             Column(Modifier.background(MaterialTheme.colorScheme.surface)) {
                 TopAppBar(
-                    title = { Text(stringResource(R.string.app_title)) },
+                    title = { Text(format.month(day, today)) },
                     actions = {
+                        if (day != today) {
+                            TextButton(onClick = { picked = null }) { Text(stringResource(R.string.date_today)) }
+                        }
                         IconButton(onClick = { pickingDate = true }) {
                             Icon(RangeIcons.CalendarMonth, contentDescription = stringResource(R.string.action_go_to_date))
                         }
@@ -162,11 +168,11 @@ fun TaskListScreen(
                         }
                     },
                 )
-                RangeDayStrip(
-                    days = days,
+                RangeWeekStrip(
                     selected = day,
                     today = today,
-                    onSelect = { picked = it },
+                    firstDayOfWeek = format.firstDayOfWeek,
+                    onSelect = select,
                     label = { format.weekdayShort(it) },
                     describe = { format.header(it) },
                     marked = { it in marked },
@@ -186,75 +192,28 @@ fun TaskListScreen(
             }
         },
     ) { padding ->
-        LazyColumn(
-            // Leaves room for the + button over the end of the list.
-            contentPadding = PaddingValues(top = padding.calculateTopPadding(), bottom = padding.calculateBottomPadding() + 96.dp),
-        ) {
-            if (day != today) {
-                item(key = "day-header") {
-                    DayHeader(text = format.header(day), onToday = { picked = null }, modifier = Modifier.animateItem())
-                }
-            }
-            val empty = if (day < today) view.completed.isEmpty() else !view.hasOpenTasks
-            if (state.loaded && empty) {
-                item(key = "empty") {
-                    val message = when {
-                        day < today -> R.string.day_empty_past
-                        day != today -> R.string.day_empty
-                        state.tasks.isEmpty() -> R.string.tasks_empty
-                        else -> R.string.day_empty_today
-                    }
-                    Text(
-                        text = stringResource(message),
-                        modifier = Modifier.padding(horizontal = RangeSpace.gutter, vertical = RangeSpace.s6),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            section("overdue", R.string.section_overdue, view.overdue, overdue = true) { task, itemModifier ->
-                TaskRow(task, done = false, now, format, actions, due = format.due(task, today), modifier = itemModifier)
-            }
-            section("today", R.string.section_today, view.due.takeIf { day == today }.orEmpty()) { task, itemModifier ->
-                TaskRow(task, done = false, now, format, actions, due = timesText(task, format, today), modifier = itemModifier)
-            }
-            if (day != today) {
-                items(view.due, key = { it.id }) { task ->
-                    // A repeat on a later day than the one the task is on is a preview: shown, not tickable.
-                    val preview = task.dueDate != day
-                    TaskRow(task, done = false, now, format, actions, due = timesText(task, format, today), preview = preview, modifier = Modifier.animateItem())
-                }
-            }
-            section("anytime", R.string.section_anytime, view.anytime) { task, itemModifier ->
-                TaskRow(task, done = false, now, format, actions, due = null, modifier = itemModifier)
-            }
-            if (day < today) {
-                // History: nothing else is listed on a past day, so there's nothing to fold it away from.
-                section("completed", R.string.section_completed, view.completed) { task, itemModifier ->
-                    TaskRow(task, done = true, now, format, actions, due = null, history = true, modifier = itemModifier)
-                }
-            } else if (view.completed.isNotEmpty()) {
-                item(key = "completed-header") {
-                    CompletedHeader(
-                        count = view.completed.size,
-                        expanded = showCompleted,
-                        onToggle = { showCompleted = !showCompleted },
-                        modifier = Modifier.animateItem(),
-                    )
-                }
-                if (showCompleted) {
-                    items(view.completed, key = { it.id }) { task ->
-                        TaskRow(task, done = true, now, format, actions, due = null, modifier = Modifier.animateItem())
-                    }
-                }
-            }
+        RangeDayPager(selected = day, onSelect = select, modifier = Modifier.fillMaxSize()) { page ->
+            val view = remember(state.tasks, state.completions, page, today) { dayView(state.tasks, state.completions, page, today) }
+            DayList(
+                day = page,
+                view = view,
+                state = state,
+                now = now,
+                format = format,
+                actions = actions,
+                showCompleted = showCompleted,
+                onToggleCompleted = { showCompleted = !showCompleted },
+                // Leaves room for the + button over the end of the list.
+                contentPadding = PaddingValues(top = padding.calculateTopPadding(), bottom = padding.calculateBottomPadding() + 96.dp),
+            )
         }
     }
 
     if (adding) {
         NewTaskSheet(
             today = today,
-            initialDate = day.takeIf { it != today },
+            // A new task can't be planned for a day that's already gone.
+            initialDate = day.takeIf { it > today },
             onSave = actions.add,
             onDismiss = { adding = false },
             autoFocus = !initiallyAdding,
@@ -268,11 +227,82 @@ fun TaskListScreen(
             confirmText = stringResource(R.string.dialog_ok),
             dismissText = stringResource(R.string.dialog_cancel),
             onConfirm = {
-                picked = it
+                select(it)
                 pickingDate = false
             },
             onDismiss = { pickingDate = false },
         )
+    }
+}
+
+/** One day's page of the list. */
+@Composable
+private fun DayList(
+    day: LocalDate,
+    view: DayView,
+    state: TaskListState,
+    now: LocalDateTime,
+    format: TaskFormat,
+    actions: TaskListActions,
+    showCompleted: Boolean,
+    onToggleCompleted: () -> Unit,
+    contentPadding: PaddingValues,
+) {
+    val today = now.toLocalDate()
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = contentPadding) {
+        val empty = if (day < today) view.completed.isEmpty() else !view.hasOpenTasks
+        if (state.loaded && empty) {
+            item(key = "empty") {
+                val message = when {
+                    day < today -> R.string.day_empty_past
+                    day != today -> R.string.day_empty
+                    state.tasks.isEmpty() -> R.string.tasks_empty
+                    else -> R.string.day_empty_today
+                }
+                Text(
+                    text = stringResource(message),
+                    modifier = Modifier.padding(horizontal = RangeSpace.gutter, vertical = RangeSpace.s6),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        section("overdue", R.string.section_overdue, view.overdue, overdue = true) { task, itemModifier ->
+            TaskRow(task, done = false, now, format, actions, due = format.due(task, today), modifier = itemModifier)
+        }
+        section("today", R.string.section_today, view.due.takeIf { day == today }.orEmpty()) { task, itemModifier ->
+            TaskRow(task, done = false, now, format, actions, due = timesText(task, format, today), modifier = itemModifier)
+        }
+        if (day > today) {
+            items(view.due, key = { it.id }) { task ->
+                // A repeat on a later day than the one the task is on is a preview: shown, not tickable.
+                val preview = task.dueDate != day
+                TaskRow(task, done = false, now, format, actions, due = timesText(task, format, today), preview = preview, modifier = Modifier.animateItem())
+            }
+        }
+        section("anytime", R.string.section_anytime, view.anytime) { task, itemModifier ->
+            TaskRow(task, done = false, now, format, actions, due = null, modifier = itemModifier)
+        }
+        if (day < today) {
+            // History: nothing else is listed on a past day, so there's nothing to fold it away from.
+            section("completed", R.string.section_completed, view.completed) { task, itemModifier ->
+                TaskRow(task, done = true, now, format, actions, due = null, history = true, modifier = itemModifier)
+            }
+        } else if (view.completed.isNotEmpty()) {
+            item(key = "completed-header") {
+                CompletedHeader(
+                    count = view.completed.size,
+                    expanded = showCompleted,
+                    onToggle = onToggleCompleted,
+                    modifier = Modifier.animateItem(),
+                )
+            }
+            if (showCompleted) {
+                items(view.completed, key = { it.id }) { task ->
+                    TaskRow(task, done = true, now, format, actions, due = null, modifier = Modifier.animateItem())
+                }
+            }
+        }
     }
 }
 
@@ -300,25 +330,6 @@ private fun timesText(task: Task, format: TaskFormat, today: LocalDate): String?
     task.times.isNotEmpty() -> task.times.joinToString(", ", transform = format::time)
     task.repeat != null -> format.repeat(task.repeat, today)
     else -> null
-}
-
-@Composable
-private fun DayHeader(text: String, onToday: () -> Unit, modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(start = RangeSpace.gutter, end = RangeSpace.s2, top = RangeSpace.s2),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text,
-            modifier = Modifier
-                .weight(1f)
-                .semantics { heading() },
-            style = MaterialTheme.typography.titleMedium,
-        )
-        TextButton(onClick = onToday) { Text(stringResource(R.string.date_today)) }
-    }
 }
 
 /**

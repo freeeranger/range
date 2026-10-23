@@ -1,6 +1,7 @@
 package dev.freeranger.range.tasks.ui.list
 
 import dev.freeranger.range.tasks.data.Completion
+import dev.freeranger.range.tasks.data.RepeatUnit
 import dev.freeranger.range.tasks.data.Task
 import dev.freeranger.range.tasks.data.days
 import dev.freeranger.range.tasks.data.occursOn
@@ -45,17 +46,27 @@ private fun completedOn(day: LocalDate, tasks: List<Task>, completions: List<Com
         .mapNotNull { byId[it.taskId] }
 }
 
-/** Days between [today] and [until] that have something on them, for the dots in the day strip. */
-fun markedDays(tasks: List<Task>, today: LocalDate, until: LocalDate): Set<LocalDate> = buildSet {
-    tasks.forEach { task ->
+/**
+ * Days from [from] to [until] that get a dot in the week strip: past days where something was
+ * ticked off, today and later days with something still to do. Everyday repeats don't count:
+ * they would mark every day, and a dot on every day says nothing.
+ */
+fun markedDays(tasks: List<Task>, completions: List<Completion>, today: LocalDate, from: LocalDate, until: LocalDate): Set<LocalDate> = buildSet {
+    val counted = tasks.filterNot { it.isEveryDay }
+    val countedIds = counted.mapTo(HashSet()) { it.id }
+    completions.forEach { if (it.day < today && it.day in from..until && it.taskId in countedIds) add(it.day) }
+    if (until < today) return@buildSet
+    counted.forEach { task ->
         when {
             task.isCompleted -> Unit
             // Undated and overdue tasks are on today's list.
-            task.dueDate == null || task.dueDate < today -> if (!task.isDone(today)) add(today)
-            else -> task.days(until).filterTo(this) { it >= today && !(it == today && task.isDone(today)) }
+            task.dueDate == null || task.dueDate < today -> if (!task.isDone(today) && today >= from) add(today)
+            else -> task.days(until).filterTo(this) { it >= today && it >= from && !(it == today && task.isDone(today)) }
         }
     }
 }
+
+private val Task.isEveryDay: Boolean get() = repeat?.let { it.unit == RepeatUnit.Day && it.every == 1 } == true
 
 /** Soonest first; all-day before timed on the same day; oldest first after that. */
 private val dueOrder = compareBy<Task, LocalDate?>(nullsLast()) { it.dueDate }

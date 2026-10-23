@@ -6,7 +6,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.performTouchInput
 import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
 import com.github.takahirom.roborazzi.captureScreenRoboImage
 import dev.freeranger.range.tasks.data.Completion
@@ -120,7 +124,7 @@ class ScreenshotTest {
     fun listCompletedOpen() = capture { List(initiallyShowingCompleted = true) }
 
     @Test
-    @Config(qualifiers = "sv-$PHONE")
+    @Config(qualifiers = "sv-rSE-$PHONE")
     fun listSwedish() = capture { List(initiallyShowingCompleted = true) }
 
     @Test
@@ -129,12 +133,28 @@ class ScreenshotTest {
     @Test
     fun listYesterday() = capture { List(day = thursday) }
 
+    /** A week across two months, a year ahead: the top bar names the selected day's month and year. */
     @Test
-    @Config(qualifiers = "sv-$PHONE")
+    fun listNextYear() = capture { List(day = LocalDate.of(2027, 11, 1)) }
+
+    /** Halfway through swiping from today to tomorrow. */
+    @Test
+    fun listSwiping() {
+        compose.setContent { RangeTheme(accent = RangeAccents.Tasks, appearance = RangeAppearance(dynamicColor = false)) { List() } }
+        compose.onAllNodesWithText("Buy oat milk").onFirst().performTouchInput {
+            down(center)
+            moveBy(Offset(-width * 0.45f, 0f), delayMillis = 100)
+        }
+        compose.waitForIdle()
+        captureScreenRoboImage()
+    }
+
+    @Test
+    @Config(qualifiers = "sv-rSE-$PHONE")
     fun listYesterdaySwedish() = capture { List(day = thursday) }
 
     @Test
-    @Config(qualifiers = "sv-$PHONE")
+    @Config(qualifiers = "sv-rSE-$PHONE")
     fun listMondaySwedish() = capture { List(day = friday.plusDays(3)) }
 
     @Test

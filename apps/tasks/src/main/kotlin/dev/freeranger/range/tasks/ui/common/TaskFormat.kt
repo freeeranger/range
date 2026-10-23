@@ -38,15 +38,22 @@ class TaskFormat(context: Context) {
     private val shortDateFormat = pattern("EEEdMMM")
     private val longDateFormat = pattern("EEEdMMMy")
     private val headerFormat = pattern("EEEEdMMMM")
+    private val monthFormat = pattern("LLLL")
+    private val monthYearFormat = pattern("MMMMy")
+
+    /** The day this region's calendars start the week on: Monday in Sweden, Sunday in the US. */
+    val firstDayOfWeek: DayOfWeek = WeekFields.of(locale).firstDayOfWeek
 
     /** Weekdays in the order this region's calendars use. */
-    val weekdays: List<DayOfWeek> = WeekFields.of(locale).firstDayOfWeek.let { first ->
-        (0L until 7L).map { first.plus(it) }
-    }
+    val weekdays: List<DayOfWeek> = (0L until 7L).map { firstDayOfWeek.plus(it) }
 
     fun time(time: LocalTime): String = time.format(timeFormat)
 
     fun header(today: LocalDate): String = today.format(headerFormat).capitalized()
+
+    /** "October" above the week strip, with the year when it isn't this one: "January 2027". */
+    fun month(date: LocalDate, today: LocalDate): String =
+        date.format(if (date.year == today.year) monthFormat else monthYearFormat).capitalized()
 
     fun weekday(day: DayOfWeek): String = day.getDisplayName(TextStyle.SHORT, locale)
 
