@@ -134,5 +134,7 @@
     <string name="section_anytime">Anytime</string>
     <string name="day_empty_today">Nothing left for today.</string>
     <string name="day_empty">Nothing planned.</string>
+    <string name="section_completed">Completed</string>
+    <string name="day_empty_past">Nothing ticked off this day.</string>
     <string name="action_go_to_date">Go to date</string>
 </resources>

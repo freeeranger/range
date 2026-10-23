@@ -23,6 +23,9 @@ class TaskRepository(
 ) {
     val tasks: Flow<List<Task>> = dao.observeAll()
 
+    /** Every finished day, for listing what was ticked off on each day. */
+    val completions: Flow<List<Completion>> = dao.observeCompletions()
+
     fun task(id: Long): Flow<Task?> = dao.observe(id)
 
     suspend fun get(id: Long): Task? = dao.get(id)
@@ -42,7 +45,8 @@ class TaskRepository(
         if (updated != task) dao.update(updated)
     }
 
-    suspend fun setSchedule(id: Long, schedule: Schedule?) = change(id) { withSchedule(schedule, now()) }
+    /** A new schedule starts the task over, but what was already ticked off stays in the history. */
+    suspend fun setSchedule(id: Long, schedule: Schedule?) = change(id, history = false) { withSchedule(schedule, now()) }
 
     /**
      * Ticks off once (the last tick of the day finishes it) and returns the task as it was before,
@@ -62,8 +66,8 @@ class TaskRepository(
 
     /** Puts a task back exactly as it was, for Undo. */
     suspend fun restore(task: Task) {
-        if (dao.get(task.id) == null) return
-        dao.update(task)
+        val current = dao.get(task.id) ?: return
+        save(current, task)
         reminders.cancel(task.id)
         reminders.sync(task)
     }
@@ -91,14 +95,25 @@ class TaskRepository(
         dao.openWithDueDate().forEach(reminders::sync)
     }
 
-    private suspend fun change(id: Long, transform: Task.() -> Task) {
+    private suspend fun change(id: Long, history: Boolean = true, transform: Task.() -> Task) {
         val task = dao.get(id) ?: return
         val updated = task.transform()
         if (updated == task) return
-        dao.update(updated)
+        if (history) save(task, updated) else dao.update(updated)
         // Clears a notification for a time that has just been ticked off, then sets the next reminder.
         reminders.cancel(id)
         reminders.sync(updated)
+    }
+
+    /** Saves [after] and logs a newly finished day, or removes the one that was just taken back. */
+    private suspend fun save(before: Task, after: Task) {
+        val was = before.finishedAt
+        val now = after.finishedAt
+        val undone = was?.takeIf { now == null || now < it }
+        val finished = now?.takeIf { was == null || it > was }?.let {
+            Completion(taskId = after.id, day = it.atZone(clock().zone).toLocalDate(), at = it)
+        }
+        dao.update(after, finished, undone)
     }
 
     private fun now() = LocalDateTime.now(clock())

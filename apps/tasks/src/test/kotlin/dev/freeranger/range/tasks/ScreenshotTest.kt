@@ -9,6 +9,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
 import com.github.takahirom.roborazzi.captureScreenRoboImage
+import dev.freeranger.range.tasks.data.Completion
 import dev.freeranger.range.tasks.data.Repeat
 import dev.freeranger.range.tasks.data.RepeatEnd
 import dev.freeranger.range.tasks.data.RepeatUnit
@@ -40,6 +41,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
 
@@ -70,15 +72,27 @@ class ScreenshotTest {
     // Ticked off for this week already: on Sunday's occurrence, which can't be ticked yet.
     private val plants = task(4, "Water the plants", schedule = Schedule(friday.plusDays(2), emptyList(), Repeat(unit = RepeatUnit.Week, anchor = friday.plusDays(2))))
 
+    private val thursday = friday.minusDays(1)
+
+    private fun ticked(id: Long, at: LocalDateTime) = Completion(taskId = id, day = at.toLocalDate(), at = at.atZone(ZoneId.systemDefault()).toInstant())
+
     private val state = TaskListState(
         tasks = listOf(
-            task(1, "Pay rent", schedule = Schedule(friday.minusDays(1))),
+            task(1, "Pay rent", schedule = Schedule(thursday)),
             vitamins,
             task(3, "Book a dentist appointment", details = "Ask about the Tuesday slots", schedule = Schedule(friday.plusDays(1), listOf(LocalTime.of(9, 30)))),
             plants,
             task(5, "Buy oat milk"),
             task(6, "Stretch", schedule = Schedule(friday, listOf(LocalTime.of(7, 0)), Repeat(anchor = friday))).check(friday.atTime(7, 5), nowInstant),
             task(7, "Renew bike insurance").copy(completedAt = nowInstant),
+            task(8, "Return library books").copy(completedAt = thursday.atTime(17, 30).atZone(ZoneId.systemDefault()).toInstant()),
+        ),
+        completions = listOf(
+            ticked(6, friday.atTime(7, 5)),
+            ticked(7, now),
+            ticked(2, thursday.atTime(20, 10)),
+            ticked(6, thursday.atTime(7, 5)),
+            ticked(8, thursday.atTime(17, 30)),
         ),
         loaded = true,
     )
@@ -111,6 +125,13 @@ class ScreenshotTest {
 
     @Test
     fun listMonday() = capture { List(day = friday.plusDays(3)) }
+
+    @Test
+    fun listYesterday() = capture { List(day = thursday) }
+
+    @Test
+    @Config(qualifiers = "sv-$PHONE")
+    fun listYesterdaySwedish() = capture { List(day = thursday) }
 
     @Test
     @Config(qualifiers = "sv-$PHONE")

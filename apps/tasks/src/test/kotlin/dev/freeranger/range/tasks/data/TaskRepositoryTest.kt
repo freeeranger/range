@@ -98,6 +98,46 @@ class TaskRepositoryTest {
     }
 
     @Test
+    fun `finished days are logged, and undo and reopen take them back out`() = runTest {
+        val id = repository.add("Take vitamins", schedule = vitamins)
+        suspend fun days() = repository.completions.first().map { it.day }
+
+        now = friday.atTime(8, 5)
+        repository.check(id)
+        assertEquals(emptyList<LocalDate>(), days())
+
+        now = friday.atTime(20, 5)
+        val before = repository.check(id)!!
+        assertEquals(listOf(friday), days())
+        repository.restore(before)
+        assertEquals(emptyList<LocalDate>(), days())
+
+        repository.check(id)
+        repository.reopen(id)
+        assertEquals(emptyList<LocalDate>(), days())
+
+        repository.check(id)
+        now = friday.plusDays(1).atTime(20, 5)
+        repository.check(id)
+        repository.check(id)
+        assertEquals(listOf(friday, friday.plusDays(1)), days())
+
+        // Rescheduling starts the task over but doesn't rewrite what was done.
+        repository.setSchedule(id, null)
+        assertEquals(listOf(friday, friday.plusDays(1)), days())
+    }
+
+    @Test
+    fun `deleting a task deletes its history`() = runTest {
+        val id = repository.add("Pay rent", schedule = Schedule(friday))
+        val other = repository.add("Buy oat milk")
+        repository.check(id)
+        repository.check(other)
+        repository.delete(id)
+        assertEquals(listOf(other), repository.completions.first().map { it.taskId })
+    }
+
+    @Test
     fun `a blank title edit keeps the old title`() = runTest {
         val id = repository.add("Pay rent")
         repository.editText(id, "   ", "before Friday")

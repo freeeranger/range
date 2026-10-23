@@ -117,7 +117,8 @@ data class TaskListActions(
 
 /**
  * The task list for one day at a time: today by default, with a strip of days to look ahead.
- * Today shows overdue, today's and undated tasks; other days show what falls on them.
+ * Today shows overdue, today's and undated tasks; later days show what falls on them; earlier
+ * days show what was ticked off on them. Every day ends with what was ticked off on it.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -142,7 +143,7 @@ fun TaskListScreen(
 
     val days = remember(today) { (0 until STRIP_DAYS).map { today.plusDays(it) } }
     val marked = remember(state.tasks, today) { markedDays(state.tasks, today, today.plusDays(STRIP_DAYS)) }
-    val view = remember(state.tasks, day, today) { dayView(state.tasks, day, today) }
+    val view = remember(state.tasks, state.completions, day, today) { dayView(state.tasks, state.completions, day, today) }
 
     BackHandler(enabled = day != today) { picked = null }
 
@@ -194,9 +195,11 @@ fun TaskListScreen(
                     DayHeader(text = format.header(day), onToday = { picked = null }, modifier = Modifier.animateItem())
                 }
             }
-            if (state.loaded && !view.hasOpenTasks) {
+            val empty = if (day < today) view.completed.isEmpty() else !view.hasOpenTasks
+            if (state.loaded && empty) {
                 item(key = "empty") {
                     val message = when {
+                        day < today -> R.string.day_empty_past
                         day != today -> R.string.day_empty
                         state.tasks.isEmpty() -> R.string.tasks_empty
                         else -> R.string.day_empty_today
@@ -225,7 +228,12 @@ fun TaskListScreen(
             section("anytime", R.string.section_anytime, view.anytime) { task, itemModifier ->
                 TaskRow(task, done = false, now, format, actions, due = null, modifier = itemModifier)
             }
-            if (view.completed.isNotEmpty()) {
+            if (day < today) {
+                // History: nothing else is listed on a past day, so there's nothing to fold it away from.
+                section("completed", R.string.section_completed, view.completed) { task, itemModifier ->
+                    TaskRow(task, done = true, now, format, actions, due = null, history = true, modifier = itemModifier)
+                }
+            } else if (view.completed.isNotEmpty()) {
                 item(key = "completed-header") {
                     CompletedHeader(
                         count = view.completed.size,
@@ -317,7 +325,7 @@ private fun DayHeader(text: String, onToday: () -> Unit, modifier: Modifier = Mo
  * One task. [done] rows sit under Completed and untick on tap. On open rows the ring ticks off
  * once; a task due several times a day fills a segment per tick and is done after the last.
  * A repeating task on a day that hasn't come yet can't be ticked, and neither can a [preview]
- * of one of its later repeats.
+ * of one of its later repeats. A [history] row, on a past day, is read-only.
  */
 @Composable
 private fun TaskRow(
@@ -329,6 +337,7 @@ private fun TaskRow(
     due: String?,
     modifier: Modifier = Modifier,
     preview: Boolean = false,
+    history: Boolean = false,
 ) {
     val today = now.toLocalDate()
     val canCheck = !preview && task.canCheck(today)
@@ -343,7 +352,7 @@ private fun TaskRow(
                 checked = done,
                 onCheckedChange = { if (done) actions.reopen(task.id) else actions.check(task.id) },
                 contentDescription = stringResource(if (done) R.string.tasks_reopen else R.string.tasks_complete, task.title),
-                enabled = done || canCheck,
+                enabled = !history && (done || canCheck),
                 steps = task.steps,
                 stepsDone = if (done) task.steps else doneCount,
             )
@@ -357,7 +366,7 @@ private fun TaskRow(
         },
         supportingContent = when {
             // A repeating task done for today: say when it's next due.
-            done && !task.isCompleted && task.dueDate != null -> {
+            done && !history && !task.isCompleted && task.dueDate != null -> {
                 {
                     DueLine(
                         stringResource(R.string.tasks_next, format.moment(task.dueDate, task.times.firstOrNull(), today)),

@@ -53,7 +53,10 @@ data class Task(
     fun canCheck(today: LocalDate): Boolean =
         !isCompleted && !(repeat != null && dueDate != null && dueDate > today)
 
-    /** Finished for good, or a repeating task whose whole day was ticked off today. Shown under Completed. */
+    /** When the latest finished day was ticked off, while that still stands (not reopened or undone). */
+    val finishedAt: Instant? get() = listOfNotNull(completedAt, lastDoneAt).maxOrNull()
+
+    /** Finished for good, or a repeating task whose whole day was ticked off today. Left off today's open sections. */
     fun isDone(today: LocalDate, zone: ZoneId = ZoneId.systemDefault()): Boolean {
         if (isCompleted) return true
         val doneToday = lastDoneAt?.atZone(zone)?.toLocalDate() == today
