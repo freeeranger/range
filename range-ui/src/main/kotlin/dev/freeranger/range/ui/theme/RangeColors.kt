@@ -29,6 +29,22 @@ object RangeAccents {
             selection = Color(0xFF312E81),
         ),
     )
+
+    /** Tailwind orange. 700 rather than 600 in light mode, so white text on it stays readable. */
+    val Lift = RangeAccent(
+        light = rangeLight(
+            primary = Color(0xFFC2410C),
+            container = Color(0xFFFFEDD5),
+            onContainer = Color(0xFF7C2D12),
+        ),
+        dark = rangeDark(
+            primary = Color(0xFFFDBA74),
+            onPrimary = Color(0xFF431407),
+            container = Color(0xFF9A3412),
+            onContainer = Color(0xFFFFEDD5),
+            selection = Color(0xFF7C2D12),
+        ),
+    )
 }
 
 private fun rangeLight(primary: Color, container: Color, onContainer: Color) = lightColorScheme(

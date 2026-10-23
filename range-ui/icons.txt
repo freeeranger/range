@@ -12,11 +12,17 @@ dark_mode
 delete
 description
 edit
+emoji_events
 expand_more
+fitness_center
+history
 info
+more_vert
 palette
 remove
 repeat
 schedule
+search
 settings
+timer
 translate
