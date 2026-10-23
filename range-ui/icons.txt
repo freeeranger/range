@@ -14,6 +14,7 @@ delete
 description
 drag_indicator
 edit
+edit_note
 emoji_events
 expand_more
 fitness_center
@@ -24,9 +25,11 @@ more_vert
 palette
 remove
 repeat
+save
 schedule
 search
 settings
+settings_backup_restore
 skip_next
 sticky_note_2
 timer
