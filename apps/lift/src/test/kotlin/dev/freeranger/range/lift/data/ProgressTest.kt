@@ -1,6 +1,7 @@
 package dev.freeranger.range.lift.data
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -63,5 +64,38 @@ class ProgressTest {
 
         val helped = listOf(workout(friday.minusDays(7), assisted, sets(30.0 to 8, 20.0 to 6)), workout(friday, assisted, sets(null to 3)))
         assertEquals(ProgressMetric.Assistance to listOf(20.0, 0.0), progression(helped, assisted).let { it.metric to it.points.map { p -> p.value } })
+    }
+
+    @Test
+    fun `records come from beating every earlier workout, not from doing something the first time`() {
+        val first = workout(friday.minusDays(14), bench, sets(80.0 to 5))
+        val second = workout(friday.minusDays(7), bench, sets(90.0 to 3, 85.0 to 3))
+        val today = workout(friday, bench, sets(85.0 to 8, 90.0 to 2))
+        val logs = listOf(first, second, today)
+
+        assertEquals(emptyList<Record>(), newRecords(first, logs))
+        // 90 × 3 is a heavier weight and a better estimated max than 80 × 5.
+        assertEquals(listOf(ProgressMetric.OneRepMax to 99.0, ProgressMetric.Weight to 90.0), newRecords(second, logs).map { it.metric to Math.round(it.value).toDouble() })
+        // 85 × 8 beats the estimated max; 90 kg only ties the heaviest weight, so that's no record.
+        val records = newRecords(today, logs)
+        assertEquals(listOf(ProgressMetric.OneRepMax), records.map { it.metric })
+        assertEquals(99.0, records.single().previous!!, 0.01)
+        assertEquals(85.0 to 8, records.single().set.let { it.weight to it.reps })
+
+        val standing = records(logs, bench)
+        assertEquals(listOf(ProgressMetric.OneRepMax to friday, ProgressMetric.Weight to friday.minusDays(7)), standing.map { it.metric to it.at.atZone(zone).toLocalDate() })
+    }
+
+    @Test
+    fun `each exercise is compared with the last workout that had it`() {
+        val older = workout(friday.minusDays(14), bench, sets(70.0 to 5))
+        val last = workout(friday.minusDays(7), bench, sets(80.0 to 5))
+        val today = workout(friday, bench, sets(82.5 to 5))
+        val plankToday = workout(friday, plank, listOf(WorkoutSet(nextId++, 0, 0, seconds = 60, done = true)))
+        val comparison = comparisons(today, listOf(older, last, today)).single()
+        assertEquals(ProgressMetric.OneRepMax, comparison.metric)
+        assertEquals(82.5 * (1 + 5 / 30.0), comparison.today, 0.01)
+        assertEquals(80.0 * (1 + 5 / 30.0), comparison.last!!, 0.01)
+        assertNull(comparisons(plankToday, listOf(plankToday)).single().last)
     }
 }

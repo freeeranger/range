@@ -61,6 +61,9 @@ fun HomeRoute(onOpenWorkout: (Long) -> Unit, onOpenExercise: (Long) -> Unit, onN
         now = rememberNow(),
         actions = HomeActions(
             start = { viewModel.start(onOpenWorkout) },
+            startTemplate = { viewModel.startTemplate(it, onOpenWorkout) },
+            renameTemplate = viewModel::renameTemplate,
+            deleteTemplate = viewModel::deleteTemplate,
             openWorkout = onOpenWorkout,
             openExercise = onOpenExercise,
             newExercise = onNewExercise,
@@ -72,6 +75,9 @@ fun HomeRoute(onOpenWorkout: (Long) -> Unit, onOpenExercise: (Long) -> Unit, onN
 /** Everything the home screen can ask for. */
 data class HomeActions(
     val start: () -> Unit = {},
+    val startTemplate: (templateId: Long) -> Unit = {},
+    val renameTemplate: (templateId: Long, name: String) -> Unit = { _, _ -> },
+    val deleteTemplate: (templateId: Long) -> Unit = {},
     val openWorkout: (id: Long) -> Unit = {},
     val openExercise: (id: Long) -> Unit = {},
     val newExercise: () -> Unit = {},
@@ -149,7 +155,7 @@ fun HomeScreen(
         val contentPadding = PaddingValues(top = padding.calculateTopPadding(), bottom = padding.calculateBottomPadding() + 96.dp)
         when (tab) {
             HomeTab.Workouts -> WorkoutHistory(state, now, format, actions, contentPadding)
-            HomeTab.Home -> Dashboard(state.logs, now, format, contentPadding)
+            HomeTab.Home -> Dashboard(state, now, format, actions, contentPadding)
             HomeTab.Exercises -> ExerciseList(
                 exercises = state.exercises,
                 bests = state.bests,

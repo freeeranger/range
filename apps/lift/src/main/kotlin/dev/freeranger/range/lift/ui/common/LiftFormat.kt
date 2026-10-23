@@ -13,6 +13,7 @@ import dev.freeranger.range.lift.data.Exercise
 import dev.freeranger.range.lift.data.Load
 import dev.freeranger.range.lift.data.Measure
 import dev.freeranger.range.lift.data.Muscle
+import dev.freeranger.range.lift.data.ProgressMetric
 import dev.freeranger.range.lift.data.Workout
 import dev.freeranger.range.lift.data.WorkoutSet
 import kotlinx.coroutines.delay
@@ -26,6 +27,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.WeekFields
 import java.util.Locale
+import kotlin.math.abs
 
 /** Turns dates, weights, sets and names into the text shown on screen. */
 class LiftFormat(context: Context) {
@@ -149,6 +151,28 @@ class LiftFormat(context: Context) {
         "%d:%02d:%02d".format(locale, seconds / 3600, seconds / 60 % 60, seconds % 60)
     } else {
         "%d:%02d".format(locale, seconds / 60, seconds % 60)
+    }
+
+    /** "2:00", or "Off": an exercise's rest between sets. */
+    fun rest(seconds: Int): String = if (seconds <= 0) res.getString(R.string.rest_off) else seconds(seconds)
+
+    /** A [ProgressMetric]'s value: "102 kg", "12 reps", "1:30". The estimated one-rep max rounds to the kilo. */
+    fun metric(metric: ProgressMetric, value: Double): String = when (metric) {
+        ProgressMetric.OneRepMax -> kg(Math.round(value).toDouble())
+        ProgressMetric.Weight, ProgressMetric.Assistance -> kg(value)
+        ProgressMetric.Reps -> reps(value.toInt())
+        ProgressMetric.Time -> seconds(value.toInt())
+    }
+
+    /** "+2.5 kg", "−1 rep", "+0:15": the change from [last] to [today], or null if there's none worth showing. */
+    fun change(metric: ProgressMetric, today: Double, last: Double): String? {
+        val difference = when (metric) {
+            ProgressMetric.OneRepMax -> Math.round(today).toDouble() - Math.round(last)
+            else -> today - last
+        }
+        if (abs(difference) < 0.01) return null
+        val sign = if (difference > 0) "+" else "−"
+        return sign + metric(metric, abs(difference))
     }
 
     /** "62.5" or "62,5": a weight without its unit, as typed into a set. */

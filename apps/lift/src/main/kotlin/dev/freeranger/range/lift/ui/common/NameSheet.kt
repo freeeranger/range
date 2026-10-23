@@ -33,7 +33,8 @@ import kotlinx.coroutines.launch
 
 /**
  * A sheet for naming something, like Tasks' quick-add sheet: a borderless title field and a save
- * button. Blank names are saved only if [blankAllowed].
+ * button. Blank names are saved only if [blankAllowed]. With [multiLine] it takes a few lines of
+ * text instead, like a workout's notes.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,6 +46,7 @@ fun NameSheet(
     initial: String = "",
     blankAllowed: Boolean = false,
     autoFocus: Boolean = true,
+    multiLine: Boolean = false,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
@@ -80,9 +82,12 @@ fun NameSheet(
                     .fillMaxWidth()
                     .focusRequester(focus),
                 placeholder = { Text(placeholder) },
-                textStyle = MaterialTheme.typography.titleLarge,
-                lineLimits = TextFieldLineLimits.SingleLine,
-                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
+                textStyle = if (multiLine) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.titleLarge,
+                lineLimits = if (multiLine) TextFieldLineLimits.MultiLine(minHeightInLines = 3, maxHeightInLines = 8) else TextFieldLineLimits.SingleLine,
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences,
+                    imeAction = if (multiLine) ImeAction.Default else ImeAction.Done,
+                ),
                 onKeyboardAction = { save() },
                 colors = bare,
             )

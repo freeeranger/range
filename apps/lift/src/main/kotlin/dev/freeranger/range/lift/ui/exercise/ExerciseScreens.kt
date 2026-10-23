@@ -30,7 +30,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -40,12 +42,13 @@ import dev.freeranger.range.lift.R
 import dev.freeranger.range.lift.data.Exercise
 import dev.freeranger.range.lift.data.ProgressMetric
 import dev.freeranger.range.lift.data.Progression
+import dev.freeranger.range.lift.data.Record
 import dev.freeranger.range.lift.data.WorkoutSet
 import dev.freeranger.range.lift.ui.common.LiftFormat
-import dev.freeranger.range.lift.ui.common.Stat
-import dev.freeranger.range.lift.ui.common.StatsCard
+import dev.freeranger.range.lift.ui.common.hint
 import dev.freeranger.range.lift.ui.common.rememberLiftFormat
 import dev.freeranger.range.lift.ui.common.rememberNow
+import dev.freeranger.range.lift.ui.common.title
 import dev.freeranger.range.ui.components.RangeLineChart
 import dev.freeranger.range.ui.components.RangeSectionHeader
 import dev.freeranger.range.ui.icons.RangeIcons
@@ -189,19 +192,16 @@ fun ExerciseDetailScreen(
                     )
                 }
             }
-            item(key = "stats") {
-                StatsCard {
-                    Stat(stringResource(R.string.exercise_best_set), state.best?.let { exercise?.let { e -> format.set(it, e) } } ?: "–")
-                    if (exercise?.hasOneRepMax != false) {
-                        Stat(stringResource(R.string.exercise_one_rep_max), state.best?.estimatedMax?.let { format.kg(Math.round(it).toDouble()) } ?: "–")
-                    }
-                    Stat(stringResource(R.string.exercise_sessions), state.sessions.size.toString())
-                }
+            if (state.records.isNotEmpty()) {
+                item(key = "records") { RecordsCard(state.records, today, format) }
             }
             state.progression?.takeIf { it.points.isNotEmpty() }?.let { progression ->
                 item(key = "progress") { ProgressCard(progression, today, format) }
             }
-            item(key = "history") { RangeSectionHeader(stringResource(R.string.exercise_history)) }
+            item(key = "history") {
+                val count = pluralStringResource(R.plurals.exercise_workouts, state.sessions.size, state.sessions.size)
+                RangeSectionHeader(if (state.sessions.isEmpty()) stringResource(R.string.exercise_history) else format.labelled(stringResource(R.string.exercise_history), count))
+            }
             if (state.sessions.isEmpty()) {
                 item(key = "empty") {
                     Text(
@@ -257,14 +257,7 @@ fun ExerciseDetailScreen(
 private fun ProgressCard(progression: Progression, today: LocalDate, format: LiftFormat) {
     val points = progression.points
     val metric = progression.metric
-    val value = { v: Double ->
-        when (metric) {
-            ProgressMetric.OneRepMax -> format.kg(Math.round(v).toDouble())
-            ProgressMetric.Weight, ProgressMetric.Assistance -> format.kg(v)
-            ProgressMetric.Reps -> format.reps(v.toInt())
-            ProgressMetric.Time -> format.seconds(v.toInt())
-        }
-    }
+    val value = { v: Double -> format.metric(metric, v) }
     Card(Modifier.fillMaxWidth().padding(horizontal = RangeSpace.gutter, vertical = RangeSpace.s2)) {
         Column(Modifier.padding(RangeSpace.s4), verticalArrangement = Arrangement.spacedBy(RangeSpace.s3)) {
             Column {
@@ -286,20 +279,28 @@ private fun ProgressCard(progression: Progression, today: LocalDate, format: Lif
     }
 }
 
-private val ProgressMetric.title: Int
-    get() = when (this) {
-        ProgressMetric.OneRepMax -> R.string.progress_one_rep_max
-        ProgressMetric.Weight -> R.string.progress_weight
-        ProgressMetric.Reps -> R.string.progress_reps
-        ProgressMetric.Time -> R.string.progress_time
-        ProgressMetric.Assistance -> R.string.progress_assistance
+/** The exercise's best ever by each measure it keeps, with the set and the day. */
+@Composable
+private fun RecordsCard(records: List<Record>, today: LocalDate, format: LiftFormat) {
+    Card(Modifier.fillMaxWidth().padding(horizontal = RangeSpace.gutter, vertical = RangeSpace.s2)) {
+        Column(Modifier.padding(RangeSpace.s4), verticalArrangement = Arrangement.spacedBy(RangeSpace.s3)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(RangeIcons.EmojiEvents, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary)
+                Text(stringResource(R.string.exercise_records), Modifier.padding(start = RangeSpace.s2), style = MaterialTheme.typography.titleMedium)
+            }
+            records.forEach { record ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(record.metric.title), style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            format.labelled(format.set(record.set, record.exercise), format.day(record.at, today)),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Text(format.metric(record.metric, record.value), style = MaterialTheme.typography.titleLarge)
+                }
+            }
+        }
     }
-
-private val ProgressMetric.hint: Int
-    get() = when (this) {
-        ProgressMetric.OneRepMax -> R.string.progress_one_rep_max_hint
-        ProgressMetric.Weight -> R.string.progress_weight_hint
-        ProgressMetric.Reps -> R.string.progress_reps_hint
-        ProgressMetric.Time -> R.string.progress_time_hint
-        ProgressMetric.Assistance -> R.string.progress_assistance_hint
-    }
+}

@@ -33,6 +33,57 @@ abstract class LiftDao {
     @Query("SELECT * FROM sets")
     abstract fun observeSets(): Flow<List<WorkoutSet>>
 
+    @Query("SELECT * FROM templates")
+    abstract fun observeTemplates(): Flow<List<Template>>
+
+    @Query("SELECT * FROM template_exercises")
+    abstract fun observeTemplateExercises(): Flow<List<TemplateExercise>>
+
+    @Query("SELECT * FROM templates WHERE id = :id")
+    abstract suspend fun template(id: Long): Template?
+
+    @Query("SELECT * FROM template_exercises WHERE templateId = :templateId ORDER BY position")
+    abstract suspend fun templateExercises(templateId: Long): List<TemplateExercise>
+
+    @Insert
+    abstract suspend fun insert(template: Template): Long
+
+    @Update
+    abstract suspend fun update(template: Template)
+
+    @Insert
+    abstract suspend fun insertTemplateExercises(entries: List<TemplateExercise>)
+
+    @Query("DELETE FROM template_exercises WHERE templateId = :templateId")
+    abstract suspend fun clearTemplate(templateId: Long)
+
+    /** Also removes its exercises, through the foreign key. */
+    @Query("DELETE FROM templates WHERE id = :id")
+    abstract suspend fun deleteTemplate(id: Long)
+
+    /** Saves a new template with its exercises, returning its id. */
+    @Transaction
+    open suspend fun insert(template: Template, entries: List<TemplateExercise>): Long {
+        val id = insert(template)
+        insertTemplateExercises(entries.map { it.copy(templateId = id) })
+        return id
+    }
+
+    /** Replaces a template's exercises. */
+    @Transaction
+    open suspend fun replace(templateId: Long, entries: List<TemplateExercise>) {
+        clearTemplate(templateId)
+        insertTemplateExercises(entries.map { it.copy(templateId = templateId) })
+    }
+
+    /** Starts a workout with its exercises and their first sets in one go. */
+    @Transaction
+    open suspend fun insert(workout: Workout, entries: List<Pair<WorkoutExercise, List<WorkoutSet>>>): Long {
+        val id = insert(workout)
+        entries.forEach { (entry, sets) -> insert(entry.copy(workoutId = id), sets) }
+        return id
+    }
+
     @Insert
     abstract suspend fun insert(exercise: Exercise): Long
 
@@ -133,11 +184,12 @@ abstract class LiftDao {
 }
 
 @Database(
-    entities = [Exercise::class, Workout::class, WorkoutExercise::class, WorkoutSet::class],
-    version = 2,
+    entities = [Exercise::class, Workout::class, WorkoutExercise::class, WorkoutSet::class, Template::class, TemplateExercise::class],
+    version = 3,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 1, to = 2, spec = LiftDatabase.ExerciseTypes::class),
+        AutoMigration(from = 2, to = 3, spec = LiftDatabase.RestAndTemplates::class),
     ],
 )
 @ColumnTypeConverters(Converters::class)
@@ -157,6 +209,23 @@ abstract class LiftDatabase : RoomDatabase() {
                     it.bindText(2, builtIn.load.name)
                     it.bindLong(3, if (builtIn.perSide) 1 else 0)
                     it.bindText(4, builtIn.key)
+                    it.step()
+                    it.reset()
+                }
+            }
+        }
+    }
+
+    /**
+     * v3: a rest time per exercise, a running rest timer and notes on each workout, and workout
+     * templates. Built-in exercises get their usual rest: longer for heavy lifts.
+     */
+    class RestAndTemplates : AutoMigrationSpec {
+        override suspend fun onPostMigrate(connection: SQLiteConnection) {
+            connection.prepare("UPDATE exercises SET restSeconds = ? WHERE `key` = ?").use {
+                BuiltInExercises.all.forEach { builtIn ->
+                    it.bindLong(1, builtIn.restSeconds.toLong())
+                    it.bindText(2, builtIn.key)
                     it.step()
                     it.reset()
                 }

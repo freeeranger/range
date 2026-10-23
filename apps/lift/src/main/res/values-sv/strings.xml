@@ -43,6 +43,52 @@
     <string name="workout_set_time">Tid för set %1$d</string>
     <string name="workout_drag">Dra för att flytta</string>
     <string name="workout_delete_set">Radera set</string>
+    <string name="workout_edit_notes">Redigera anteckningar</string>
+    <string name="workout_notes">Anteckningar</string>
+    <string name="workout_record">Rekord</string>
+    <string name="record_new">Nytt rekord! %1$s, %2$s</string>
+
+    <!-- Rest timer -->
+    <string name="rest_label">Vila</string>
+    <string name="rest_add">+%1$d s</string>
+    <string name="rest_subtract">−%1$d s</string>
+    <string name="rest_skip">Hoppa över</string>
+    <string name="rest_off">Av</string>
+    <string name="rest_notification_title">Vila</string>
+    <string name="rest_over_title">Dags för nästa set</string>
+    <string name="notification_channel_timer">Vilotimer</string>
+    <string name="notification_channel_timer_description">Räknar ner vilan mellan set</string>
+    <string name="notification_channel_over">Vilan är slut</string>
+    <string name="notification_channel_over_description">Säger till när det är dags för nästa set</string>
+
+    <!-- Finishing -->
+    <string name="summary_title">Passet är klart</string>
+    <string name="summary_done">Klar</string>
+    <string name="summary_notes_placeholder">Hur gick det? Något att minnas till nästa gång?</string>
+    <string name="summary_records">Nya rekord</string>
+    <string name="summary_records_was">förut %1$s</string>
+    <string name="summary_compared">Jämfört med förra gången</string>
+    <string name="summary_first_time">Första gången</string>
+    <string name="summary_same">Samma som förra gången</string>
+    <plurals name="summary_week">
+        <item quantity="one">%1$d pass den här veckan</item>
+        <item quantity="other">%1$d pass den här veckan</item>
+    </plurals>
+
+    <!-- Templates -->
+    <string name="home_templates">Mallar</string>
+    <string name="home_templates_empty">Spara ett pass som mall från dess meny, eller när du avslutar det, så startar du det igen här med ett tryck.</string>
+    <string name="home_templates_busy">Avsluta passet du har igång för att starta ett nytt.</string>
+    <string name="template_start">Starta</string>
+    <string name="template_last">Senast %1$s</string>
+    <string name="template_delete">Radera mall</string>
+    <string name="template_delete_title">Radera %1$s?</string>
+    <string name="template_delete_text">Pass som startats från den finns kvar som de är.</string>
+    <string name="template_save">Spara som mall</string>
+    <string name="template_saved">Sparad som mall</string>
+    <string name="template_update">Uppdatera %1$s</string>
+    <string name="template_update_hint">Starta den med passets övningar och set från och med nu</string>
+    <string name="template_updated">Mallen är uppdaterad</string>
     <string name="stat_duration">Tid</string>
     <string name="stat_sets">Set</string>
     <string name="stat_volume">Volym</string>
@@ -54,9 +100,6 @@
     <string name="exercise_new">Ny övning</string>
     <string name="exercise_muscle">Muskelgrupp</string>
     <string name="exercise_best">Bäst: %1$s</string>
-    <string name="exercise_best_set">Bästa set</string>
-    <string name="exercise_one_rep_max">Uppsk. 1RM</string>
-    <string name="exercise_sessions">Pass</string>
     <string name="exercise_history">Historik</string>
     <string name="exercise_no_history">Inga set loggade än.</string>
     <string name="progress_one_rep_max">Uppskattat 1RM</string>
@@ -72,6 +115,13 @@
     <string name="progress_need_more">Logga den i ett pass till för att se linjen.</string>
     <string name="progress_description">%1$s över %2$d pass. Senast: %3$s.</string>
     <string name="exercise_pick_title">Lägg till övning</string>
+    <string name="exercise_rest">Vila mellan set</string>
+    <string name="exercise_rest_hint">Börjar räkna ner när du bockar av ett set</string>
+    <string name="exercise_records">Rekord</string>
+    <plurals name="exercise_workouts">
+        <item quantity="one">%1$d pass</item>
+        <item quantity="other">%1$d pass</item>
+    </plurals>
     <string name="exercise_edit">Redigera övning</string>
     <string name="exercise_edit_title">Redigera övning</string>
     <string name="exercise_save">Spara</string>

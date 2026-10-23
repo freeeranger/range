@@ -1,7 +1,12 @@
 package dev.freeranger.range.lift.ui.workout
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -14,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -33,9 +39,13 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -47,6 +57,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -79,6 +90,8 @@ import dev.freeranger.range.lift.R
 import dev.freeranger.range.lift.data.Exercise
 import dev.freeranger.range.lift.data.LoggedExercise
 import dev.freeranger.range.lift.data.Measure
+import dev.freeranger.range.lift.data.ProgressMetric
+import dev.freeranger.range.lift.data.Record
 import dev.freeranger.range.lift.data.WorkoutLog
 import dev.freeranger.range.lift.data.WorkoutSet
 import dev.freeranger.range.lift.data.filledFrom
@@ -89,16 +102,20 @@ import dev.freeranger.range.lift.ui.common.NameSheet
 import dev.freeranger.range.lift.ui.common.Stat
 import dev.freeranger.range.lift.ui.common.StatsCard
 import dev.freeranger.range.lift.ui.common.rememberLiftFormat
+import dev.freeranger.range.lift.ui.common.rememberNotificationPermissionRequest
 import dev.freeranger.range.lift.ui.common.rememberNow
+import dev.freeranger.range.lift.ui.common.title
 import dev.freeranger.range.ui.components.RangeNumberCheck
 import dev.freeranger.range.ui.icons.RangeIcons
 import dev.freeranger.range.ui.theme.RangeSpace
+import java.time.Duration
+import java.time.Instant
+import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
-import java.time.Instant
 
 @Composable
-fun WorkoutRoute(id: Long, onBack: () -> Unit, onAddExercise: () -> Unit, onOpenExercise: (Long) -> Unit) {
+fun WorkoutRoute(id: Long, onBack: () -> Unit, onFinished: () -> Unit, onAddExercise: () -> Unit, onOpenExercise: (Long) -> Unit) {
     val container = LocalAppContainer.current
     val viewModel = viewModel { WorkoutViewModel(id, container.repository, container.scope) }
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -118,12 +135,17 @@ fun WorkoutRoute(id: Long, onBack: () -> Unit, onAddExercise: () -> Unit, onOpen
             deleteSet = viewModel::deleteSet,
             finish = {
                 viewModel.finish()
-                onBack()
+                onFinished()
             },
             delete = {
                 viewModel.delete()
                 onBack()
             },
+            startRest = viewModel::startRest,
+            addRest = viewModel::addRest,
+            skipRest = viewModel::skipRest,
+            setNotes = viewModel::setNotes,
+            saveTemplate = viewModel::saveTemplate,
         ),
     )
 }
@@ -141,14 +163,21 @@ data class WorkoutActions(
     val deleteSet: (setId: Long) -> Unit = {},
     val finish: () -> Unit = {},
     val delete: () -> Unit = {},
+    /** Starts the rest after a set of the exercise [label] names. */
+    val startRest: (seconds: Int, label: String) -> Unit = { _, _ -> },
+    val addRest: (seconds: Int) -> Unit = {},
+    val skipRest: () -> Unit = {},
+    val setNotes: (String) -> Unit = {},
+    val saveTemplate: (name: String) -> Unit = {},
 )
 
-enum class WorkoutDialog { Rename, Delete }
+enum class WorkoutDialog { Rename, Delete, SaveTemplate, Notes }
 
 /**
  * A workout. In progress, it's where sets are logged: a card per exercise, dragged by its handle
  * into any order, each set with last time's numbers as placeholders and its number to tap once
- * it's done. Finishing needs every set ticked off. Finished, it's a read-only summary.
+ * it's done, which starts the rest timer. Finishing needs every set ticked off. Finished, it's a
+ * read-only summary with its notes. Sets that beat a record get a trophy.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -166,9 +195,31 @@ fun WorkoutScreen(
     var dialog by rememberSaveable { mutableStateOf(initialDialog) }
     var menu by remember { mutableStateOf(false) }
     val ready = log.exercises.any { it.sets.isNotEmpty() } && log.exercises.all { logged -> logged.sets.all { it.done } }
+    val snackbar = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val savedMessage = stringResource(R.string.template_saved)
+    val requestNotifications = rememberNotificationPermissionRequest()
+    // The rest timer's notification is the reason to ask, so ask when the first one starts.
+    val withRest = actions.copy(
+        startRest = { seconds, label ->
+            if (seconds > 0) requestNotifications()
+            actions.startRest(seconds, label)
+        },
+    )
+    AnnounceRecords(state.records, enabled = !workout.isFinished, format, snackbar)
 
     Scaffold(
         modifier = modifier,
+        snackbarHost = { SnackbarHost(snackbar) },
+        bottomBar = {
+            val left = workout.restLeft(now).takeIf { !workout.isFinished }
+            // Keeps showing the last time while it slides away.
+            var shown by remember { mutableStateOf(left) }
+            if (left != null) shown = left
+            AnimatedVisibility(visible = left != null, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
+                shown?.let { RestBar(it, workout.restSeconds ?: it.seconds.toInt(), format, actions) }
+            }
+        },
         topBar = {
             TopAppBar(
                 title = {
@@ -196,6 +247,26 @@ fun WorkoutScreen(
                             Icon(RangeIcons.MoreVert, contentDescription = stringResource(R.string.action_more))
                         }
                         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                            if (log.exercises.isNotEmpty()) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.template_save)) },
+                                    leadingIcon = { Icon(RangeIcons.BookmarkAdd, contentDescription = null) },
+                                    onClick = {
+                                        menu = false
+                                        dialog = WorkoutDialog.SaveTemplate
+                                    },
+                                )
+                            }
+                            if (workout.isFinished) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.workout_edit_notes)) },
+                                    leadingIcon = { Icon(RangeIcons.StickyNote2, contentDescription = null) },
+                                    onClick = {
+                                        menu = false
+                                        dialog = WorkoutDialog.Notes
+                                    },
+                                )
+                            }
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.workout_rename)) },
                                 leadingIcon = { Icon(RangeIcons.Edit, contentDescription = null) },
@@ -219,10 +290,11 @@ fun WorkoutScreen(
         },
     ) { padding ->
         val contentPadding = PaddingValues(top = padding.calculateTopPadding(), bottom = padding.calculateBottomPadding() + RangeSpace.s6)
+        val recordSets = state.records.map { it.set.id }.toSet()
         if (workout.isFinished) {
-            FinishedWorkout(log, format, actions, contentPadding)
+            FinishedWorkout(log, recordSets, format, actions, contentPadding)
         } else {
-            WorkoutInProgress(log, state.previous, format, actions, contentPadding)
+            WorkoutInProgress(log, state.previous, recordSets, format, withRest, contentPadding)
         }
     }
 
@@ -237,6 +309,27 @@ fun WorkoutScreen(
             blankAllowed = true,
             // Screenshots show the sheet without a keyboard.
             autoFocus = initialDialog != WorkoutDialog.Rename,
+        )
+        WorkoutDialog.SaveTemplate -> NameSheet(
+            placeholder = stringResource(R.string.workout_default_name),
+            saveLabel = stringResource(R.string.template_save),
+            onSave = {
+                actions.saveTemplate(it)
+                scope.launch { snackbar.showSnackbar(savedMessage) }
+            },
+            onDismiss = { dialog = null },
+            initial = format.name(workout),
+            autoFocus = initialDialog != WorkoutDialog.SaveTemplate,
+        )
+        WorkoutDialog.Notes -> NameSheet(
+            placeholder = stringResource(R.string.summary_notes_placeholder),
+            saveLabel = stringResource(R.string.workout_save),
+            onSave = actions.setNotes,
+            onDismiss = { dialog = null },
+            initial = workout.notes,
+            blankAllowed = true,
+            autoFocus = initialDialog != WorkoutDialog.Notes,
+            multiLine = true,
         )
         WorkoutDialog.Delete -> AlertDialog(
             onDismissRequest = { dialog = null },
@@ -262,6 +355,7 @@ private val SetColumn = 48.dp
 private fun WorkoutInProgress(
     log: WorkoutLog,
     previous: Map<Long, List<WorkoutSet>>,
+    recordSets: Set<Long>,
     format: LiftFormat,
     actions: WorkoutActions,
     contentPadding: PaddingValues,
@@ -300,7 +394,7 @@ private fun WorkoutInProgress(
                     ColumnHeaders(logged.exercise, format)
                     val shown = placeholders(logged.sets, previous[logged.entry.id].orEmpty())
                     logged.sets.forEachIndexed { index, set ->
-                        key(set.id) { SetRow(index, set, shown[index], logged.exercise, format, actions) }
+                        key(set.id) { SetRow(index, set, shown[index], set.id in recordSets, logged.exercise, format, actions) }
                     }
                     TextButton(onClick = { actions.addSet(logged.entry.id) }, modifier = Modifier.padding(start = RangeSpace.s2, bottom = RangeSpace.s1)) {
                         Icon(RangeIcons.Add, contentDescription = null)
@@ -330,7 +424,7 @@ private fun WorkoutInProgress(
 }
 
 @Composable
-private fun FinishedWorkout(log: WorkoutLog, format: LiftFormat, actions: WorkoutActions, contentPadding: PaddingValues) {
+private fun FinishedWorkout(log: WorkoutLog, recordSets: Set<Long>, format: LiftFormat, actions: WorkoutActions, contentPadding: PaddingValues) {
     val workout = log.workout
     LazyColumn(Modifier.fillMaxSize(), contentPadding = contentPadding) {
         item(key = "stats") {
@@ -340,11 +434,24 @@ private fun FinishedWorkout(log: WorkoutLog, format: LiftFormat, actions: Workou
                 Stat(stringResource(R.string.stat_volume), format.volume(log.volume))
             }
         }
+        if (workout.notes.isNotBlank()) {
+            item(key = "notes") {
+                ExerciseCard(elevation = 0.dp) {
+                    Column(Modifier.padding(RangeSpace.s4)) {
+                        Text(stringResource(R.string.workout_notes), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(workout.notes, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
+        }
         items(log.exercises, key = { it.entry.id }) { logged ->
             ExerciseCard(elevation = 0.dp) {
                 ExerciseHeader(logged, format, actions)
                 logged.sets.forEachIndexed { index, set ->
-                    Row(Modifier.padding(horizontal = RangeSpace.s4).padding(bottom = RangeSpace.s2)) {
+                    Row(
+                        Modifier.padding(horizontal = RangeSpace.s4).padding(bottom = RangeSpace.s2),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         Text(
                             "${index + 1}",
                             modifier = Modifier.width(32.dp),
@@ -352,6 +459,7 @@ private fun FinishedWorkout(log: WorkoutLog, format: LiftFormat, actions: Workou
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Text(format.set(set, logged.exercise), style = MaterialTheme.typography.bodyLarge)
+                        if (set.id in recordSets) RecordBadge(Modifier.padding(start = RangeSpace.s2))
                     }
                 }
             }
@@ -454,7 +562,15 @@ private fun ColumnHeaders(exercise: Exercise, format: LiftFormat) {
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SetRow(index: Int, set: WorkoutSet, placeholder: WorkoutSet?, exercise: Exercise, format: LiftFormat, actions: WorkoutActions) {
+private fun SetRow(
+    index: Int,
+    set: WorkoutSet,
+    placeholder: WorkoutSet?,
+    record: Boolean,
+    exercise: Exercise,
+    format: LiftFormat,
+    actions: WorkoutActions,
+) {
     val colors = MaterialTheme.colorScheme
     val number = index + 1
     val timed = exercise.measure == Measure.Time
@@ -479,6 +595,7 @@ private fun SetRow(index: Int, set: WorkoutSet, placeholder: WorkoutSet?, exerci
                 weight = filled.weight?.let(format::number).orEmpty()
                 amount = amountText(filled)
                 actions.updateSet(filled)
+                actions.startRest(exercise.restSeconds, format.name(exercise))
             } else {
                 // Nothing to go on: ask for the reps or time first.
                 amountFocus.requestFocus()
@@ -516,12 +633,15 @@ private fun SetRow(index: Int, set: WorkoutSet, placeholder: WorkoutSet?, exerci
             horizontalArrangement = Arrangement.spacedBy(RangeSpace.s3),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            RangeNumberCheck(
-                number = number,
-                checked = set.done,
-                onCheckedChange = tick,
-                contentDescription = stringResource(R.string.workout_set_done, number),
-            )
+            Box {
+                RangeNumberCheck(
+                    number = number,
+                    checked = set.done,
+                    onCheckedChange = tick,
+                    contentDescription = stringResource(R.string.workout_set_done, number),
+                )
+                if (record) RecordBadge(Modifier.align(Alignment.TopEnd))
+            }
             if (exercise.weighted) {
                 NumberField(
                     value = weight,
@@ -640,3 +760,68 @@ private object TimeDigits : VisualTransformation {
         )
     }
 }
+
+/** A small trophy beside a set that beat a record. */
+@Composable
+private fun RecordBadge(modifier: Modifier = Modifier) {
+    Icon(
+        RangeIcons.EmojiEvents,
+        contentDescription = stringResource(R.string.workout_record),
+        tint = MaterialTheme.colorScheme.tertiary,
+        modifier = modifier.size(18.dp),
+    )
+}
+
+/**
+ * Says so when a newly ticked set beats a record. Records already there when the screen opens
+ * aren't announced again, and one that moves to a better set in the same workout is announced once more.
+ */
+@Composable
+private fun AnnounceRecords(records: List<Record>, enabled: Boolean, format: LiftFormat, snackbar: SnackbarHostState) {
+    val messages = records.associate { record ->
+        (record.set.id to record.metric) to stringResource(
+            R.string.record_new,
+            format.name(record.exercise),
+            stringResource(record.metric.title) + " " + format.metric(record.metric, record.value),
+        )
+    }
+    var announced by remember { mutableStateOf<Set<Pair<Long, ProgressMetric>>?>(null) }
+    LaunchedEffect(messages.keys) {
+        val before = announced
+        announced = messages.keys
+        if (before == null || !enabled) return@LaunchedEffect
+        (messages.keys - before).forEach { snackbar.showSnackbar(messages.getValue(it)) }
+    }
+}
+
+/** The running rest: time left, a bar running down, and buttons to shorten, lengthen or skip it. */
+@Composable
+private fun RestBar(left: Duration, total: Int, format: LiftFormat, actions: WorkoutActions) {
+    val seconds = ((left.toMillis() + 999) / 1000).toInt()
+    Surface(color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+        Column(Modifier.navigationBarsPadding()) {
+            LinearProgressIndicator(
+                progress = { (seconds / total.toFloat()).coerceIn(0f, 1f) },
+                modifier = Modifier.fillMaxWidth(),
+                drawStopIndicator = {},
+                gapSize = 0.dp,
+            )
+            Row(
+                Modifier.padding(start = RangeSpace.gutter, end = RangeSpace.s3, top = RangeSpace.s2, bottom = RangeSpace.s2),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(RangeIcons.Timer, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Column(Modifier.weight(1f).padding(start = RangeSpace.s3)) {
+                    Text(stringResource(R.string.rest_label), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(format.seconds(seconds), style = MaterialTheme.typography.headlineSmall.copy(fontFeatureSettings = "tnum"))
+                }
+                TextButton(onClick = { actions.addRest(-REST_STEP) }) { Text(stringResource(R.string.rest_subtract, REST_STEP)) }
+                TextButton(onClick = { actions.addRest(REST_STEP) }) { Text(stringResource(R.string.rest_add, REST_STEP)) }
+                FilledTonalButton(onClick = actions.skipRest) { Text(stringResource(R.string.rest_skip)) }
+            }
+        }
+    }
+}
+
+/** What the rest bar's buttons take off or add. */
+private const val REST_STEP = 15

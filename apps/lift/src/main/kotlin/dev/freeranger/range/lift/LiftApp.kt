@@ -1,6 +1,7 @@
 package dev.freeranger.range.lift
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -16,6 +17,7 @@ import dev.freeranger.range.lift.ui.exercise.ExerciseDetailRoute
 import dev.freeranger.range.lift.ui.exercise.ExerciseEditRoute
 import dev.freeranger.range.lift.ui.exercise.ExercisePickerRoute
 import dev.freeranger.range.lift.ui.home.HomeRoute
+import dev.freeranger.range.lift.ui.workout.SummaryRoute
 import dev.freeranger.range.lift.ui.workout.WorkoutRoute
 import dev.freeranger.range.ui.settings.RangeAboutScreen
 import dev.freeranger.range.ui.settings.RangeAppearance
@@ -36,6 +38,10 @@ data object HomeKey : NavKey
 
 @Serializable
 data class WorkoutKey(val id: Long) : NavKey
+
+/** Right after finishing workout [id]. */
+@Serializable
+data class SummaryKey(val id: Long) : NavKey
 
 /** Picking an exercise to add to the workout [workoutId]. */
 @Serializable
@@ -61,9 +67,15 @@ data object ComponentsKey : NavKey
 @Serializable
 data class LicenseKey(val license: String) : NavKey
 
+/** [openWorkout] is a workout to show, from the rest timer's notification; [onOpened] says it's been shown. */
 @Composable
-fun LiftApp() {
+fun LiftApp(openWorkout: Long? = null, onOpened: () -> Unit = {}) {
     val backStack = rememberNavBackStack(HomeKey)
+    LaunchedEffect(openWorkout) {
+        if (openWorkout == null) return@LaunchedEffect
+        if (backStack.lastOrNull() != WorkoutKey(openWorkout)) backStack.add(WorkoutKey(openWorkout))
+        onOpened()
+    }
 
     NavDisplay(
         backStack = backStack,
@@ -92,9 +104,16 @@ fun LiftApp() {
                 WorkoutRoute(
                     id = key.id,
                     onBack = back,
+                    onFinished = {
+                        back()
+                        backStack.add(SummaryKey(key.id))
+                    },
                     onAddExercise = { backStack.add(ExercisePickerKey(key.id)) },
                     onOpenExercise = openExercise,
                 )
+            }
+            entry<SummaryKey> { key ->
+                SummaryRoute(id = key.id, onDone = back)
             }
             entry<ExercisePickerKey> { key ->
                 ExercisePickerRoute(

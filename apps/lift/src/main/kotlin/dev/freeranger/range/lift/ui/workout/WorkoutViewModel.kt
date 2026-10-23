@@ -3,8 +3,10 @@ package dev.freeranger.range.lift.ui.workout
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.freeranger.range.lift.data.LiftRepository
+import dev.freeranger.range.lift.data.Record
 import dev.freeranger.range.lift.data.WorkoutLog
 import dev.freeranger.range.lift.data.WorkoutSet
+import dev.freeranger.range.lift.data.newRecords
 import dev.freeranger.range.lift.data.previousSets
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharingStarted
@@ -17,6 +19,8 @@ data class WorkoutState(
     val log: WorkoutLog? = null,
     /** For each exercise in the workout (by entry id), what was done last time: the placeholders in its sets. */
     val previous: Map<Long, List<WorkoutSet>> = emptyMap(),
+    /** The records this workout's ticked-off sets set, so far. */
+    val records: List<Record> = emptyList(),
 )
 
 class WorkoutViewModel(
@@ -28,7 +32,7 @@ class WorkoutViewModel(
     val state: StateFlow<WorkoutState> = repository.logs.map { logs ->
         val log = logs.firstOrNull { it.workout.id == id }
         val previous = log?.exercises.orEmpty().associate { it.entry.id to previousSets(logs, it.exercise.id, log!!.workout.startedAt) }
-        WorkoutState(log, previous)
+        WorkoutState(log, previous, log?.let { newRecords(it, logs) }.orEmpty())
     }.stateIn(viewModelScope, SharingStarted.Eagerly, WorkoutState())
 
     fun rename(name: String) {
@@ -57,6 +61,27 @@ class WorkoutViewModel(
 
     fun finish() {
         appScope.launch { repository.finish(id) }
+    }
+
+    /** Starts the rest after a set of an exercise, called [label] in the notification. */
+    fun startRest(seconds: Int, label: String) {
+        appScope.launch { repository.startRest(id, seconds, label) }
+    }
+
+    fun addRest(seconds: Int) {
+        appScope.launch { repository.addRest(id, seconds) }
+    }
+
+    fun skipRest() {
+        appScope.launch { repository.skipRest(id) }
+    }
+
+    fun setNotes(notes: String) {
+        appScope.launch { repository.setNotes(id, notes) }
+    }
+
+    fun saveTemplate(name: String) {
+        appScope.launch { repository.saveTemplate(id, name) }
     }
 
     fun delete() {

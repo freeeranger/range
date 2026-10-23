@@ -21,6 +21,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
@@ -34,6 +35,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -95,6 +97,7 @@ fun ExerciseEditScreen(
     var measure by rememberSaveable { mutableStateOf(exercise?.measure ?: Measure.Reps) }
     var load by rememberSaveable { mutableStateOf(exercise?.load ?: Load.Weight) }
     var perSide by rememberSaveable { mutableStateOf(exercise?.perSide ?: false) }
+    var rest by rememberSaveable { mutableIntStateOf(exercise?.restSeconds ?: Exercise.DEFAULT_REST) }
     val focus = remember { FocusRequester() }
     val canSave = name.text.isNotBlank() && muscle != null
 
@@ -108,6 +111,7 @@ fun ExerciseEditScreen(
                 measure = measure,
                 load = load,
                 perSide = perSide,
+                restSeconds = rest,
             ),
         )
     }
@@ -175,6 +179,23 @@ fun ExerciseEditScreen(
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                         modifier = Modifier.selectable(selected = load == it, role = Role.RadioButton) { load = it },
                     )
+                }
+            }
+
+            RangeSectionHeader(stringResource(R.string.exercise_rest))
+            Text(
+                stringResource(R.string.exercise_rest_hint),
+                modifier = Modifier.padding(horizontal = RangeSpace.gutter).padding(bottom = RangeSpace.s2),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            FlowRow(
+                modifier = Modifier.padding(horizontal = RangeSpace.gutter),
+                horizontalArrangement = Arrangement.spacedBy(RangeSpace.s2),
+            ) {
+                // A rest set some other way keeps its own chip.
+                (Exercise.REST_CHOICES + rest).distinct().sorted().forEach {
+                    FilterChip(selected = rest == it, onClick = { rest = it }, label = { Text(format.rest(it)) })
                 }
             }
 

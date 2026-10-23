@@ -56,4 +56,28 @@ class MigrationTest {
         }
         connection.close()
     }
+
+    @Test
+    fun `2 to 3 keeps workouts and gives exercises their rest`() = runTest {
+        helper.createDatabase(2).apply {
+            execSQL("INSERT INTO exercises (id, `key`, name, muscle, measure, load, perSide, archived) VALUES (1, 'squat', '', 'Legs', 'Reps', 'Weight', 0, 0), (2, NULL, 'Landmine press', 'Shoulders', 'Reps', 'Weight', 1, 0)")
+            execSQL("INSERT INTO workouts (id, name, startedAt, finishedAt) VALUES (1, 'Legs', 0, 3600000)")
+            close()
+        }
+
+        val connection = helper.runMigrationsAndValidate(3)
+        connection.prepare("SELECT restSeconds FROM exercises ORDER BY id").use {
+            it.step()
+            assertEquals(180L, it.getLong(0))
+            it.step()
+            assertEquals(120L, it.getLong(0))
+        }
+        connection.prepare("SELECT name, notes, templateId, restEndsAt FROM workouts WHERE id = 1").use {
+            it.step()
+            assertEquals("Legs", it.getText(0))
+            assertEquals("", it.getText(1))
+            assertTrue(it.isNull(2) && it.isNull(3))
+        }
+        connection.close()
+    }
 }

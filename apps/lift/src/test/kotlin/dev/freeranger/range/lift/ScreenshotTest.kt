@@ -5,21 +5,26 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
 import com.github.takahirom.roborazzi.captureScreenRoboImage
 import dev.freeranger.range.lift.data.BuiltInExercises
 import dev.freeranger.range.lift.data.Exercise
 import dev.freeranger.range.lift.data.LoggedExercise
 import dev.freeranger.range.lift.data.Muscle
+import dev.freeranger.range.lift.data.Template
 import dev.freeranger.range.lift.data.Workout
 import dev.freeranger.range.lift.data.WorkoutExercise
 import dev.freeranger.range.lift.data.WorkoutLog
 import dev.freeranger.range.lift.data.WorkoutSet
+import dev.freeranger.range.lift.data.WorkoutTemplate
 import dev.freeranger.range.lift.data.bestSets
+import dev.freeranger.range.lift.data.comparisons
+import dev.freeranger.range.lift.data.newRecords
 import dev.freeranger.range.lift.data.previousSets
 import dev.freeranger.range.lift.data.progression
+import dev.freeranger.range.lift.data.records
 import dev.freeranger.range.lift.data.workoutLogs
 import dev.freeranger.range.lift.ui.exercise.ExerciseDetailScreen
 import dev.freeranger.range.lift.ui.exercise.ExerciseDetailState
@@ -30,6 +35,8 @@ import dev.freeranger.range.lift.ui.home.HomeActions
 import dev.freeranger.range.lift.ui.home.HomeScreen
 import dev.freeranger.range.lift.ui.home.HomeState
 import dev.freeranger.range.lift.ui.home.HomeTab
+import dev.freeranger.range.lift.ui.workout.SummaryScreen
+import dev.freeranger.range.lift.ui.workout.SummaryState
 import dev.freeranger.range.lift.ui.workout.WorkoutActions
 import dev.freeranger.range.lift.ui.workout.WorkoutDialog
 import dev.freeranger.range.lift.ui.workout.WorkoutScreen
@@ -43,16 +50,16 @@ import dev.freeranger.range.ui.settings.RangeSettingsScreen
 import dev.freeranger.range.ui.settings.ThemeMode
 import dev.freeranger.range.ui.theme.RangeAccents
 import dev.freeranger.range.ui.theme.RangeTheme
+import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.ZoneId
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import java.time.Instant
-import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.ZoneId
 
 /**
  * Renders every screen on the JVM, dialogs included.
@@ -77,7 +84,7 @@ class ScreenshotTest {
     private val workouts = listOf(
         Workout(1, "Push", at(friday.minusDays(17).atTime(17, 30)), at(friday.minusDays(17).atTime(18, 25))),
         Workout(2, "Legs", at(friday.minusDays(3).atTime(17, 5)), at(friday.minusDays(3).atTime(18, 12))),
-        Workout(3, "Push", at(friday.minusDays(1).atTime(17, 10)), at(friday.minusDays(1).atTime(18, 2))),
+        Workout(3, "Push", at(friday.minusDays(1).atTime(17, 10)), at(friday.minusDays(1).atTime(18, 2)), notes = "Bench moved fast. Dips felt heavy on the elbows, go easier next time."),
         Workout(4, "", at(friday.atTime(18, 5))),
     )
     private val entries = listOf(
@@ -117,7 +124,7 @@ class ScreenshotTest {
     private val progress: List<WorkoutLog> = buildList {
         var id = 1000L
         fun log(day: LocalDate, name: String, vararg lifts: Pair<String, List<Pair<Double, Int>>>) {
-            val workout = Workout(id++, name, at(day.atTime(17, 30)), at(day.atTime(18, 35)))
+            val workout = Workout(id++, name, at(day.atTime(17, 30)), at(day.atTime(18, 35)), templateId = if (name == "Push") 1 else 2)
             val logged = lifts.mapIndexed { position, (key, sets) ->
                 val entry = WorkoutExercise(id++, workout.id, id(key), position)
                 LoggedExercise(entry, exercises.first { it.key == key }, sets.mapIndexed { i, (kg, reps) -> WorkoutSet(id++, entry.id, i, kg, reps, done = true) })
@@ -133,10 +140,30 @@ class ScreenshotTest {
             }
         }
     }.sortedByDescending { it.workout.startedAt }
-    private val dashboard = HomeState(progress, exercises, loaded = true)
+    private fun template(id: Long, name: String, vararg lifts: Pair<String, Int>) =
+        WorkoutTemplate(Template(id, name, Instant.EPOCH), lifts.map { (key, sets) -> exercises.first { it.key == key } to sets })
+    private val templates = listOf(
+        template(1, "Push", "bench_press" to 3, "overhead_press" to 3, "dip" to 2),
+        template(2, "Legs", "squat" to 3, "romanian_deadlift" to 2, "pull_up" to 3),
+    )
+    private val dashboard = HomeState(progress, exercises, templates, loaded = true)
+
+    /** The last workout of the three months, just finished: records, and a step up on everything. */
+    private val justFinished = progress.first()
+    private fun summaryOf(template: WorkoutTemplate? = null) = SummaryState(
+        log = justFinished,
+        records = newRecords(justFinished, progress),
+        comparisons = comparisons(justFinished, progress),
+        logs = progress,
+        template = template,
+    )
     private val active = logs.first { !it.workout.isFinished }
-    private val activeState = WorkoutState(active, active.exercises.associate { it.entry.id to previousSets(logs, it.exercise.id, active.workout.startedAt) })
-    private val finishedState = WorkoutState(logs.first { it.workout.id == 3L })
+    private val activeState = WorkoutState(
+        active,
+        active.exercises.associate { it.entry.id to previousSets(logs, it.exercise.id, active.workout.startedAt) },
+        newRecords(active, logs),
+    )
+    private val finishedState = logs.first { it.workout.id == 3L }.let { WorkoutState(it, records = newRecords(it, logs)) }
 
     private val benchDetail = ExerciseDetailState(
         exercise = exercises.first { it.key == "bench_press" },
@@ -145,13 +172,14 @@ class ScreenshotTest {
         },
         best = bestSets(logs)[id("bench_press")],
         progression = progression(logs, exercises.first { it.key == "bench_press" }),
+        records = records(logs, exercises.first { it.key == "bench_press" }),
     )
 
     /** An exercise's page with three months of history behind it. */
     private fun detail(key: String): ExerciseDetailState {
         val exercise = exercises.first { it.key == key }
         val sessions = progress.mapNotNull { log -> log.exercises.firstOrNull { it.exercise.id == exercise.id }?.let { Session(log.workout, it.sets) } }
-        return ExerciseDetailState(exercise, sessions, bestSets(progress)[exercise.id], progression(progress, exercise))
+        return ExerciseDetailState(exercise, sessions, bestSets(progress)[exercise.id], progression(progress, exercise), records(progress, exercise))
     }
 
     @Test
@@ -172,6 +200,29 @@ class ScreenshotTest {
     @Test
     @Config(qualifiers = "sv-rSE-$PHONE")
     fun workoutsSwedish() = capture { HomeScreen(home, now, HomeActions(), initialTab = HomeTab.Workouts) }
+
+    @Test
+    fun homeBusy() = capture { HomeScreen(dashboard.copy(logs = listOf(active) + progress), now, HomeActions()) }
+
+    @Test
+    fun summary() = capture { SummaryScreen(summaryOf(), now, {}, {}, {}, {}) }
+
+    /** Tall, to show the notes and the template's Update button below the comparisons. */
+    @Test
+    @Config(qualifiers = "sv-rSE-w412dp-h1500dp-night-xxhdpi")
+    fun summarySwedish() = capture { SummaryScreen(summaryOf(templates[1].copy(exercises = templates[1].exercises.dropLast(1))), now, {}, {}, {}, {}) }
+
+    @Test
+    fun summarySaving() = capture { SummaryScreen(summaryOf(), now, {}, {}, {}, {}, initiallySaving = true) }
+
+    @Test
+    fun workoutResting() = capture {
+        val resting = active.copy(workout = active.workout.copy(restEndsAt = now.plusSeconds(83), restSeconds = 120))
+        WorkoutScreen(activeState.copy(log = resting), now, WorkoutActions())
+    }
+
+    @Test
+    fun workoutNotes() = capture { WorkoutScreen(finishedState, now, WorkoutActions(), initialDialog = WorkoutDialog.Notes) }
 
     @Test
     fun homeEmpty() = capture { HomeScreen(HomeState(exercises = exercises, loaded = true), now, HomeActions()) }

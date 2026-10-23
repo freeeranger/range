@@ -46,6 +46,52 @@
     <string name="workout_set_time">Set %1$d time</string>
     <string name="workout_drag">Drag to reorder</string>
     <string name="workout_delete_set">Delete set</string>
+    <string name="workout_edit_notes">Edit notes</string>
+    <string name="workout_notes">Notes</string>
+    <string name="workout_record">Record</string>
+    <string name="record_new">New record! %1$s, %2$s</string>
+
+    <!-- Rest timer -->
+    <string name="rest_label">Rest</string>
+    <string name="rest_add">+%1$d s</string>
+    <string name="rest_subtract">−%1$d s</string>
+    <string name="rest_skip">Skip</string>
+    <string name="rest_off">Off</string>
+    <string name="rest_notification_title">Resting</string>
+    <string name="rest_over_title">Time for your next set</string>
+    <string name="notification_channel_timer">Rest timer</string>
+    <string name="notification_channel_timer_description">Counts down your rest between sets</string>
+    <string name="notification_channel_over">Rest over</string>
+    <string name="notification_channel_over_description">Lets you know when it’s time for the next set</string>
+
+    <!-- Finishing -->
+    <string name="summary_title">Workout complete</string>
+    <string name="summary_done">Done</string>
+    <string name="summary_notes_placeholder">How did it go? Anything to remember for next time?</string>
+    <string name="summary_records">New records</string>
+    <string name="summary_records_was">was %1$s</string>
+    <string name="summary_compared">Compared with last time</string>
+    <string name="summary_first_time">First time</string>
+    <string name="summary_same">Same as last time</string>
+    <plurals name="summary_week">
+        <item quantity="one">%1$d workout this week</item>
+        <item quantity="other">%1$d workouts this week</item>
+    </plurals>
+
+    <!-- Templates -->
+    <string name="home_templates">Templates</string>
+    <string name="home_templates_empty">Save a workout as a template from its menu, or when you finish it, to start it again here in one tap.</string>
+    <string name="home_templates_busy">Finish the workout in progress to start another.</string>
+    <string name="template_start">Start</string>
+    <string name="template_last">Last done %1$s</string>
+    <string name="template_delete">Delete template</string>
+    <string name="template_delete_title">Delete %1$s?</string>
+    <string name="template_delete_text">Workouts started from it stay as they are.</string>
+    <string name="template_save">Save as template</string>
+    <string name="template_saved">Saved as a template</string>
+    <string name="template_update">Update %1$s</string>
+    <string name="template_update_hint">Start it with this workout’s exercises and sets from now on</string>
+    <string name="template_updated">Template updated</string>
     <string name="stat_duration">Duration</string>
     <string name="stat_sets">Sets</string>
     <string name="stat_volume">Volume</string>
@@ -57,9 +103,6 @@
     <string name="exercise_new">New exercise</string>
     <string name="exercise_muscle">Muscle group</string>
     <string name="exercise_best">Best: %1$s</string>
-    <string name="exercise_best_set">Best set</string>
-    <string name="exercise_one_rep_max">Est. 1RM</string>
-    <string name="exercise_sessions">Workouts</string>
     <string name="exercise_history">History</string>
     <string name="exercise_no_history">No sets logged yet.</string>
     <string name="progress_one_rep_max">Estimated 1RM</string>
@@ -75,6 +118,13 @@
     <string name="progress_need_more">Log it in one more workout to see the line.</string>
     <string name="progress_description">%1$s over %2$d workouts. Latest: %3$s.</string>
     <string name="exercise_pick_title">Add exercise</string>
+    <string name="exercise_rest">Rest between sets</string>
+    <string name="exercise_rest_hint">Starts counting down when you tick off a set</string>
+    <string name="exercise_records">Records</string>
+    <plurals name="exercise_workouts">
+        <item quantity="one">%1$d workout</item>
+        <item quantity="other">%1$d workouts</item>
+    </plurals>
     <string name="exercise_edit">Edit exercise</string>
     <string name="exercise_edit_title">Edit exercise</string>
     <string name="exercise_save">Save</string>
