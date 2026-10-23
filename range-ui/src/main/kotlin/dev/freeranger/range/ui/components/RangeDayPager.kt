@@ -1,11 +1,13 @@
 package dev.freeranger.range.ui.components
 
+import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -42,17 +44,29 @@ fun RangeDayPager(
 
 /**
  * Keeps [state] on [page] and reports the page a swipe settles on. Jumps of more than one page
- * happen at once rather than scrolling through every page in between.
+ * happen at once rather than scrolling through every page in between. Only a swipe reports:
+ * a scroll made here to follow the selection can stop part-way when the selection changes
+ * again, and that stop mustn't be taken as a new selection.
  */
 @Composable
 internal fun FollowSelection(state: PagerState, page: Int, onSettle: (Int) -> Unit) {
     val selectedPage by rememberUpdatedState(page)
     val settle by rememberUpdatedState(onSettle)
+    val swipe = remember { SwipeFlag() }
+    LaunchedEffect(state) {
+        state.interactionSource.interactions.collect { if (it is DragInteraction.Start) swipe.pending = true }
+    }
     LaunchedEffect(page) {
         if (state.currentPage == page) return@LaunchedEffect
+        swipe.pending = false
         if (abs(state.currentPage - page) > 1) state.scrollToPage(page) else state.animateScrollToPage(page)
     }
     LaunchedEffect(state) {
-        snapshotFlow { state.settledPage }.collect { if (it != selectedPage) settle(it) }
+        snapshotFlow { state.settledPage }.collect {
+            if (swipe.pending && it != selectedPage) settle(it)
+            swipe.pending = false
+        }
     }
 }
+
+private class SwipeFlag(var pending: Boolean = false)
