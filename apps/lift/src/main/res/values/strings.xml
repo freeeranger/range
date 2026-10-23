@@ -1,0 +1,124 @@
+<resources>
+    <string name="app_name">Range Lift</string>
+    <!-- Dates and numbers are formatted in this language, with the phone's region deciding order, clock and decimal mark. -->
+    <string name="format_language" translatable="false">en</string>
+    <!-- The top bar shows the app's name, untranslated, in every language. -->
+    <string name="app_title" translatable="false">Lift</string>
+
+    <string name="action_back">Back</string>
+    <string name="action_more">More options</string>
+    <string name="settings_title">Settings</string>
+    <string name="dialog_cancel">Cancel</string>
+    <string name="date_today">Today</string>
+    <string name="date_yesterday">Yesterday</string>
+
+    <!-- Home -->
+    <string name="tab_workouts">Workouts</string>
+    <string name="tab_exercises">Exercises</string>
+    <string name="workout_start">Start workout</string>
+    <string name="workout_continue">Continue workout</string>
+    <string name="workouts_empty">No workouts yet. Start one and log your first sets.</string>
+    <string name="workout_summary">%1$s · %2$s · %3$s</string>
+
+    <!-- Workout -->
+    <string name="workout_default_name">Workout</string>
+    <string name="workout_finish">Finish</string>
+    <string name="workout_rename">Rename</string>
+    <string name="workout_save">Save</string>
+    <string name="workout_discard">Discard workout</string>
+    <string name="workout_discard_title">Discard workout?</string>
+    <string name="workout_discard_text">Everything logged in this workout will be deleted.</string>
+    <string name="workout_discard_confirm">Discard</string>
+    <string name="workout_delete">Delete workout</string>
+    <string name="workout_delete_title">Delete workout?</string>
+    <string name="workout_delete_text">This workout and its sets will be deleted for good.</string>
+    <string name="workout_delete_confirm">Delete</string>
+    <string name="workout_finish_title">Finish workout?</string>
+    <string name="workout_finish_text">Sets you haven’t ticked off won’t be saved.</string>
+    <string name="workout_keep_going">Keep going</string>
+    <string name="workout_empty">Add an exercise to start logging sets.</string>
+    <string name="workout_add_exercise">Add exercise</string>
+    <string name="workout_add_set">Add set</string>
+    <string name="workout_remove_exercise">Remove exercise</string>
+    <string name="workout_column_set">Set</string>
+    <string name="workout_column_previous">Previous</string>
+    <string name="workout_column_reps">Reps</string>
+    <string name="workout_set_done">Set %1$d done</string>
+    <string name="workout_set_weight">Set %1$d weight</string>
+    <string name="workout_set_reps">Set %1$d reps</string>
+    <string name="workout_delete_set">Delete set</string>
+    <string name="workout_started">Started %1$s · %2$s</string>
+    <string name="stat_duration">Duration</string>
+    <string name="stat_sets">Sets</string>
+    <string name="stat_volume">Volume</string>
+
+    <!-- Exercises -->
+    <string name="exercises_search">Search exercises</string>
+    <string name="exercises_none_found">No exercises match “%1$s”.</string>
+    <string name="exercise_new">New exercise</string>
+    <string name="exercise_muscle">Muscle group</string>
+    <string name="exercise_add">Add</string>
+    <string name="exercise_best">Best: %1$s</string>
+    <string name="exercise_best_set">Best set</string>
+    <string name="exercise_one_rep_max">Est. 1RM</string>
+    <string name="exercise_sessions">Workouts</string>
+    <string name="exercise_history">History</string>
+    <string name="exercise_no_history">No sets logged yet.</string>
+    <string name="exercise_pick_title">Add exercise</string>
+
+    <string name="muscle_chest">Chest</string>
+    <string name="muscle_back">Back</string>
+    <string name="muscle_legs">Legs</string>
+    <string name="muscle_shoulders">Shoulders</string>
+    <string name="muscle_arms">Arms</string>
+    <string name="muscle_core">Core</string>
+
+    <!-- Units -->
+    <string name="unit_kg">%1$s kg</string>
+    <string name="unit_kg_label">kg</string>
+    <string name="set_weight_reps">%1$s × %2$d</string>
+    <plurals name="set_reps">
+        <item quantity="one">%1$d rep</item>
+        <item quantity="other">%1$d reps</item>
+    </plurals>
+    <plurals name="sets_count">
+        <item quantity="one">%1$d set</item>
+        <item quantity="other">%1$d sets</item>
+    </plurals>
+    <string name="duration_minutes">%1$d min</string>
+    <string name="duration_hours">%1$d h %2$d min</string>
+
+    <!-- Built-in exercises -->
+    <string name="exercise_bench_press">Bench press</string>
+    <string name="exercise_incline_bench_press">Incline bench press</string>
+    <string name="exercise_dumbbell_bench_press">Dumbbell bench press</string>
+    <string name="exercise_push_up">Push-up</string>
+    <string name="exercise_cable_fly">Cable fly</string>
+    <string name="exercise_dip">Dip</string>
+    <string name="exercise_deadlift">Deadlift</string>
+    <string name="exercise_barbell_row">Barbell row</string>
+    <string name="exercise_pull_up">Pull-up</string>
+    <string name="exercise_lat_pulldown">Lat pulldown</string>
+    <string name="exercise_seated_cable_row">Seated cable row</string>
+    <string name="exercise_squat">Squat</string>
+    <string name="exercise_front_squat">Front squat</string>
+    <string name="exercise_romanian_deadlift">Romanian deadlift</string>
+    <string name="exercise_leg_press">Leg press</string>
+    <string name="exercise_leg_curl">Leg curl</string>
+    <string name="exercise_leg_extension">Leg extension</string>
+    <string name="exercise_bulgarian_split_squat">Bulgarian split squat</string>
+    <string name="exercise_hip_thrust">Hip thrust</string>
+    <string name="exercise_calf_raise">Calf raise</string>
+    <string name="exercise_overhead_press">Overhead press</string>
+    <string name="exercise_dumbbell_shoulder_press">Dumbbell shoulder press</string>
+    <string name="exercise_lateral_raise">Lateral raise</string>
+    <string name="exercise_face_pull">Face pull</string>
+    <string name="exercise_barbell_curl">Barbell curl</string>
+    <string name="exercise_dumbbell_curl">Dumbbell curl</string>
+    <string name="exercise_hammer_curl">Hammer curl</string>
+    <string name="exercise_triceps_pushdown">Triceps pushdown</string>
+    <string name="exercise_skull_crusher">Skull crusher</string>
+    <string name="exercise_hanging_leg_raise">Hanging leg raise</string>
+    <string name="exercise_cable_crunch">Cable crunch</string>
+    <string name="exercise_ab_wheel">Ab wheel rollout</string>
+</resources>

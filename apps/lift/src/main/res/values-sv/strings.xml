@@ -1,0 +1,120 @@
+<resources>
+    <string name="app_name">Range Lift</string>
+
+    <string name="action_back">Tillbaka</string>
+    <string name="action_more">Fler alternativ</string>
+    <string name="settings_title">Inställningar</string>
+    <string name="dialog_cancel">Avbryt</string>
+    <string name="date_today">Idag</string>
+    <string name="date_yesterday">Igår</string>
+
+    <!-- Home -->
+    <string name="tab_workouts">Pass</string>
+    <string name="tab_exercises">Övningar</string>
+    <string name="workout_start">Starta pass</string>
+    <string name="workout_continue">Fortsätt passet</string>
+    <string name="workouts_empty">Inga pass än. Starta ett och logga dina första set.</string>
+    <string name="workout_summary">%1$s · %2$s · %3$s</string>
+
+    <!-- Workout -->
+    <string name="workout_default_name">Träningspass</string>
+    <string name="workout_finish">Avsluta</string>
+    <string name="workout_rename">Byt namn</string>
+    <string name="workout_save">Spara</string>
+    <string name="workout_discard">Släng passet</string>
+    <string name="workout_discard_title">Släng passet?</string>
+    <string name="workout_discard_text">Allt du loggat i passet raderas.</string>
+    <string name="workout_discard_confirm">Släng</string>
+    <string name="workout_delete">Radera passet</string>
+    <string name="workout_delete_title">Radera passet?</string>
+    <string name="workout_delete_text">Passet och dess set raderas för gott.</string>
+    <string name="workout_delete_confirm">Radera</string>
+    <string name="workout_finish_title">Avsluta passet?</string>
+    <string name="workout_finish_text">Set du inte bockat av sparas inte.</string>
+    <string name="workout_keep_going">Fortsätt</string>
+    <string name="workout_empty">Lägg till en övning för att börja logga set.</string>
+    <string name="workout_add_exercise">Lägg till övning</string>
+    <string name="workout_add_set">Lägg till set</string>
+    <string name="workout_remove_exercise">Ta bort övning</string>
+    <string name="workout_column_set">Set</string>
+    <string name="workout_column_previous">Förra</string>
+    <string name="workout_column_reps">Reps</string>
+    <string name="workout_set_done">Set %1$d klart</string>
+    <string name="workout_set_weight">Vikt för set %1$d</string>
+    <string name="workout_set_reps">Reps för set %1$d</string>
+    <string name="workout_delete_set">Radera set</string>
+    <string name="workout_started">Startade %1$s · %2$s</string>
+    <string name="stat_duration">Tid</string>
+    <string name="stat_sets">Set</string>
+    <string name="stat_volume">Volym</string>
+
+    <!-- Exercises -->
+    <string name="exercises_search">Sök övningar</string>
+    <string name="exercises_none_found">Inga övningar matchar ”%1$s”.</string>
+    <string name="exercise_new">Ny övning</string>
+    <string name="exercise_muscle">Muskelgrupp</string>
+    <string name="exercise_add">Lägg till</string>
+    <string name="exercise_best">Bäst: %1$s</string>
+    <string name="exercise_best_set">Bästa set</string>
+    <string name="exercise_one_rep_max">Uppsk. 1RM</string>
+    <string name="exercise_sessions">Pass</string>
+    <string name="exercise_history">Historik</string>
+    <string name="exercise_no_history">Inga set loggade än.</string>
+    <string name="exercise_pick_title">Lägg till övning</string>
+
+    <string name="muscle_chest">Bröst</string>
+    <string name="muscle_back">Rygg</string>
+    <string name="muscle_legs">Ben</string>
+    <string name="muscle_shoulders">Axlar</string>
+    <string name="muscle_arms">Armar</string>
+    <string name="muscle_core">Bål</string>
+
+    <!-- Units -->
+    <string name="unit_kg">%1$s kg</string>
+    <string name="unit_kg_label">kg</string>
+    <string name="set_weight_reps">%1$s × %2$d</string>
+    <plurals name="set_reps">
+        <item quantity="one">%1$d rep</item>
+        <item quantity="other">%1$d reps</item>
+    </plurals>
+    <plurals name="sets_count">
+        <item quantity="one">%1$d set</item>
+        <item quantity="other">%1$d set</item>
+    </plurals>
+    <string name="duration_minutes">%1$d min</string>
+    <string name="duration_hours">%1$d h %2$d min</string>
+
+    <!-- Built-in exercises -->
+    <string name="exercise_bench_press">Bänkpress</string>
+    <string name="exercise_incline_bench_press">Lutande bänkpress</string>
+    <string name="exercise_dumbbell_bench_press">Hantelpress</string>
+    <string name="exercise_push_up">Armhävningar</string>
+    <string name="exercise_cable_fly">Flyes i kabel</string>
+    <string name="exercise_dip">Dips</string>
+    <string name="exercise_deadlift">Marklyft</string>
+    <string name="exercise_barbell_row">Skivstångsrodd</string>
+    <string name="exercise_pull_up">Pull-ups</string>
+    <string name="exercise_lat_pulldown">Latsdrag</string>
+    <string name="exercise_seated_cable_row">Sittande rodd i kabel</string>
+    <string name="exercise_squat">Knäböj</string>
+    <string name="exercise_front_squat">Frontböj</string>
+    <string name="exercise_romanian_deadlift">Rumänska marklyft</string>
+    <string name="exercise_leg_press">Benpress</string>
+    <string name="exercise_leg_curl">Lårcurl</string>
+    <string name="exercise_leg_extension">Benspark</string>
+    <string name="exercise_bulgarian_split_squat">Bulgarisk utfallsböj</string>
+    <string name="exercise_hip_thrust">Höftlyft</string>
+    <string name="exercise_calf_raise">Tåhävningar</string>
+    <string name="exercise_overhead_press">Militärpress</string>
+    <string name="exercise_dumbbell_shoulder_press">Axelpress med hantlar</string>
+    <string name="exercise_lateral_raise">Sidolyft</string>
+    <string name="exercise_face_pull">Face pulls</string>
+    <string name="exercise_barbell_curl">Bicepscurl med skivstång</string>
+    <string name="exercise_dumbbell_curl">Hantelcurl</string>
+    <string name="exercise_hammer_curl">Hammercurl</string>
+    <string name="exercise_triceps_pushdown">Triceps pushdown</string>
+    <string name="exercise_skull_crusher">Liggande tricepspress</string>
+    <string name="exercise_hanging_leg_raise">Hängande benlyft</string>
+    <string name="exercise_cable_crunch">Crunches i kabel</string>
+    <string name="exercise_ab_wheel">Magrulle</string>
+</resources>
