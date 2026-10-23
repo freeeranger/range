@@ -7,12 +7,13 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import dev.freeranger.range.ui.theme.RangeTransitions
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 import kotlin.math.abs
@@ -46,30 +47,53 @@ fun RangeDayPager(
 /**
  * Keeps [state] on [page] and reports the page a swipe settles on. Every change is the same
  * short slide: a far jump starts from the page next to the target rather than racing through
- * every page in between. Only a swipe reports:
- * a scroll made here to follow the selection can stop part-way when the selection changes
- * again, and that stop mustn't be taken as a new selection.
+ * every page in between.
+ *
+ * Taps and swipes can come faster than slides finish, so nothing is decided mid-scroll: whenever
+ * the pager comes to rest it either reports where a swipe left it or slides to the selection,
+ * whichever happened last. A slide cut short part-way is finished, and a swipe started before
+ * the previous one's selection arrived still counts.
  */
 @Composable
 internal fun FollowSelection(state: PagerState, page: Int, onSettle: (Int) -> Unit) {
     val selectedPage by rememberUpdatedState(page)
     val settle by rememberUpdatedState(onSettle)
-    val swipe = remember { SwipeFlag() }
     LaunchedEffect(state) {
-        state.interactionSource.interactions.collect { if (it is DragInteraction.Start) swipe.pending = true }
-    }
-    LaunchedEffect(page) {
-        if (state.currentPage == page) return@LaunchedEffect
-        swipe.pending = false
-        if (abs(state.currentPage - page) > 1) state.scrollToPage(if (page > state.currentPage) page - 1 else page + 1)
-        state.animateScrollToPage(page, animationSpec = RangeTransitions.pageSlide)
-    }
-    LaunchedEffect(state) {
-        snapshotFlow { state.settledPage }.collect {
-            if (swipe.pending && it != selectedPage) settle(it)
-            swipe.pending = false
+        // A drag moved the pager since it last rested, so where it rests is the user's choice.
+        var swiped = false
+        // The page last reported, until the selection it asked for arrives.
+        var reported: Int? = null
+        var followed = selectedPage
+        var slide: Job? = null
+        launch {
+            state.interactionSource.interactions.collect { if (it is DragInteraction.Start) swiped = true }
+        }
+        snapshotFlow { selectedPage to state.isScrollInProgress }.collect { (target, scrolling) ->
+            if (target != followed) {
+                // A day picked elsewhere outranks a swipe in flight; the day a swipe reported doesn't.
+                if (target != reported) {
+                    swiped = false
+                    slide?.cancel()
+                }
+                followed = target
+                reported = null
+            }
+            if (swiped) {
+                if (scrolling) return@collect
+                swiped = false
+                if (state.currentPage != target) {
+                    reported = state.currentPage
+                    settle(state.currentPage)
+                    return@collect
+                }
+            }
+            val off = state.currentPage != target || abs(state.currentPageOffsetFraction) > 0.001f
+            if (off && slide?.isActive != true) slide = launch { state.slideTo(target) }
         }
     }
 }
 
-private class SwipeFlag(var pending: Boolean = false)
+private suspend fun PagerState.slideTo(page: Int) {
+    if (abs(currentPage - page) > 1) scrollToPage(if (page > currentPage) page - 1 else page + 1)
+    animateScrollToPage(page, animationSpec = RangeTransitions.pageSlide)
+}
