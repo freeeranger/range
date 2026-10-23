@@ -1,0 +1,23 @@
+<resources>
+    <string name="range_back">Tillbaka</string>
+    <string name="range_cancel">Avbryt</string>
+    <string name="range_settings">Inställningar</string>
+    <string name="range_language">Språk</string>
+    <string name="range_language_system">Systemets språk</string>
+    <string name="range_about">Om</string>
+    <string name="range_version">Version %1$s</string>
+    <string name="range_tagline">En del av Range, en samling fria appar med öppen källkod.</string>
+    <string name="range_license">Licens</string>
+    <string name="range_licenses">Licenser för öppen källkod</string>
+    <string name="range_license_by">%1$s · %2$s</string>
+    <string name="range_appearance">Utseende</string>
+    <string name="range_general">Allmänt</string>
+    <string name="range_theme">Tema</string>
+    <string name="range_theme_system">Följ systemet</string>
+    <string name="range_theme_light">Ljust</string>
+    <string name="range_theme_dark">Mörkt</string>
+    <string name="range_dynamic_color">Material You</string>
+    <string name="range_dynamic_color_hint">Färger från din bakgrundsbild</string>
+    <string name="range_pure_black">Helt svart</string>
+    <string name="range_pure_black_hint">Svart bakgrund i mörkt läge, skonsamt för OLED-skärmar</string>
+</resources>

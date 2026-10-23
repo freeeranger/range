@@ -1,0 +1,138 @@
+<resources>
+    <string name="app_name">Range Tasks</string>
+    <!-- Dates are formatted in this language, with the phone's region deciding order and clock. -->
+    <string name="format_language" translatable="false">en</string>
+    <!-- The top bar shows the app's name, untranslated, in every language. -->
+    <string name="app_title" translatable="false">Tasks</string>
+
+    <string name="action_back">Back</string>
+    <string name="state_expanded">Expanded</string>
+    <string name="state_collapsed">Collapsed</string>
+    <string name="dialog_ok">OK</string>
+    <string name="dialog_cancel">Cancel</string>
+
+    <string name="date_today">Today</string>
+    <string name="date_tomorrow">Tomorrow</string>
+    <string name="date_yesterday">Yesterday</string>
+
+    <!-- List -->
+    <string name="tasks_add">New task</string>
+    <string name="tasks_empty">Nothing to do yet. Tap + to add a task.</string>
+    <string name="tasks_all_done">All done.</string>
+    <string name="tasks_completed_section">Completed (%1$d)</string>
+    <string name="tasks_complete">Mark “%1$s” done</string>
+    <string name="tasks_reopen">Mark “%1$s” not done</string>
+    <string name="tasks_next">Next: %1$s</string>
+    <string name="settings_title">Settings</string>
+
+    <!-- New task sheet -->
+    <string name="new_task_title">New task</string>
+    <string name="new_task_details">Add details</string>
+    <string name="new_task_save">Save</string>
+
+    <!-- Detail -->
+    <string name="detail_title">Title</string>
+    <string name="detail_details">Add details</string>
+    <string name="detail_delete">Delete task</string>
+    <string name="detail_mark_done">Mark done</string>
+    <string name="detail_edit">Edit</string>
+    <string name="detail_edit_title">Edit task</string>
+    <string name="detail_save">Save</string>
+    <string name="detail_details_label">Details</string>
+    <string name="detail_no_date">No date</string>
+    <string name="detail_delete_title">Delete task?</string>
+    <string name="detail_delete_text">“%1$s” will be deleted for good.</string>
+    <string name="detail_delete_confirm">Delete</string>
+    <string name="detail_discard_title">Discard your changes?</string>
+    <string name="detail_discard">Discard</string>
+    <string name="detail_keep_editing">Keep editing</string>
+    <string name="detail_mark_not_done">Mark not done</string>
+    <string name="detail_locked">Ready to tick off: %1$s</string>
+
+    <!-- Schedule sheet -->
+    <string name="schedule_add">Add date and time</string>
+    <string name="schedule_remove">Remove date and time</string>
+    <string name="schedule_remove_time">Remove %1$s</string>
+    <string name="schedule_all_day_hint">No reminder time set: you’ll be reminded at %1$s.</string>
+    <string name="schedule_select_time">Select time</string>
+    <string name="schedule_repeat">Repeat</string>
+    <string name="schedule_every">Every</string>
+    <string name="schedule_every_less">Fewer</string>
+    <string name="schedule_every_more">More</string>
+    <string name="schedule_ends">Ends</string>
+    <string name="schedule_ends_never">Never</string>
+    <string name="schedule_ends_on">On date</string>
+    <string name="schedule_ends_after">After</string>
+    <string name="schedule_count_less">Fewer times</string>
+    <string name="schedule_count_more">More times</string>
+    <string name="schedule_clear">Clear</string>
+    <string name="schedule_done">Done</string>
+    <plurals name="unit_day">
+        <item quantity="one">Day</item>
+        <item quantity="other">Days</item>
+    </plurals>
+    <plurals name="unit_week">
+        <item quantity="one">Week</item>
+        <item quantity="other">Weeks</item>
+    </plurals>
+    <plurals name="unit_month">
+        <item quantity="one">Month</item>
+        <item quantity="other">Months</item>
+    </plurals>
+    <plurals name="unit_year">
+        <item quantity="one">Year</item>
+        <item quantity="other">Years</item>
+    </plurals>
+    <plurals name="unit_times">
+        <item quantity="one">time</item>
+        <item quantity="other">times</item>
+    </plurals>
+
+    <!-- Repeat summaries -->
+    <plurals name="repeat_days">
+        <item quantity="one">Every day</item>
+        <item quantity="other">Every %1$d days</item>
+    </plurals>
+    <plurals name="repeat_weeks">
+        <item quantity="one">Every week</item>
+        <item quantity="other">Every %1$d weeks</item>
+    </plurals>
+    <plurals name="repeat_months">
+        <item quantity="one">Every month</item>
+        <item quantity="other">Every %1$d months</item>
+    </plurals>
+    <plurals name="repeat_years">
+        <item quantity="one">Every year</item>
+        <item quantity="other">Every %1$d years</item>
+    </plurals>
+    <string name="repeat_on_days">%1$s on %2$s</string>
+    <string name="repeat_until">until %1$s</string>
+    <plurals name="repeat_count">
+        <item quantity="one">once</item>
+        <item quantity="other">%1$d times</item>
+    </plurals>
+
+    <!-- Notifications -->
+    <string name="notification_channel_reminders">Reminders</string>
+    <string name="notification_channel_reminders_description">A notification when a task is due</string>
+    <string name="notification_complete">Complete</string>
+
+    <!-- Several times a day -->
+    <string name="tasks_progress">%1$d of %2$d</string>
+    <string name="detail_progress">%1$d of %2$d done</string>
+    <string name="snackbar_done">“%1$s” done</string>
+    <string name="snackbar_progress">“%1$s”: %2$d of %3$d done</string>
+    <string name="snackbar_undo">Undo</string>
+    <string name="schedule_reminders">Reminders</string>
+    <string name="schedule_add_reminder">Add reminder</string>
+    <string name="schedule_add_another_reminder">Add another reminder</string>
+    <string name="schedule_several_hint">Tick it off %1$d times a day, once for each reminder.</string>
+
+    <!-- Days -->
+    <string name="section_overdue">Overdue</string>
+    <string name="section_today">Today</string>
+    <string name="section_anytime">Anytime</string>
+    <string name="day_empty_today">Nothing left for today.</string>
+    <string name="day_empty">Nothing planned.</string>
+    <string name="action_go_to_date">Go to date</string>
+</resources>

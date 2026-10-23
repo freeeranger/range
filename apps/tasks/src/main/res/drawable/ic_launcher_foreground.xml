@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Range Tasks mark: a check inside the app's segmented progress ring.
+     Drawn within the 66dp adaptive-icon safe zone; also the monochrome layer for themed icons. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Like the in-app checkbox: segments fill clockwise from the top. Two of three lit: nearly done. -->
+    <path
+        android:pathData="M59.70,35.35A19.5,19.5 0,0 1,73.00,58.39M67.30,68.26A19.5,19.5 0,0 1,40.70,68.26"
+        android:strokeWidth="5"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M35.00,58.39A19.5,19.5 0,0 1,48.30,35.35"
+        android:strokeWidth="5"
+        android:strokeColor="#73FFFFFF"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M45.5,54.5l6,6l11.5,-12"
+        android:strokeWidth="5.5"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>

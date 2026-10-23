@@ -1,0 +1,135 @@
+<resources>
+    <string name="app_name">Range Tasks</string>
+    <string name="format_language" translatable="false">sv</string>
+
+    <string name="action_back">Tillbaka</string>
+    <string name="state_expanded">Utfälld</string>
+    <string name="state_collapsed">Hopfälld</string>
+    <string name="dialog_ok">OK</string>
+    <string name="dialog_cancel">Avbryt</string>
+
+    <string name="date_today">Idag</string>
+    <string name="date_tomorrow">Imorgon</string>
+    <string name="date_yesterday">Igår</string>
+
+    <!-- List -->
+    <string name="tasks_add">Ny uppgift</string>
+    <string name="tasks_empty">Inget att göra än. Tryck på + för att lägga till en uppgift.</string>
+    <string name="tasks_all_done">Allt klart.</string>
+    <string name="tasks_completed_section">Klara (%1$d)</string>
+    <string name="tasks_complete">Markera ”%1$s” som klar</string>
+    <string name="tasks_reopen">Markera ”%1$s” som inte klar</string>
+    <string name="tasks_next">Nästa: %1$s</string>
+    <string name="settings_title">Inställningar</string>
+
+    <!-- New task sheet -->
+    <string name="new_task_title">Ny uppgift</string>
+    <string name="new_task_details">Lägg till detaljer</string>
+    <string name="new_task_save">Spara</string>
+
+    <!-- Detail -->
+    <string name="detail_title">Titel</string>
+    <string name="detail_details">Lägg till detaljer</string>
+    <string name="detail_delete">Ta bort uppgift</string>
+    <string name="detail_mark_done">Markera klar</string>
+    <string name="detail_edit">Redigera</string>
+    <string name="detail_edit_title">Redigera uppgift</string>
+    <string name="detail_save">Spara</string>
+    <string name="detail_details_label">Detaljer</string>
+    <string name="detail_no_date">Inget datum</string>
+    <string name="detail_delete_title">Ta bort uppgiften?</string>
+    <string name="detail_delete_text">”%1$s” tas bort för gott.</string>
+    <string name="detail_delete_confirm">Ta bort</string>
+    <string name="detail_discard_title">Släng dina ändringar?</string>
+    <string name="detail_discard">Släng</string>
+    <string name="detail_keep_editing">Fortsätt redigera</string>
+    <string name="detail_mark_not_done">Markera inte klar</string>
+    <string name="detail_locked">Kan bockas av: %1$s</string>
+
+    <!-- Schedule sheet -->
+    <string name="schedule_add">Lägg till datum och tid</string>
+    <string name="schedule_remove">Ta bort datum och tid</string>
+    <string name="schedule_remove_time">Ta bort %1$s</string>
+    <string name="schedule_all_day_hint">Ingen påminnelsetid vald: du får en påminnelse kl. %1$s.</string>
+    <string name="schedule_select_time">Välj tid</string>
+    <string name="schedule_repeat">Upprepa</string>
+    <string name="schedule_every">Varje</string>
+    <string name="schedule_every_less">Färre</string>
+    <string name="schedule_every_more">Fler</string>
+    <string name="schedule_ends">Slutar</string>
+    <string name="schedule_ends_never">Aldrig</string>
+    <string name="schedule_ends_on">Datum</string>
+    <string name="schedule_ends_after">Efter</string>
+    <string name="schedule_count_less">Färre gånger</string>
+    <string name="schedule_count_more">Fler gånger</string>
+    <string name="schedule_clear">Rensa</string>
+    <string name="schedule_done">Klar</string>
+    <plurals name="unit_day">
+        <item quantity="one">Dag</item>
+        <item quantity="other">Dagar</item>
+    </plurals>
+    <plurals name="unit_week">
+        <item quantity="one">Vecka</item>
+        <item quantity="other">Veckor</item>
+    </plurals>
+    <plurals name="unit_month">
+        <item quantity="one">Månad</item>
+        <item quantity="other">Månader</item>
+    </plurals>
+    <plurals name="unit_year">
+        <item quantity="one">År</item>
+        <item quantity="other">År</item>
+    </plurals>
+    <plurals name="unit_times">
+        <item quantity="one">gång</item>
+        <item quantity="other">gånger</item>
+    </plurals>
+
+    <!-- Repeat summaries -->
+    <plurals name="repeat_days">
+        <item quantity="one">Varje dag</item>
+        <item quantity="other">Med %1$d dagars mellanrum</item>
+    </plurals>
+    <plurals name="repeat_weeks">
+        <item quantity="one">Varje vecka</item>
+        <item quantity="other">Med %1$d veckors mellanrum</item>
+    </plurals>
+    <plurals name="repeat_months">
+        <item quantity="one">Varje månad</item>
+        <item quantity="other">Med %1$d månaders mellanrum</item>
+    </plurals>
+    <plurals name="repeat_years">
+        <item quantity="one">Varje år</item>
+        <item quantity="other">Med %1$d års mellanrum</item>
+    </plurals>
+    <string name="repeat_on_days">%1$s på %2$s</string>
+    <string name="repeat_until">till %1$s</string>
+    <plurals name="repeat_count">
+        <item quantity="one">en gång</item>
+        <item quantity="other">%1$d gånger</item>
+    </plurals>
+
+    <!-- Notifications -->
+    <string name="notification_channel_reminders">Påminnelser</string>
+    <string name="notification_channel_reminders_description">En avisering när en uppgift ska göras</string>
+    <string name="notification_complete">Klar</string>
+
+    <!-- Several times a day -->
+    <string name="tasks_progress">%1$d av %2$d</string>
+    <string name="detail_progress">%1$d av %2$d klara</string>
+    <string name="snackbar_done">”%1$s” klar</string>
+    <string name="snackbar_progress">”%1$s”: %2$d av %3$d klara</string>
+    <string name="snackbar_undo">Ångra</string>
+    <string name="schedule_reminders">Påminnelser</string>
+    <string name="schedule_add_reminder">Lägg till påminnelse</string>
+    <string name="schedule_add_another_reminder">Lägg till en påminnelse till</string>
+    <string name="schedule_several_hint">Bocka av den %1$d gånger om dagen, en gång per påminnelse.</string>
+
+    <!-- Days -->
+    <string name="section_overdue">Försenade</string>
+    <string name="section_today">Idag</string>
+    <string name="section_anytime">När som helst</string>
+    <string name="day_empty_today">Inget kvar för idag.</string>
+    <string name="day_empty">Inget planerat.</string>
+    <string name="action_go_to_date">Gå till datum</string>
+</resources>
