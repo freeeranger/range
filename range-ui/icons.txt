@@ -10,6 +10,7 @@ check_circle
 close
 dark_mode
 delete
+drag_indicator
 description
 edit
 emoji_events
