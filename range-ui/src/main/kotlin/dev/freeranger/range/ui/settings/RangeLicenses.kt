@@ -19,4 +19,5 @@ val RangeComponents: List<RangeComponent> = listOf(
     RangeComponent("Kotlin & kotlinx", "JetBrains", RangeLicense.Apache2),
     RangeComponent("Space Grotesk", "The Space Grotesk Project Authors", RangeLicense.Ofl),
     RangeComponent("Material Symbols", "Google", RangeLicense.Apache2),
+    RangeComponent("Vico", "Patryk Goworowski & Patrick Michalik", RangeLicense.Apache2),
 )
