@@ -64,21 +64,8 @@ fun Dashboard(state: HomeState, now: Instant, format: LiftFormat, actions: HomeA
                 Stat(stringResource(R.string.stat_volume), format.volume(week.volume))
             }
         }
-        item(key = "templates") {
-            RangeSectionHeader(stringResource(R.string.home_templates))
-            val hint = when {
-                state.templates.isEmpty() -> R.string.home_templates_empty
-                state.inProgress != null -> R.string.home_templates_busy
-                else -> null
-            }
-            hint?.let {
-                Text(
-                    stringResource(it),
-                    modifier = Modifier.padding(horizontal = RangeSpace.gutter).padding(bottom = RangeSpace.s2),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+        if (state.templates.isNotEmpty()) {
+            item(key = "templates") { RangeSectionHeader(stringResource(R.string.home_templates)) }
         }
         items(state.templates, key = { it.template.id }) { template ->
             TemplateCard(
@@ -108,7 +95,6 @@ fun Dashboard(state: HomeState, now: Instant, format: LiftFormat, actions: HomeA
             onDismissRequest = { deleting = null },
             icon = { Icon(RangeIcons.Delete, contentDescription = null) },
             title = { Text(stringResource(R.string.template_delete_title, template.template.name)) },
-            text = { Text(stringResource(R.string.template_delete_text)) },
             confirmButton = {
                 TextButton(
                     onClick = {

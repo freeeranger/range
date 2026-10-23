@@ -218,7 +218,6 @@ fun SummaryScreen(
                 OutlinedTextField(
                     state = notes,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = RangeSpace.gutter),
-                    placeholder = { Text(stringResource(R.string.summary_notes_placeholder)) },
                     lineLimits = TextFieldLineLimits.MultiLine(minHeightInLines = 3),
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                 )
@@ -259,15 +258,8 @@ private fun TemplateChoice(state: SummaryState, log: WorkoutLog, format: LiftFor
                 Text(stringResource(R.string.template_save))
             }
             template.matches(log) -> Done(stringResource(if (updated) R.string.template_updated else R.string.template_saved))
-            else -> {
-                OutlinedButton(onClick = { onUpdate(template.template.id) }, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.template_update, template.template.name.ifEmpty { format.name(log.workout) }))
-                }
-                Text(
-                    stringResource(R.string.template_update_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+            else -> OutlinedButton(onClick = { onUpdate(template.template.id) }, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.template_update, template.template.name.ifEmpty { format.name(log.workout) }))
             }
         }
     }

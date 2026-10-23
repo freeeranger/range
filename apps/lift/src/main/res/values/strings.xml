@@ -19,7 +19,7 @@
     <string name="home_this_week">This week</string>
     <string name="workout_start">Start workout</string>
     <string name="workout_continue">Continue workout</string>
-    <string name="workouts_empty">No workouts yet. Start one and log your first sets.</string>
+    <string name="workouts_empty">No workouts yet.</string>
     <string name="workout_summary">%1$s · %2$s · %3$s</string>
 
     <!-- Workout -->
@@ -29,13 +29,10 @@
     <string name="workout_save">Save</string>
     <string name="workout_discard">Discard workout</string>
     <string name="workout_discard_title">Discard workout?</string>
-    <string name="workout_discard_text">Everything logged in this workout will be deleted.</string>
     <string name="workout_discard_confirm">Discard</string>
     <string name="workout_delete">Delete workout</string>
     <string name="workout_delete_title">Delete workout?</string>
-    <string name="workout_delete_text">This workout and its sets will be deleted for good.</string>
     <string name="workout_delete_confirm">Delete</string>
-    <string name="workout_empty">Add an exercise to start logging sets.</string>
     <string name="workout_add_exercise">Add exercise</string>
     <string name="workout_add_set">Add set</string>
     <string name="workout_remove_exercise">Remove exercise</string>
@@ -53,21 +50,11 @@
 
     <!-- Rest timer -->
     <string name="rest_label">Rest</string>
-    <string name="rest_add">+%1$d s</string>
-    <string name="rest_subtract">−%1$d s</string>
-    <string name="rest_skip">Skip</string>
-    <string name="rest_off">Off</string>
-    <string name="rest_notification_title">Resting</string>
-    <string name="rest_over_title">Time for your next set</string>
-    <string name="notification_channel_timer">Rest timer</string>
-    <string name="notification_channel_timer_description">Counts down your rest between sets</string>
-    <string name="notification_channel_over">Rest over</string>
-    <string name="notification_channel_over_description">Lets you know when it’s time for the next set</string>
+    <string name="notification_channel_stopwatch">Rest stopwatch</string>
 
     <!-- Finishing -->
     <string name="summary_title">Workout complete</string>
     <string name="summary_done">Done</string>
-    <string name="summary_notes_placeholder">How did it go? Anything to remember for next time?</string>
     <string name="summary_records">New records</string>
     <string name="summary_records_was">was %1$s</string>
     <string name="summary_compared">Compared with last time</string>
@@ -80,17 +67,13 @@
 
     <!-- Templates -->
     <string name="home_templates">Templates</string>
-    <string name="home_templates_empty">Save a workout as a template from its menu, or when you finish it, to start it again here in one tap.</string>
-    <string name="home_templates_busy">Finish the workout in progress to start another.</string>
     <string name="template_start">Start</string>
     <string name="template_last">Last done %1$s</string>
     <string name="template_delete">Delete template</string>
     <string name="template_delete_title">Delete %1$s?</string>
-    <string name="template_delete_text">Workouts started from it stay as they are.</string>
     <string name="template_save">Save as template</string>
     <string name="template_saved">Saved as a template</string>
     <string name="template_update">Update %1$s</string>
-    <string name="template_update_hint">Start it with this workout’s exercises and sets from now on</string>
     <string name="template_updated">Template updated</string>
     <string name="stat_duration">Duration</string>
     <string name="stat_sets">Sets</string>
@@ -104,22 +87,13 @@
     <string name="exercise_muscle">Muscle group</string>
     <string name="exercise_best">Best: %1$s</string>
     <string name="exercise_history">History</string>
-    <string name="exercise_no_history">No sets logged yet.</string>
     <string name="progress_one_rep_max">Estimated 1RM</string>
-    <string name="progress_one_rep_max_hint">Each workout’s best set, as the most you could lift once. Heavy triples and lighter tens compare.</string>
     <string name="progress_weight">Heaviest weight</string>
-    <string name="progress_weight_hint">The most weight in a set each workout</string>
     <string name="progress_reps">Most reps</string>
-    <string name="progress_reps_hint">The most reps in a set each workout</string>
     <string name="progress_time">Longest set</string>
-    <string name="progress_time_hint">The longest set each workout</string>
     <string name="progress_assistance">Least help</string>
-    <string name="progress_assistance_hint">The least help in a set each workout. Going down is progress.</string>
-    <string name="progress_need_more">Log it in one more workout to see the line.</string>
     <string name="progress_description">%1$s over %2$d workouts. Latest: %3$s.</string>
     <string name="exercise_pick_title">Add exercise</string>
-    <string name="exercise_rest">Rest between sets</string>
-    <string name="exercise_rest_hint">Starts counting down when you tick off a set</string>
     <string name="exercise_records">Records</string>
     <plurals name="exercise_workouts">
         <item quantity="one">%1$d workout</item>
@@ -133,24 +107,17 @@
     <string name="exercise_load">Weight</string>
     <string name="exercise_more">More</string>
     <string name="exercise_each_side">Each side</string>
-    <string name="exercise_each_side_hint">Log one side at a time, like lunges or one-arm rows</string>
     <string name="exercise_remove">Remove from library</string>
     <string name="exercise_remove_title">Remove %1$s?</string>
-    <string name="exercise_remove_text">It won’t be offered for new workouts. Past workouts keep their sets.</string>
     <string name="exercise_remove_confirm">Remove</string>
     <string name="exercise_restore">Put back in library</string>
-    <string name="exercise_removed_note">Removed from your library. Past workouts still show it.</string>
 
     <string name="measure_reps">Reps</string>
     <string name="measure_time">Time</string>
     <string name="load_weight">Weight</string>
-    <string name="load_weight_hint">Barbell, dumbbells or a machine</string>
     <string name="load_bodyweight">Bodyweight</string>
-    <string name="load_bodyweight_hint">No weight to log, like push-ups</string>
     <string name="load_extra_weight">Bodyweight + extra</string>
-    <string name="load_extra_weight_hint">Add weight when you want, like weighted pull-ups</string>
     <string name="load_assisted">Assisted</string>
-    <string name="load_assisted_hint">Log the help from a band or machine. Less is better.</string>
 
     <string name="muscle_chest">Chest</string>
     <string name="muscle_back">Back</string>

@@ -20,15 +20,13 @@ data class Workout(
     @ColumnInfo(defaultValue = "") val notes: String = "",
     /** The template it was started from or saved as, if any; not a foreign key, so deleting the template leaves the workout. */
     val templateId: Long? = null,
-    /** When the running rest ends. In the past, or null, when no rest is running. */
-    val restEndsAt: Instant? = null,
-    /** How long the running rest is in all, for its progress. */
-    val restSeconds: Int? = null,
+    /** When a set was last ticked off: the rest stopwatch counts up from it. */
+    val lastSetAt: Instant? = null,
 ) {
     val isFinished: Boolean get() = finishedAt != null
 
-    /** The rest still running at [now], if any. */
-    fun restLeft(now: Instant): Duration? = restEndsAt?.let { Duration.between(now, it) }?.takeIf { !it.isNegative && !it.isZero }
+    /** How long since the last set, while the workout runs. */
+    fun sinceLastSet(now: Instant): Duration? = lastSetAt?.takeIf { !isFinished }?.let { Duration.between(it, now).coerceAtLeast(Duration.ZERO) }
 }
 
 /** An exercise done in a workout, in the order [position] puts it. The same exercise can appear twice. */

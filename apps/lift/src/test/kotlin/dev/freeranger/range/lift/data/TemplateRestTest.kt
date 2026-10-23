@@ -17,15 +17,15 @@ import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
 
-/** Templates, the rest timer and notes, on the real Room database in memory. */
+/** Templates, the rest stopwatch and notes, on the real Room database in memory. */
 @RunWith(RobolectricTestRunner::class)
 class TemplateRestTest {
     private val database = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), LiftDatabase::class.java)
         .setDriver(AndroidSQLiteDriver())
         .build()
     private var now: Instant = Instant.parse("2026-10-20T17:00:00Z")
-    private val alarm = FakeRestAlarm()
-    private val repository = LiftRepository(database.lift(), alarm) { Clock.fixed(now, ZoneOffset.UTC) }
+    private val stopwatch = FakeStopwatch()
+    private val repository = LiftRepository(database.lift(), stopwatch) { Clock.fixed(now, ZoneOffset.UTC) }
 
     @After
     fun close() = database.close()
@@ -34,15 +34,15 @@ class TemplateRestTest {
     private suspend fun exercise(key: String) = repository.exercises.first().first { it.key == key }
 
     /** Remembers what the phone would have been told. */
-    private class FakeRestAlarm : RestAlarm {
-        var endsAt: Instant? = null
+    private class FakeStopwatch : RestStopwatch {
+        var since: Instant? = null
         var label: String? = null
-        override fun sync(workout: Workout, label: String?) {
-            endsAt = workout.restEndsAt
-            if (label != null) this.label = label
+        override fun show(workout: Workout, label: String) {
+            since = workout.lastSetAt
+            this.label = label
         }
         override fun cancel() {
-            endsAt = null
+            since = null
         }
     }
 
@@ -96,48 +96,30 @@ class TemplateRestTest {
     }
 
     @Test
-    fun `the rest timer runs from a ticked set, can be changed or skipped, and stops with the workout`() = runTest {
+    fun `the rest stopwatch counts from the last set and stops with the workout`() = runTest {
         val workout = repository.start()
-        repository.startRest(workout, 120, "Bench press")
-        assertEquals(now.plusSeconds(120), log(workout).workout.restEndsAt)
-        assertEquals(now.plusSeconds(120), alarm.endsAt)
-        assertEquals("Bench press", alarm.label)
+        assertNull(log(workout).workout.sinceLastSet(now))
+        repository.setDone(workout, "Bench press")
+        assertEquals(now, stopwatch.since)
+        assertEquals("Bench press", stopwatch.label)
 
-        repository.addRest(workout, 30)
-        assertEquals(now.plusSeconds(150), alarm.endsAt)
-        assertEquals(150, log(workout).workout.restSeconds)
-        assertEquals("Bench press", alarm.label)
+        now = now.plusSeconds(95)
+        assertEquals(95, log(workout).workout.sinceLastSet(now)!!.seconds)
+        repository.setDone(workout, "Curl")
+        assertEquals(0, log(workout).workout.sinceLastSet(now)!!.seconds)
+        assertEquals("Curl", stopwatch.label)
 
-        now = now.plusSeconds(100)
-        assertEquals(50, log(workout).workout.restLeft(now)!!.seconds)
-        repository.addRest(workout, -60)
-        assertNull(log(workout).workout.restEndsAt)
-        assertNull(alarm.endsAt)
-
-        repository.startRest(workout, 0, "Off")
-        assertNull(alarm.endsAt)
-        repository.startRest(workout, 90, "Curl")
-        repository.skipRest(workout)
-        assertNull(log(workout).workout.restLeft(now))
-        assertNull(alarm.endsAt)
-
-        repository.startRest(workout, 90, "Curl")
         repository.finish(workout)
-        assertNull(alarm.endsAt)
-        assertNull(log(workout).workout.restEndsAt)
-        repository.startRest(workout, 90, "After finishing")
-        assertNull(alarm.endsAt)
+        assertNull(stopwatch.since)
+        assertNull(log(workout).workout.sinceLastSet(now))
+        repository.setDone(workout, "After finishing")
+        assertNull(stopwatch.since)
     }
 
     @Test
-    fun `notes are kept trimmed, and built-in exercises rest longer when they're heavy`() = runTest {
+    fun `notes are kept trimmed`() = runTest {
         val workout = repository.start()
         repository.setNotes(workout, "  Felt strong.\n")
         assertEquals("Felt strong.", log(workout).workout.notes)
-
-        repository.addBuiltInExercises()
-        assertEquals(180, exercise("squat").restSeconds)
-        assertEquals(90, exercise("lateral_raise").restSeconds)
-        assertEquals(Exercise.DEFAULT_REST, exercise("pull_up").restSeconds)
     }
 }

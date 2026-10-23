@@ -5,6 +5,7 @@ import androidx.room3.AutoMigration
 import androidx.room3.ColumnTypeConverter
 import androidx.room3.ColumnTypeConverters
 import androidx.room3.Dao
+import androidx.room3.DeleteColumn
 import androidx.room3.Database
 import androidx.room3.Insert
 import androidx.room3.OnConflictStrategy
@@ -185,11 +186,12 @@ abstract class LiftDao {
 
 @Database(
     entities = [Exercise::class, Workout::class, WorkoutExercise::class, WorkoutSet::class, Template::class, TemplateExercise::class],
-    version = 3,
+    version = 4,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 1, to = 2, spec = LiftDatabase.ExerciseTypes::class),
-        AutoMigration(from = 2, to = 3, spec = LiftDatabase.RestAndTemplates::class),
+        AutoMigration(from = 2, to = 3),
+        AutoMigration(from = 3, to = 4, spec = LiftDatabase.RestStopwatch::class),
     ],
 )
 @ColumnTypeConverters(Converters::class)
@@ -216,22 +218,15 @@ abstract class LiftDatabase : RoomDatabase() {
         }
     }
 
-    /**
-     * v3: a rest time per exercise, a running rest timer and notes on each workout, and workout
-     * templates. Built-in exercises get their usual rest: longer for heavy lifts.
-     */
-    class RestAndTemplates : AutoMigrationSpec {
-        override suspend fun onPostMigrate(connection: SQLiteConnection) {
-            connection.prepare("UPDATE exercises SET restSeconds = ? WHERE `key` = ?").use {
-                BuiltInExercises.all.forEach { builtIn ->
-                    it.bindLong(1, builtIn.restSeconds.toLong())
-                    it.bindText(2, builtIn.key)
-                    it.step()
-                    it.reset()
-                }
-            }
-        }
-    }
+    // v3: a rest timer per exercise and on each workout, notes, and workout templates.
+
+    /** v4: rest counts up from the last set instead of down to a set time, so the timer's columns go. */
+    @DeleteColumn.Entries(
+        DeleteColumn(tableName = "exercises", columnName = "restSeconds"),
+        DeleteColumn(tableName = "workouts", columnName = "restEndsAt"),
+        DeleteColumn(tableName = "workouts", columnName = "restSeconds"),
+    )
+    class RestStopwatch : AutoMigrationSpec
 
     companion object {
         fun create(context: Context): LiftDatabase =

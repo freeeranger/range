@@ -2,12 +2,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <!-- The rest timer must end on the second, screen off or not. USE_EXACT_ALARM is granted at
-         install on Android 13+; Android 12 needs SCHEDULE_EXACT_ALARM, also granted by default. -->
-    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
-    <uses-permission
-        android:name="android.permission.SCHEDULE_EXACT_ALARM"
-        android:maxSdkVersion="32" />
 
     <application
         android:name=".LiftApplication"
@@ -26,10 +20,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <receiver
-            android:name=".rest.RestReceiver"
-            android:exported="false" />
     </application>
 
 </manifest>

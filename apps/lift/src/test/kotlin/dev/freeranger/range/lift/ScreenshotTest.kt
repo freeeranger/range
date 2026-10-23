@@ -217,7 +217,7 @@ class ScreenshotTest {
 
     @Test
     fun workoutResting() = capture {
-        val resting = active.copy(workout = active.workout.copy(restEndsAt = now.plusSeconds(83), restSeconds = 120))
+        val resting = active.copy(workout = active.workout.copy(lastSetAt = now.minusSeconds(83)))
         WorkoutScreen(activeState.copy(log = resting), now, WorkoutActions())
     }
 

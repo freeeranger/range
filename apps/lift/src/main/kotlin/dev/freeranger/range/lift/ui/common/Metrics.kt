@@ -12,13 +12,3 @@ val ProgressMetric.title: Int
         ProgressMetric.Time -> R.string.progress_time
         ProgressMetric.Assistance -> R.string.progress_assistance
     }
-
-/** A line on what a [ProgressMetric] measures, under its chart. */
-val ProgressMetric.hint: Int
-    get() = when (this) {
-        ProgressMetric.OneRepMax -> R.string.progress_one_rep_max_hint
-        ProgressMetric.Weight -> R.string.progress_weight_hint
-        ProgressMetric.Reps -> R.string.progress_reps_hint
-        ProgressMetric.Time -> R.string.progress_time_hint
-        ProgressMetric.Assistance -> R.string.progress_assistance_hint
-    }

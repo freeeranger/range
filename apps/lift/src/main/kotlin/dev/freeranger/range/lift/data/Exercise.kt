@@ -47,16 +47,7 @@ data class Exercise(
      * show it. A row rather than a deletion also stops a removed built-in from coming back on launch.
      */
     @ColumnInfo(defaultValue = "0") val archived: Boolean = false,
-    /** How long to rest after each set, started when a set is ticked off. 0 turns the timer off. */
-    @ColumnInfo(defaultValue = "120") val restSeconds: Int = DEFAULT_REST,
 ) {
-    companion object {
-        const val DEFAULT_REST = 120
-
-        /** The rest times offered when editing an exercise. */
-        val REST_CHOICES = listOf(0, 60, 90, 120, 180, 300)
-    }
-
     /** Sets carry a weight: shown as a column while logging. */
     val weighted: Boolean get() = load != Load.Bodyweight
 
@@ -87,53 +78,48 @@ data class BuiltIn(
     val measure: Measure = Measure.Reps,
     val load: Load = Load.Weight,
     val perSide: Boolean = false,
-    /** Heavy compound lifts get longer between sets than small isolation work. */
-    val restSeconds: Int = Exercise.DEFAULT_REST,
 ) {
-    fun toExercise() = Exercise(key = key, muscle = muscle, measure = measure, load = load, perSide = perSide, restSeconds = restSeconds)
+    fun toExercise() = Exercise(key = key, muscle = muscle, measure = measure, load = load, perSide = perSide)
 }
-
-private const val HEAVY = 180
-private const val LIGHT = 90
 
 /** The exercises every library starts with. Adding one here adds it for existing users on the next launch. */
 object BuiltInExercises {
     val all: List<BuiltIn> = listOf(
-        BuiltIn("bench_press", Muscle.Chest, restSeconds = HEAVY),
-        BuiltIn("incline_bench_press", Muscle.Chest, restSeconds = HEAVY),
+        BuiltIn("bench_press", Muscle.Chest),
+        BuiltIn("incline_bench_press", Muscle.Chest),
         BuiltIn("dumbbell_bench_press", Muscle.Chest),
         BuiltIn("push_up", Muscle.Chest, load = Load.Bodyweight),
-        BuiltIn("cable_fly", Muscle.Chest, restSeconds = LIGHT),
+        BuiltIn("cable_fly", Muscle.Chest),
         BuiltIn("dip", Muscle.Chest, load = Load.ExtraWeight),
-        BuiltIn("deadlift", Muscle.Back, restSeconds = HEAVY),
-        BuiltIn("barbell_row", Muscle.Back, restSeconds = HEAVY),
+        BuiltIn("deadlift", Muscle.Back),
+        BuiltIn("barbell_row", Muscle.Back),
         BuiltIn("pull_up", Muscle.Back, load = Load.ExtraWeight),
         BuiltIn("assisted_pull_up", Muscle.Back, load = Load.Assisted),
         BuiltIn("lat_pulldown", Muscle.Back),
         BuiltIn("seated_cable_row", Muscle.Back),
         BuiltIn("one_arm_dumbbell_row", Muscle.Back, perSide = true),
-        BuiltIn("squat", Muscle.Legs, restSeconds = HEAVY),
-        BuiltIn("front_squat", Muscle.Legs, restSeconds = HEAVY),
-        BuiltIn("romanian_deadlift", Muscle.Legs, restSeconds = HEAVY),
-        BuiltIn("leg_press", Muscle.Legs, restSeconds = HEAVY),
-        BuiltIn("leg_curl", Muscle.Legs, restSeconds = LIGHT),
-        BuiltIn("leg_extension", Muscle.Legs, restSeconds = LIGHT),
+        BuiltIn("squat", Muscle.Legs),
+        BuiltIn("front_squat", Muscle.Legs),
+        BuiltIn("romanian_deadlift", Muscle.Legs),
+        BuiltIn("leg_press", Muscle.Legs),
+        BuiltIn("leg_curl", Muscle.Legs),
+        BuiltIn("leg_extension", Muscle.Legs),
         BuiltIn("bulgarian_split_squat", Muscle.Legs, perSide = true),
-        BuiltIn("hip_thrust", Muscle.Legs, restSeconds = HEAVY),
-        BuiltIn("calf_raise", Muscle.Legs, restSeconds = LIGHT),
-        BuiltIn("overhead_press", Muscle.Shoulders, restSeconds = HEAVY),
+        BuiltIn("hip_thrust", Muscle.Legs),
+        BuiltIn("calf_raise", Muscle.Legs),
+        BuiltIn("overhead_press", Muscle.Shoulders),
         BuiltIn("dumbbell_shoulder_press", Muscle.Shoulders),
-        BuiltIn("lateral_raise", Muscle.Shoulders, restSeconds = LIGHT),
-        BuiltIn("face_pull", Muscle.Shoulders, restSeconds = LIGHT),
-        BuiltIn("barbell_curl", Muscle.Arms, restSeconds = LIGHT),
-        BuiltIn("dumbbell_curl", Muscle.Arms, restSeconds = LIGHT),
-        BuiltIn("hammer_curl", Muscle.Arms, restSeconds = LIGHT),
-        BuiltIn("triceps_pushdown", Muscle.Arms, restSeconds = LIGHT),
-        BuiltIn("skull_crusher", Muscle.Arms, restSeconds = LIGHT),
-        BuiltIn("hanging_leg_raise", Muscle.Core, load = Load.Bodyweight, restSeconds = LIGHT),
-        BuiltIn("cable_crunch", Muscle.Core, restSeconds = LIGHT),
-        BuiltIn("ab_wheel", Muscle.Core, load = Load.Bodyweight, restSeconds = LIGHT),
-        BuiltIn("plank", Muscle.Core, measure = Measure.Time, load = Load.Bodyweight, restSeconds = LIGHT),
-        BuiltIn("side_plank", Muscle.Core, measure = Measure.Time, load = Load.Bodyweight, perSide = true, restSeconds = LIGHT),
+        BuiltIn("lateral_raise", Muscle.Shoulders),
+        BuiltIn("face_pull", Muscle.Shoulders),
+        BuiltIn("barbell_curl", Muscle.Arms),
+        BuiltIn("dumbbell_curl", Muscle.Arms),
+        BuiltIn("hammer_curl", Muscle.Arms),
+        BuiltIn("triceps_pushdown", Muscle.Arms),
+        BuiltIn("skull_crusher", Muscle.Arms),
+        BuiltIn("hanging_leg_raise", Muscle.Core, load = Load.Bodyweight),
+        BuiltIn("cable_crunch", Muscle.Core),
+        BuiltIn("ab_wheel", Muscle.Core, load = Load.Bodyweight),
+        BuiltIn("plank", Muscle.Core, measure = Measure.Time, load = Load.Bodyweight),
+        BuiltIn("side_plank", Muscle.Core, measure = Measure.Time, load = Load.Bodyweight, perSide = true),
     )
 }

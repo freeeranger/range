@@ -39,7 +39,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
@@ -141,9 +140,7 @@ fun WorkoutRoute(id: Long, onBack: () -> Unit, onFinished: () -> Unit, onAddExer
                 viewModel.delete()
                 onBack()
             },
-            startRest = viewModel::startRest,
-            addRest = viewModel::addRest,
-            skipRest = viewModel::skipRest,
+            setDone = viewModel::setDone,
             setNotes = viewModel::setNotes,
             saveTemplate = viewModel::saveTemplate,
         ),
@@ -163,10 +160,8 @@ data class WorkoutActions(
     val deleteSet: (setId: Long) -> Unit = {},
     val finish: () -> Unit = {},
     val delete: () -> Unit = {},
-    /** Starts the rest after a set of the exercise [label] names. */
-    val startRest: (seconds: Int, label: String) -> Unit = { _, _ -> },
-    val addRest: (seconds: Int) -> Unit = {},
-    val skipRest: () -> Unit = {},
+    /** A set of the exercise [label] names was ticked off: the rest stopwatch starts again. */
+    val setDone: (label: String) -> Unit = {},
     val setNotes: (String) -> Unit = {},
     val saveTemplate: (name: String) -> Unit = {},
 )
@@ -176,7 +171,7 @@ enum class WorkoutDialog { Rename, Delete, SaveTemplate, Notes }
 /**
  * A workout. In progress, it's where sets are logged: a card per exercise, dragged by its handle
  * into any order, each set with last time's numbers as placeholders and its number to tap once
- * it's done, which starts the rest timer. Finishing needs every set ticked off. Finished, it's a
+ * it's done, which restarts the rest stopwatch. Finishing needs every set ticked off. Finished, it's a
  * read-only summary with its notes. Sets that beat a record get a trophy.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -199,11 +194,11 @@ fun WorkoutScreen(
     val scope = rememberCoroutineScope()
     val savedMessage = stringResource(R.string.template_saved)
     val requestNotifications = rememberNotificationPermissionRequest()
-    // The rest timer's notification is the reason to ask, so ask when the first one starts.
+    // The rest stopwatch's notification is the reason to ask, so ask when it first starts.
     val withRest = actions.copy(
-        startRest = { seconds, label ->
-            if (seconds > 0) requestNotifications()
-            actions.startRest(seconds, label)
+        setDone = { label ->
+            requestNotifications()
+            actions.setDone(label)
         },
     )
     AnnounceRecords(state.records, enabled = !workout.isFinished, format, snackbar)
@@ -212,12 +207,9 @@ fun WorkoutScreen(
         modifier = modifier,
         snackbarHost = { SnackbarHost(snackbar) },
         bottomBar = {
-            val left = workout.restLeft(now).takeIf { !workout.isFinished }
-            // Keeps showing the last time while it slides away.
-            var shown by remember { mutableStateOf(left) }
-            if (left != null) shown = left
-            AnimatedVisibility(visible = left != null, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
-                shown?.let { RestBar(it, workout.restSeconds ?: it.seconds.toInt(), format, actions) }
+            val since = workout.sinceLastSet(now)
+            AnimatedVisibility(visible = since != null, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
+                RestBar(since ?: Duration.ZERO, format)
             }
         },
         topBar = {
@@ -322,7 +314,7 @@ fun WorkoutScreen(
             autoFocus = initialDialog != WorkoutDialog.SaveTemplate,
         )
         WorkoutDialog.Notes -> NameSheet(
-            placeholder = stringResource(R.string.summary_notes_placeholder),
+            placeholder = stringResource(R.string.workout_notes),
             saveLabel = stringResource(R.string.workout_save),
             onSave = actions.setNotes,
             onDismiss = { dialog = null },
@@ -334,7 +326,6 @@ fun WorkoutScreen(
         WorkoutDialog.Delete -> AlertDialog(
             onDismissRequest = { dialog = null },
             title = { Text(stringResource(if (workout.isFinished) R.string.workout_delete_title else R.string.workout_discard_title)) },
-            text = { Text(stringResource(if (workout.isFinished) R.string.workout_delete_text else R.string.workout_discard_text)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -405,15 +396,6 @@ private fun WorkoutInProgress(
         }
         item(key = "add exercise") {
             Column(Modifier.padding(horizontal = RangeSpace.gutter, vertical = RangeSpace.s4)) {
-                if (log.exercises.isEmpty()) {
-                    Text(
-                        stringResource(R.string.workout_empty),
-                        modifier = Modifier.fillMaxWidth().padding(vertical = RangeSpace.s6),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                    )
-                }
                 FilledTonalButton(onClick = actions.addExercise, modifier = Modifier.fillMaxWidth()) {
                     Icon(RangeIcons.Add, contentDescription = null)
                     Text(stringResource(R.string.workout_add_exercise), modifier = Modifier.padding(start = RangeSpace.s2))
@@ -504,9 +486,6 @@ private fun ExerciseHeader(logged: LoggedExercise, format: LiftFormat, actions: 
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            format.kind(logged.exercise)?.let {
-                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
         }
         if (handle != null) {
             Box {
@@ -595,7 +574,7 @@ private fun SetRow(
                 weight = filled.weight?.let(format::number).orEmpty()
                 amount = amountText(filled)
                 actions.updateSet(filled)
-                actions.startRest(exercise.restSeconds, format.name(exercise))
+                actions.setDone(format.name(exercise))
             } else {
                 // Nothing to go on: ask for the reps or time first.
                 amountFocus.requestFocus()
@@ -794,34 +773,24 @@ private fun AnnounceRecords(records: List<Record>, enabled: Boolean, format: Lif
     }
 }
 
-/** The running rest: time left, a bar running down, and buttons to shorten, lengthen or skip it. */
+/** Time since the last set, counting up. */
 @Composable
-private fun RestBar(left: Duration, total: Int, format: LiftFormat, actions: WorkoutActions) {
-    val seconds = ((left.toMillis() + 999) / 1000).toInt()
+private fun RestBar(since: Duration, format: LiftFormat) {
     Surface(color = MaterialTheme.colorScheme.surfaceContainerHigh) {
-        Column(Modifier.navigationBarsPadding()) {
-            LinearProgressIndicator(
-                progress = { (seconds / total.toFloat()).coerceIn(0f, 1f) },
-                modifier = Modifier.fillMaxWidth(),
-                drawStopIndicator = {},
-                gapSize = 0.dp,
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = RangeSpace.gutter, vertical = RangeSpace.s3),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(RangeIcons.Timer, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Text(
+                stringResource(R.string.rest_label),
+                modifier = Modifier.weight(1f).padding(start = RangeSpace.s3),
+                style = MaterialTheme.typography.titleMedium,
             )
-            Row(
-                Modifier.padding(start = RangeSpace.gutter, end = RangeSpace.s3, top = RangeSpace.s2, bottom = RangeSpace.s2),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(RangeIcons.Timer, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Column(Modifier.weight(1f).padding(start = RangeSpace.s3)) {
-                    Text(stringResource(R.string.rest_label), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(format.seconds(seconds), style = MaterialTheme.typography.headlineSmall.copy(fontFeatureSettings = "tnum"))
-                }
-                TextButton(onClick = { actions.addRest(-REST_STEP) }) { Text(stringResource(R.string.rest_subtract, REST_STEP)) }
-                TextButton(onClick = { actions.addRest(REST_STEP) }) { Text(stringResource(R.string.rest_add, REST_STEP)) }
-                FilledTonalButton(onClick = actions.skipRest) { Text(stringResource(R.string.rest_skip)) }
-            }
+            Text(format.seconds(since.seconds.toInt()), style = MaterialTheme.typography.headlineSmall.copy(fontFeatureSettings = "tnum"))
         }
     }
 }
-
-/** What the rest bar's buttons take off or add. */
-private const val REST_STEP = 15

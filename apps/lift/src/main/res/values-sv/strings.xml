@@ -16,7 +16,7 @@
     <string name="home_this_week">Den här veckan</string>
     <string name="workout_start">Starta pass</string>
     <string name="workout_continue">Fortsätt passet</string>
-    <string name="workouts_empty">Inga pass än. Starta ett och logga dina första set.</string>
+    <string name="workouts_empty">Inga pass än.</string>
     <string name="workout_summary">%1$s · %2$s · %3$s</string>
 
     <!-- Workout -->
@@ -26,13 +26,10 @@
     <string name="workout_save">Spara</string>
     <string name="workout_discard">Släng passet</string>
     <string name="workout_discard_title">Släng passet?</string>
-    <string name="workout_discard_text">Allt du loggat i passet raderas.</string>
     <string name="workout_discard_confirm">Släng</string>
     <string name="workout_delete">Radera passet</string>
     <string name="workout_delete_title">Radera passet?</string>
-    <string name="workout_delete_text">Passet och dess set raderas för gott.</string>
     <string name="workout_delete_confirm">Radera</string>
-    <string name="workout_empty">Lägg till en övning för att börja logga set.</string>
     <string name="workout_add_exercise">Lägg till övning</string>
     <string name="workout_add_set">Lägg till set</string>
     <string name="workout_remove_exercise">Ta bort övning</string>
@@ -50,21 +47,11 @@
 
     <!-- Rest timer -->
     <string name="rest_label">Vila</string>
-    <string name="rest_add">+%1$d s</string>
-    <string name="rest_subtract">−%1$d s</string>
-    <string name="rest_skip">Hoppa över</string>
-    <string name="rest_off">Av</string>
-    <string name="rest_notification_title">Vila</string>
-    <string name="rest_over_title">Dags för nästa set</string>
-    <string name="notification_channel_timer">Vilotimer</string>
-    <string name="notification_channel_timer_description">Räknar ner vilan mellan set</string>
-    <string name="notification_channel_over">Vilan är slut</string>
-    <string name="notification_channel_over_description">Säger till när det är dags för nästa set</string>
+    <string name="notification_channel_stopwatch">Vilostoppur</string>
 
     <!-- Finishing -->
     <string name="summary_title">Passet är klart</string>
     <string name="summary_done">Klar</string>
-    <string name="summary_notes_placeholder">Hur gick det? Något att minnas till nästa gång?</string>
     <string name="summary_records">Nya rekord</string>
     <string name="summary_records_was">förut %1$s</string>
     <string name="summary_compared">Jämfört med förra gången</string>
@@ -77,17 +64,13 @@
 
     <!-- Templates -->
     <string name="home_templates">Mallar</string>
-    <string name="home_templates_empty">Spara ett pass som mall från dess meny, eller när du avslutar det, så startar du det igen här med ett tryck.</string>
-    <string name="home_templates_busy">Avsluta passet du har igång för att starta ett nytt.</string>
     <string name="template_start">Starta</string>
     <string name="template_last">Senast %1$s</string>
     <string name="template_delete">Radera mall</string>
     <string name="template_delete_title">Radera %1$s?</string>
-    <string name="template_delete_text">Pass som startats från den finns kvar som de är.</string>
     <string name="template_save">Spara som mall</string>
     <string name="template_saved">Sparad som mall</string>
     <string name="template_update">Uppdatera %1$s</string>
-    <string name="template_update_hint">Starta den med passets övningar och set från och med nu</string>
     <string name="template_updated">Mallen är uppdaterad</string>
     <string name="stat_duration">Tid</string>
     <string name="stat_sets">Set</string>
@@ -101,22 +84,13 @@
     <string name="exercise_muscle">Muskelgrupp</string>
     <string name="exercise_best">Bäst: %1$s</string>
     <string name="exercise_history">Historik</string>
-    <string name="exercise_no_history">Inga set loggade än.</string>
     <string name="progress_one_rep_max">Uppskattat 1RM</string>
-    <string name="progress_one_rep_max_hint">Varje pass bästa set, som det mesta du skulle orka en gång. Tunga treor och lättare tior går att jämföra.</string>
     <string name="progress_weight">Tyngsta vikt</string>
-    <string name="progress_weight_hint">Den tyngsta vikten i ett set varje pass</string>
     <string name="progress_reps">Flest reps</string>
-    <string name="progress_reps_hint">Flest reps i ett set varje pass</string>
     <string name="progress_time">Längsta set</string>
-    <string name="progress_time_hint">Det längsta setet varje pass</string>
     <string name="progress_assistance">Minst hjälp</string>
-    <string name="progress_assistance_hint">Minst hjälp i ett set varje pass. Nedåt är framsteg.</string>
-    <string name="progress_need_more">Logga den i ett pass till för att se linjen.</string>
     <string name="progress_description">%1$s över %2$d pass. Senast: %3$s.</string>
     <string name="exercise_pick_title">Lägg till övning</string>
-    <string name="exercise_rest">Vila mellan set</string>
-    <string name="exercise_rest_hint">Börjar räkna ner när du bockar av ett set</string>
     <string name="exercise_records">Rekord</string>
     <plurals name="exercise_workouts">
         <item quantity="one">%1$d pass</item>
@@ -130,24 +104,17 @@
     <string name="exercise_load">Vikt</string>
     <string name="exercise_more">Mer</string>
     <string name="exercise_each_side">Varje sida</string>
-    <string name="exercise_each_side_hint">Logga en sida i taget, som utfall eller enarmsrodd</string>
     <string name="exercise_remove">Ta bort ur biblioteket</string>
     <string name="exercise_remove_title">Ta bort %1$s?</string>
-    <string name="exercise_remove_text">Den föreslås inte längre för nya pass. Tidigare pass behåller sina set.</string>
     <string name="exercise_remove_confirm">Ta bort</string>
     <string name="exercise_restore">Lägg tillbaka i biblioteket</string>
-    <string name="exercise_removed_note">Borttagen ur ditt bibliotek. Tidigare pass visar den fortfarande.</string>
 
     <string name="measure_reps">Reps</string>
     <string name="measure_time">Tid</string>
     <string name="load_weight">Vikt</string>
-    <string name="load_weight_hint">Skivstång, hantlar eller maskin</string>
     <string name="load_bodyweight">Kroppsvikt</string>
-    <string name="load_bodyweight_hint">Ingen vikt att logga, som armhävningar</string>
     <string name="load_extra_weight">Kroppsvikt + extra</string>
-    <string name="load_extra_weight_hint">Lägg på vikt när du vill, som pull-ups med vikt</string>
     <string name="load_assisted">Assisterad</string>
-    <string name="load_assisted_hint">Logga hjälpen från band eller maskin. Mindre är bättre.</string>
 
     <string name="muscle_chest">Bröst</string>
     <string name="muscle_back">Rygg</string>

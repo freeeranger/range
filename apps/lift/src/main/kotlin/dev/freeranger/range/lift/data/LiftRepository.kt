@@ -9,7 +9,7 @@ import java.time.Clock
 /** The only way the app changes workouts, exercises and templates. */
 class LiftRepository(
     private val dao: LiftDao,
-    private val rest: RestAlarm = RestAlarm.None,
+    private val stopwatch: RestStopwatch = RestStopwatch.None,
     private val clock: () -> Clock = { Clock.systemDefaultZone() },
 ) {
     val exercises: Flow<List<Exercise>> = dao.observeExercises()
@@ -79,16 +79,16 @@ class LiftRepository(
 
     suspend fun deleteSet(id: Long) = dao.deleteSet(id)
 
-    /** Ends a workout and any rest. Every set should be ticked off by now; any that aren't are dropped. */
+    /** Ends a workout and its rest stopwatch. Every set should be ticked off by now; any that aren't are dropped. */
     suspend fun finish(workoutId: Long) {
         val workout = dao.workout(workoutId) ?: return
         if (workout.isFinished) return
-        dao.finish(workout.copy(finishedAt = clock().instant(), restEndsAt = null, restSeconds = null))
-        rest.cancel()
+        dao.finish(workout.copy(finishedAt = clock().instant(), lastSetAt = null))
+        stopwatch.cancel()
     }
 
     suspend fun delete(workoutId: Long) {
-        if (dao.workout(workoutId)?.isFinished == false) rest.cancel()
+        if (dao.workout(workoutId)?.isFinished == false) stopwatch.cancel()
         dao.deleteWorkout(workoutId)
     }
 
@@ -97,30 +97,12 @@ class LiftRepository(
         if (workout.notes != notes.trim()) dao.update(workout.copy(notes = notes.trim()))
     }
 
-    /** Starts a rest of [seconds] after a set, replacing any running one. [label] says what it's after, for the notification. */
-    suspend fun startRest(workoutId: Long, seconds: Int, label: String) {
-        if (seconds <= 0) return
+    /** Restarts the rest stopwatch: a set of [label] was just ticked off. */
+    suspend fun setDone(workoutId: Long, label: String) {
         val workout = dao.workout(workoutId)?.takeIf { !it.isFinished } ?: return
-        val updated = workout.copy(restEndsAt = clock().instant().plusSeconds(seconds.toLong()), restSeconds = seconds)
+        val updated = workout.copy(lastSetAt = clock().instant())
         dao.update(updated)
-        rest.sync(updated, label)
-    }
-
-    /** Lengthens the running rest, or shortens it with negative [seconds]; shortened past now, it ends. */
-    suspend fun addRest(workoutId: Long, seconds: Int) {
-        val workout = dao.workout(workoutId) ?: return
-        val now = clock().instant()
-        val endsAt = workout.restEndsAt?.takeIf { it > now } ?: return
-        val updated = workout.copy(restEndsAt = endsAt.plusSeconds(seconds.toLong()), restSeconds = (workout.restSeconds ?: 0) + seconds)
-        if (updated.restEndsAt!! <= now) return skipRest(workoutId)
-        dao.update(updated)
-        rest.sync(updated, null)
-    }
-
-    suspend fun skipRest(workoutId: Long) {
-        val workout = dao.workout(workoutId) ?: return
-        dao.update(workout.copy(restEndsAt = null, restSeconds = null))
-        rest.cancel()
+        stopwatch.show(updated, label)
     }
 
     /** Saves [workoutId]'s exercises and set counts as a new template, and links the workout to it. */
@@ -164,16 +146,16 @@ class LiftRepository(
         mapIndexed { position, (exerciseId, sets) -> TemplateExercise(templateId = 0, exerciseId = exerciseId, position = position, sets = sets) }
 }
 
-/** Tells the phone about the running rest, so it counts down and alerts even with the app closed. */
-interface RestAlarm {
-    /** Shows and schedules [workout]'s rest; [label] says what it's after, or null to keep the last one. */
-    fun sync(workout: Workout, label: String?)
+/** Shows the time since the last set outside the app, counting up on its own, even on the lock screen. */
+interface RestStopwatch {
+    /** Starts counting from [workout]'s last set, of the exercise [label] names. */
+    fun show(workout: Workout, label: String)
 
     fun cancel()
 
-    /** For tests, and anywhere without a phone to alert. */
-    object None : RestAlarm {
-        override fun sync(workout: Workout, label: String?) {}
+    /** For tests, and anywhere without a phone to show it on. */
+    object None : RestStopwatch {
+        override fun show(workout: Workout, label: String) {}
         override fun cancel() {}
     }
 }

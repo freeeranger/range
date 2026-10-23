@@ -4,8 +4,7 @@ import android.app.Application
 import android.content.Context
 import dev.freeranger.range.lift.data.LiftDatabase
 import dev.freeranger.range.lift.data.LiftRepository
-import dev.freeranger.range.lift.rest.AndroidRestAlarm
-import dev.freeranger.range.lift.rest.RestNotifications
+import dev.freeranger.range.lift.rest.AndroidRestStopwatch
 import dev.freeranger.range.ui.settings.RangeAppearanceStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -17,8 +16,7 @@ class AppContainer(context: Context) {
     /** For work that must outlive a screen, like saving on exit. */
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val appearance = RangeAppearanceStore(context)
-    val restAlarm = AndroidRestAlarm(context)
-    val repository = LiftRepository(LiftDatabase.create(context).lift(), restAlarm)
+    val repository = LiftRepository(LiftDatabase.create(context).lift(), AndroidRestStopwatch(context))
 }
 
 class LiftApplication : Application() {
@@ -28,7 +26,7 @@ class LiftApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
-        RestNotifications.createChannels(this)
+        AndroidRestStopwatch.createChannel(this)
         container.scope.launch { container.repository.addBuiltInExercises() }
     }
 }

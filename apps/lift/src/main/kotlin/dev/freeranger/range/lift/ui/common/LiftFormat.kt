@@ -153,9 +153,6 @@ class LiftFormat(context: Context) {
         "%d:%02d".format(locale, seconds / 60, seconds % 60)
     }
 
-    /** "2:00", or "Off": an exercise's rest between sets. */
-    fun rest(seconds: Int): String = if (seconds <= 0) res.getString(R.string.rest_off) else seconds(seconds)
-
     /** A [ProgressMetric]'s value: "102 kg", "12 reps", "1:30". The estimated one-rep max rounds to the kilo. */
     fun metric(metric: ProgressMetric, value: Double): String = when (metric) {
         ProgressMetric.OneRepMax -> kg(Math.round(value).toDouble())

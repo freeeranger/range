@@ -45,7 +45,6 @@ import dev.freeranger.range.lift.data.Progression
 import dev.freeranger.range.lift.data.Record
 import dev.freeranger.range.lift.data.WorkoutSet
 import dev.freeranger.range.lift.ui.common.LiftFormat
-import dev.freeranger.range.lift.ui.common.hint
 import dev.freeranger.range.lift.ui.common.rememberLiftFormat
 import dev.freeranger.range.lift.ui.common.rememberNow
 import dev.freeranger.range.lift.ui.common.title
@@ -182,33 +181,17 @@ fun ExerciseDetailScreen(
         },
     ) { padding ->
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = padding.calculateTopPadding(), bottom = padding.calculateBottomPadding() + RangeSpace.s4)) {
-            if (exercise?.archived == true) {
-                item(key = "removed") {
-                    Text(
-                        stringResource(R.string.exercise_removed_note),
-                        modifier = Modifier.padding(horizontal = RangeSpace.gutter, vertical = RangeSpace.s2),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
             if (state.records.isNotEmpty()) {
                 item(key = "records") { RecordsCard(state.records, today, format) }
             }
-            state.progression?.takeIf { it.points.isNotEmpty() }?.let { progression ->
+            // A line needs two workouts.
+            state.progression?.takeIf { it.points.size >= 2 }?.let { progression ->
                 item(key = "progress") { ProgressCard(progression, today, format) }
             }
-            item(key = "history") {
-                val count = pluralStringResource(R.plurals.exercise_workouts, state.sessions.size, state.sessions.size)
-                RangeSectionHeader(if (state.sessions.isEmpty()) stringResource(R.string.exercise_history) else format.labelled(stringResource(R.string.exercise_history), count))
-            }
-            if (state.sessions.isEmpty()) {
-                item(key = "empty") {
-                    Text(
-                        stringResource(R.string.exercise_no_history),
-                        modifier = Modifier.padding(horizontal = RangeSpace.gutter),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+            if (state.sessions.isNotEmpty()) {
+                item(key = "history") {
+                    val count = pluralStringResource(R.plurals.exercise_workouts, state.sessions.size, state.sessions.size)
+                    RangeSectionHeader(format.labelled(stringResource(R.string.exercise_history), count))
                 }
             }
             items(state.sessions, key = { it.workout.id }) { session ->
@@ -235,7 +218,6 @@ fun ExerciseDetailScreen(
             onDismissRequest = { removing = false },
             icon = { Icon(RangeIcons.Delete, contentDescription = null) },
             title = { Text(stringResource(R.string.exercise_remove_title, format.name(exercise))) },
-            text = { Text(stringResource(R.string.exercise_remove_text)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -260,21 +242,14 @@ private fun ProgressCard(progression: Progression, today: LocalDate, format: Lif
     val value = { v: Double -> format.metric(metric, v) }
     Card(Modifier.fillMaxWidth().padding(horizontal = RangeSpace.gutter, vertical = RangeSpace.s2)) {
         Column(Modifier.padding(RangeSpace.s4), verticalArrangement = Arrangement.spacedBy(RangeSpace.s3)) {
-            Column {
-                Text(stringResource(metric.title), style = MaterialTheme.typography.titleMedium)
-                Text(stringResource(metric.hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            if (points.size < 2) {
-                Text(stringResource(R.string.progress_need_more), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            } else {
-                RangeLineChart(
-                    values = points.map { it.value },
-                    xLabel = { i -> points.getOrNull(i)?.let { format.shortDate(it.at.atZone(format.zone).toLocalDate()) }.orEmpty() },
-                    valueLabel = { if (metric == ProgressMetric.Time) format.seconds(it.toInt()) else format.number(it) },
-                    markerLabel = { i -> points.getOrNull(i)?.let { format.labelled(value(it.value), format.day(it.at, today)) }.orEmpty() },
-                    description = stringResource(R.string.progress_description, stringResource(metric.title), points.size, value(points.last().value)),
-                )
-            }
+            Text(stringResource(metric.title), style = MaterialTheme.typography.titleMedium)
+            RangeLineChart(
+                values = points.map { it.value },
+                xLabel = { i -> points.getOrNull(i)?.let { format.shortDate(it.at.atZone(format.zone).toLocalDate()) }.orEmpty() },
+                valueLabel = { if (metric == ProgressMetric.Time) format.seconds(it.toInt()) else format.number(it) },
+                markerLabel = { i -> points.getOrNull(i)?.let { format.labelled(value(it.value), format.day(it.at, today)) }.orEmpty() },
+                description = stringResource(R.string.progress_description, stringResource(metric.title), points.size, value(points.last().value)),
+            )
         }
     }
 }

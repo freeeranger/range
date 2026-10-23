@@ -63,17 +63,9 @@ class WorkoutViewModel(
         appScope.launch { repository.finish(id) }
     }
 
-    /** Starts the rest after a set of an exercise, called [label] in the notification. */
-    fun startRest(seconds: Int, label: String) {
-        appScope.launch { repository.startRest(id, seconds, label) }
-    }
-
-    fun addRest(seconds: Int) {
-        appScope.launch { repository.addRest(id, seconds) }
-    }
-
-    fun skipRest() {
-        appScope.launch { repository.skipRest(id) }
+    /** Restarts the rest stopwatch after a set of the exercise [label] names. */
+    fun setDone(label: String) {
+        appScope.launch { repository.setDone(id, label) }
     }
 
     fun setNotes(notes: String) {
