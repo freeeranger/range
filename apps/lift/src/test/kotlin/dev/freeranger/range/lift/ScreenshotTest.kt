@@ -19,6 +19,7 @@ import dev.freeranger.range.lift.data.WorkoutLog
 import dev.freeranger.range.lift.data.WorkoutSet
 import dev.freeranger.range.lift.data.bestSets
 import dev.freeranger.range.lift.data.previousSets
+import dev.freeranger.range.lift.data.progression
 import dev.freeranger.range.lift.data.workoutLogs
 import dev.freeranger.range.lift.ui.exercise.ExerciseDetailScreen
 import dev.freeranger.range.lift.ui.exercise.ExerciseDetailState
@@ -143,7 +144,15 @@ class ScreenshotTest {
             log.exercises.firstOrNull { it.exercise.key == "bench_press" }?.let { Session(log.workout, it.sets) }
         },
         best = bestSets(logs)[id("bench_press")],
+        progression = progression(logs, exercises.first { it.key == "bench_press" }),
     )
+
+    /** An exercise's page with three months of history behind it. */
+    private fun detail(key: String): ExerciseDetailState {
+        val exercise = exercises.first { it.key == key }
+        val sessions = progress.mapNotNull { log -> log.exercises.firstOrNull { it.exercise.id == exercise.id }?.let { Session(log.workout, it.sets) } }
+        return ExerciseDetailState(exercise, sessions, bestSets(progress)[exercise.id], progression(progress, exercise))
+    }
 
     @Test
     fun home() = capture { HomeScreen(dashboard, now, HomeActions()) }
@@ -156,10 +165,6 @@ class ScreenshotTest {
     @Config(qualifiers = "+notnight")
     fun homeLight() = capture(RangeAppearance(theme = ThemeMode.Light, dynamicColor = false)) { HomeScreen(dashboard, now, HomeActions()) }
 
-    /** The whole dashboard on one tall screen, to check every chart. */
-    @Test
-    @Config(qualifiers = "w412dp-h1800dp-night-xxhdpi")
-    fun homeWhole() = capture { HomeScreen(dashboard, now, HomeActions()) }
 
     @Test
     fun workouts() = capture { HomeScreen(home, now, HomeActions(), initialTab = HomeTab.Workouts) }
@@ -224,6 +229,19 @@ class ScreenshotTest {
 
     @Test
     fun exerciseDetail() = capture { ExerciseDetailScreen(benchDetail, friday, onBack = {}) }
+
+    @Test
+    fun exerciseProgress() = capture { ExerciseDetailScreen(detail("squat"), friday, onBack = {}) }
+
+    @Test
+    @Config(qualifiers = "+notnight")
+    fun exerciseProgressLight() = capture(RangeAppearance(theme = ThemeMode.Light, dynamicColor = false)) {
+        ExerciseDetailScreen(detail("bench_press"), friday, onBack = {})
+    }
+
+    @Test
+    @Config(qualifiers = "sv-rSE-$PHONE")
+    fun exerciseProgressReps() = capture { ExerciseDetailScreen(detail("pull_up"), friday, onBack = {}) }
 
     @Test
     fun exerciseDetailRemoving() = capture { ExerciseDetailScreen(benchDetail, friday, onBack = {}, initiallyRemoving = true) }

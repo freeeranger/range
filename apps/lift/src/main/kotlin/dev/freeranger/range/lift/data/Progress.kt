@@ -6,60 +6,73 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.temporal.TemporalAdjusters
 
-/*
- * The figures on the home page, from finished workouts only: a workout in progress counts once
- * it's finished.
- */
-
-/** A week of training, from [start], its first day. */
+/** A week of training, from [start], its first day. Finished workouts only. */
 data class WeekTotals(val start: LocalDate, val workouts: Int, val sets: Int, val volume: Double)
 
-/** The last [weeks] weeks up to and including the one with [today], oldest first. */
-fun weeklyTotals(logs: List<WorkoutLog>, today: LocalDate, firstDayOfWeek: DayOfWeek, zone: ZoneId, weeks: Int = 12): List<WeekTotals> {
-    fun weekOf(day: LocalDate) = day.with(TemporalAdjusters.previousOrSame(firstDayOfWeek))
-    val byWeek = logs.filter { it.workout.isFinished }.groupBy { weekOf(it.workout.startedAt.atZone(zone).toLocalDate()) }
-    val thisWeek = weekOf(today)
-    return (weeks - 1 downTo 0).map { back ->
-        val start = thisWeek.minusWeeks(back.toLong())
-        val week = byWeek[start].orEmpty()
-        WeekTotals(start, week.size, week.sumOf { it.doneSets.size }, week.sumOf { it.volume })
+/** The training in the week that has [today]. */
+fun weekTotals(logs: List<WorkoutLog>, today: LocalDate, firstDayOfWeek: DayOfWeek, zone: ZoneId): WeekTotals {
+    val start = today.with(TemporalAdjusters.previousOrSame(firstDayOfWeek))
+    val week = logs.filter { log ->
+        log.workout.isFinished && log.workout.startedAt.atZone(zone).toLocalDate().let { it >= start && it < start.plusWeeks(1) }
     }
+    return WeekTotals(start, week.size, week.sumOf { it.doneSets.size }, week.sumOf { it.volume })
 }
 
-/** An exercise's estimated one-rep max in one workout: its best set's. */
-data class MaxPoint(val at: Instant, val kg: Double)
-
-/** The exercise's estimated one-rep max in each finished workout it was done in, oldest first. */
-fun oneRepMaxHistory(logs: List<WorkoutLog>, exerciseId: Long): List<MaxPoint> =
-    logs.filter { it.workout.isFinished }
-        .mapNotNull { log ->
-            log.exercises.filter { it.exercise.id == exerciseId }
-                .flatMap { it.sets }
-                .filter { it.done }
-                .mapNotNull { it.estimatedMax }
-                .maxOrNull()
-                ?.let { MaxPoint(log.workout.startedAt, it) }
-        }
-        .sortedBy { it.at }
-
 /**
- * The exercises worth charting a one-rep max for: weight lifted for reps, done most often first
- * (most recently, between equals), at most [limit].
+ * The one number per workout that shows getting stronger at an exercise, chosen by how it's
+ * logged, so sets of different weights and reps can be compared.
  */
-fun progressExercises(logs: List<WorkoutLog>, limit: Int = 4): List<Exercise> =
-    logs.filter { it.workout.isFinished }
-        .flatMap { log -> log.exercises.filter { e -> e.exercise.hasOneRepMax && e.sets.any { it.done && it.estimatedMax != null } }.map { log to it.exercise } }
-        .groupBy({ it.second.id }, { it })
-        .values
-        .sortedWith(compareByDescending<List<Pair<WorkoutLog, Exercise>>> { it.size }.thenByDescending { group -> group.maxOf { it.first.workout.startedAt } })
-        .take(limit)
-        .map { it.first().second }
+enum class ProgressMetric {
+    /** Weight lifted for reps: the most the best set says could be lifted once (Epley), so 80 × 5 and 90 × 2 compare. */
+    OneRepMax,
 
-/** Finished sets per muscle group since [since], every group included, most first. */
-fun setsPerMuscle(logs: List<WorkoutLog>, since: Instant): List<Pair<Muscle, Int>> {
-    val counts = logs.filter { it.workout.isFinished && it.workout.startedAt >= since }
-        .flatMap { it.exercises }
-        .groupBy({ it.exercise.muscle }, { logged -> logged.sets.count { it.done } })
-        .mapValues { it.value.sum() }
-    return Muscle.entries.map { it to (counts[it] ?: 0) }.sortedByDescending { it.second }
+    /** The heaviest weight: for timed sets with a weight, and for bodyweight exercises once extra weight is added. */
+    Weight,
+
+    /** The most reps in a set: bodyweight exercises without extra weight. */
+    Reps,
+
+    /** The longest set: timed exercises. */
+    Time,
+
+    /** The least help in a set: assisted exercises. Going down is progress. */
+    Assistance,
+}
+
+/** A workout's best set by the [ProgressMetric], and its [value]. */
+data class ProgressPoint(val at: Instant, val value: Double, val set: WorkoutSet)
+
+/** An exercise's progress: one point per finished workout it was done in, oldest first. */
+data class Progression(val metric: ProgressMetric, val points: List<ProgressPoint>)
+
+fun progression(logs: List<WorkoutLog>, exercise: Exercise): Progression {
+    val sessions = logs.filter { it.workout.isFinished }
+        .mapNotNull { log ->
+            val sets = log.exercises.filter { it.exercise.id == exercise.id }.flatMap { it.sets }.filter { it.done }
+            if (sets.isEmpty()) null else log.workout.startedAt to sets
+        }
+        .sortedBy { it.first }
+    val metric = when {
+        exercise.measure == Measure.Time -> if (exercise.load == Load.Weight) ProgressMetric.Weight else ProgressMetric.Time
+        exercise.load == Load.Weight -> ProgressMetric.OneRepMax
+        exercise.load == Load.Assisted -> ProgressMetric.Assistance
+        // Once extra weight goes on, reps alone stop telling the story.
+        exercise.load == Load.ExtraWeight && sessions.any { (_, sets) -> sets.any { (it.weight ?: 0.0) > 0 } } -> ProgressMetric.Weight
+        else -> ProgressMetric.Reps
+    }
+    val points = sessions.mapNotNull { (at, sets) ->
+        val scored = sets.mapNotNull { set -> metric.valueOf(set)?.let { set to it } }
+        val best = if (metric == ProgressMetric.Assistance) scored.minByOrNull { it.second } else scored.maxByOrNull { it.second }
+        best?.let { (set, value) -> ProgressPoint(at, value, set) }
+    }
+    return Progression(metric, points)
+}
+
+private fun ProgressMetric.valueOf(set: WorkoutSet): Double? = when (this) {
+    ProgressMetric.OneRepMax -> set.estimatedMax
+    ProgressMetric.Weight -> set.weight?.takeIf { it > 0 }
+    ProgressMetric.Reps -> set.reps?.takeIf { it > 0 }?.toDouble()
+    ProgressMetric.Time -> set.seconds?.takeIf { it > 0 }?.toDouble()
+    // No help logged means none was needed.
+    ProgressMetric.Assistance -> if ((set.reps ?: 0) > 0) set.weight ?: 0.0 else null
 }

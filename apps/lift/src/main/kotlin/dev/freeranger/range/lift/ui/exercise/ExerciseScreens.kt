@@ -1,15 +1,18 @@
 package dev.freeranger.range.lift.ui.exercise
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -35,11 +38,15 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.freeranger.range.lift.LocalAppContainer
 import dev.freeranger.range.lift.R
 import dev.freeranger.range.lift.data.Exercise
+import dev.freeranger.range.lift.data.ProgressMetric
+import dev.freeranger.range.lift.data.Progression
 import dev.freeranger.range.lift.data.WorkoutSet
+import dev.freeranger.range.lift.ui.common.LiftFormat
 import dev.freeranger.range.lift.ui.common.Stat
 import dev.freeranger.range.lift.ui.common.StatsCard
 import dev.freeranger.range.lift.ui.common.rememberLiftFormat
 import dev.freeranger.range.lift.ui.common.rememberNow
+import dev.freeranger.range.ui.components.RangeLineChart
 import dev.freeranger.range.ui.components.RangeSectionHeader
 import dev.freeranger.range.ui.icons.RangeIcons
 import dev.freeranger.range.ui.theme.RangeSpace
@@ -191,6 +198,9 @@ fun ExerciseDetailScreen(
                     Stat(stringResource(R.string.exercise_sessions), state.sessions.size.toString())
                 }
             }
+            state.progression?.takeIf { it.points.isNotEmpty() }?.let { progression ->
+                item(key = "progress") { ProgressCard(progression, today, format) }
+            }
             item(key = "history") { RangeSectionHeader(stringResource(R.string.exercise_history)) }
             if (state.sessions.isEmpty()) {
                 item(key = "empty") {
@@ -238,3 +248,58 @@ fun ExerciseDetailScreen(
         )
     }
 }
+
+/**
+ * How the exercise has gone, workout by workout: one number each, chosen so sets of different
+ * weights and reps compare (see [ProgressMetric]). Needs two workouts to draw a line.
+ */
+@Composable
+private fun ProgressCard(progression: Progression, today: LocalDate, format: LiftFormat) {
+    val points = progression.points
+    val metric = progression.metric
+    val value = { v: Double ->
+        when (metric) {
+            ProgressMetric.OneRepMax -> format.kg(Math.round(v).toDouble())
+            ProgressMetric.Weight, ProgressMetric.Assistance -> format.kg(v)
+            ProgressMetric.Reps -> format.reps(v.toInt())
+            ProgressMetric.Time -> format.seconds(v.toInt())
+        }
+    }
+    Card(Modifier.fillMaxWidth().padding(horizontal = RangeSpace.gutter, vertical = RangeSpace.s2)) {
+        Column(Modifier.padding(RangeSpace.s4), verticalArrangement = Arrangement.spacedBy(RangeSpace.s3)) {
+            Column {
+                Text(stringResource(metric.title), style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(metric.hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if (points.size < 2) {
+                Text(stringResource(R.string.progress_need_more), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else {
+                RangeLineChart(
+                    values = points.map { it.value },
+                    xLabel = { i -> points.getOrNull(i)?.let { format.shortDate(it.at.atZone(format.zone).toLocalDate()) }.orEmpty() },
+                    valueLabel = { if (metric == ProgressMetric.Time) format.seconds(it.toInt()) else format.number(it) },
+                    markerLabel = { i -> points.getOrNull(i)?.let { format.labelled(value(it.value), format.day(it.at, today)) }.orEmpty() },
+                    description = stringResource(R.string.progress_description, stringResource(metric.title), points.size, value(points.last().value)),
+                )
+            }
+        }
+    }
+}
+
+private val ProgressMetric.title: Int
+    get() = when (this) {
+        ProgressMetric.OneRepMax -> R.string.progress_one_rep_max
+        ProgressMetric.Weight -> R.string.progress_weight
+        ProgressMetric.Reps -> R.string.progress_reps
+        ProgressMetric.Time -> R.string.progress_time
+        ProgressMetric.Assistance -> R.string.progress_assistance
+    }
+
+private val ProgressMetric.hint: Int
+    get() = when (this) {
+        ProgressMetric.OneRepMax -> R.string.progress_one_rep_max_hint
+        ProgressMetric.Weight -> R.string.progress_weight_hint
+        ProgressMetric.Reps -> R.string.progress_reps_hint
+        ProgressMetric.Time -> R.string.progress_time_hint
+        ProgressMetric.Assistance -> R.string.progress_assistance_hint
+    }

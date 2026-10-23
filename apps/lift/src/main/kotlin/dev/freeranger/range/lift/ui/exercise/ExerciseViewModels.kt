@@ -4,9 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.freeranger.range.lift.data.Exercise
 import dev.freeranger.range.lift.data.LiftRepository
+import dev.freeranger.range.lift.data.Progression
 import dev.freeranger.range.lift.data.Workout
 import dev.freeranger.range.lift.data.WorkoutSet
 import dev.freeranger.range.lift.data.bestSets
+import dev.freeranger.range.lift.data.progression
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -64,6 +66,7 @@ data class ExerciseDetailState(
     /** Newest first. */
     val sessions: List<Session> = emptyList(),
     val best: WorkoutSet? = null,
+    val progression: Progression? = null,
 )
 
 class ExerciseDetailViewModel(
@@ -76,7 +79,8 @@ class ExerciseDetailViewModel(
             val sets = log.exercises.filter { it.exercise.id == id }.flatMap { it.sets }.filter { it.done }
             if (sets.isEmpty()) null else Session(log.workout, sets)
         }
-        ExerciseDetailState(exercises.firstOrNull { it.id == id }, sessions, bestSets(logs)[id])
+        val exercise = exercises.firstOrNull { it.id == id }
+        ExerciseDetailState(exercise, sessions, bestSets(logs)[id], exercise?.let { progression(logs, it) })
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ExerciseDetailState())
 
     fun setRemoved(removed: Boolean) {

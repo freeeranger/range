@@ -1,7 +1,6 @@
 package dev.freeranger.range.lift.ui.common
 
 import android.content.Context
-import android.icu.text.CompactDecimalFormat
 import android.text.format.DateFormat
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -51,7 +50,6 @@ class LiftFormat(context: Context) {
     private val weightFormat = NumberFormat.getNumberInstance(locale).apply { maximumFractionDigits = 2 }
     private val volumeFormat = NumberFormat.getIntegerInstance(locale)
     private val collator = Collator.getInstance(locale)
-    private val compactFormat = CompactDecimalFormat.getInstance(locale, CompactDecimalFormat.CompactStyle.SHORT)
 
     /** The week starts on the day people expect where they live: Monday in Sweden, Sunday in the US. */
     val firstDayOfWeek: DayOfWeek = WeekFields.of(locale).firstDayOfWeek
@@ -128,9 +126,6 @@ class LiftFormat(context: Context) {
     /** "Oct 12": a date on a chart's axis. */
     fun shortDate(date: LocalDate): String = date.format(shortDateFormat)
 
-    /** "2.5K": a number on a chart's axis. */
-    fun compact(value: Double): String = compactFormat.format(value)
-
     /** "October 2026", heading a month of workouts. */
     fun month(date: LocalDate): String = date.format(monthFormat).capitalized()
 
@@ -179,12 +174,18 @@ class LiftFormat(context: Context) {
             Measure.Time -> set.seconds?.let(::seconds)
         }
         return when {
-            weight == null && exercise.measure == Measure.Reps -> (set.reps ?: 0).let { res.getQuantityString(R.plurals.set_reps, it, it) }
+            weight == null && exercise.measure == Measure.Reps -> reps(set.reps ?: 0)
             weight == null -> amount.orEmpty()
             amount == null -> weight(weight, exercise.load)
             else -> res.getString(R.string.set_weight_amount, weight(weight, exercise.load), amount)
         }
     }
+
+    /** "8 reps". */
+    fun reps(count: Int): String = res.getQuantityString(R.plurals.set_reps, count, count)
+
+    /** "93 kg · Yesterday": a value and what it belongs to. */
+    fun labelled(value: String, label: String): String = res.getString(R.string.value_label, value, label)
 
     fun sets(count: Int): String = res.getQuantityString(R.plurals.sets_count, count, count)
 
