@@ -4,8 +4,18 @@
 
     <string name="action_back">Tillbaka</string>
     <string name="action_more">Fler alternativ</string>
+    <string name="action_undo">Ångra</string>
     <string name="settings_title">Inställningar</string>
     <string name="dialog_cancel">Avbryt</string>
+    <string name="dialog_ok">OK</string>
+    <string name="settings_backup">Säkerhetskopia</string>
+    <string name="backup_export">Exportera säkerhetskopia</string>
+    <string name="backup_restore">Återställ säkerhetskopia</string>
+    <string name="backup_restore_title">Ersätta allt i Lift med den här säkerhetskopian?</string>
+    <string name="backup_restore_confirm">Återställ</string>
+    <string name="backup_invalid">Filen är ingen säkerhetskopia från Lift</string>
+    <string name="backup_saved">Säkerhetskopian är sparad</string>
+    <string name="backup_restored">Säkerhetskopian är återställd</string>
     <string name="date_today">Idag</string>
     <string name="date_yesterday">Igår</string>
 
@@ -41,6 +51,9 @@
     <string name="workout_drag">Dra för att flytta</string>
     <string name="workout_delete_set">Radera set</string>
     <string name="workout_edit_notes">Redigera anteckningar</string>
+    <string name="workout_edit">Redigera set</string>
+    <string name="workout_set_deleted">Set raderat</string>
+    <string name="workout_exercise_removed">Övning borttagen</string>
     <string name="workout_notes">Anteckningar</string>
     <string name="workout_record">Rekord</string>
     <string name="record_new">Nytt rekord! %1$s, %2$s</string>
@@ -91,6 +104,11 @@
     <string name="progress_assistance">Minst hjälp</string>
     <string name="progress_description">%1$s över %2$d pass. Senast: %3$s.</string>
     <string name="exercise_pick_title">Lägg till övning</string>
+    <string name="exercises_recent">Senaste</string>
+    <plurals name="exercise_pick_add">
+        <item quantity="one">Lägg till %1$d övning</item>
+        <item quantity="other">Lägg till %1$d övningar</item>
+    </plurals>
     <string name="exercise_records">Rekord</string>
     <plurals name="exercise_workouts">
         <item quantity="one">%1$d pass</item>

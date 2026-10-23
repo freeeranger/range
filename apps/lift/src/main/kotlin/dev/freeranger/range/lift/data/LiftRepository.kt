@@ -1,8 +1,10 @@
 package dev.freeranger.range.lift.data
 
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import java.time.Clock
 
@@ -18,9 +20,9 @@ class LiftRepository(
     val templates: Flow<List<WorkoutTemplate>> =
         combine(dao.observeTemplates(), dao.observeTemplateExercises(), dao.observeExercises(), ::workoutTemplates)
 
-    /** Every workout with what was logged in it, newest first. */
+    /** Every workout with what was logged in it, newest first. Put together off the main thread. */
     val logs: Flow<List<WorkoutLog>> =
-        combine(dao.observeWorkouts(), dao.observeEntries(), dao.observeSets(), dao.observeExercises(), ::workoutLogs)
+        combine(dao.observeWorkouts(), dao.observeEntries(), dao.observeSets(), dao.observeExercises(), ::workoutLogs).flowOn(Dispatchers.Default)
 
     suspend fun workout(id: Long): Workout? = dao.workout(id)
 
@@ -78,6 +80,39 @@ class LiftRepository(
     suspend fun updateSet(set: WorkoutSet) = dao.update(set)
 
     suspend fun deleteSet(id: Long) = dao.deleteSet(id)
+
+    /** Puts back a deleted set, as it was. */
+    suspend fun restoreSet(set: WorkoutSet) {
+        dao.insert(set)
+    }
+
+    /** Puts back an exercise removed from a workout, with its sets, as it was. */
+    suspend fun restoreExercise(logged: LoggedExercise) {
+        dao.insert(logged.entry, logged.sets)
+    }
+
+    /** Drops sets never ticked off, and exercises left with none: after editing a finished workout. */
+    suspend fun tidy(workoutId: Long) = dao.tidy(workoutId)
+
+    /** Everything, as a backup file's text. */
+    suspend fun exportBackup(): String = Backup(
+        exercises = dao.allExercises(),
+        workouts = dao.allWorkouts(),
+        entries = dao.allEntries(),
+        sets = dao.allSets(),
+        templates = dao.allTemplates(),
+        templateExercises = dao.allTemplateExercises(),
+    ).encode()
+
+    /** Replaces everything with a backup file's contents. False, and nothing changed, if it isn't a Lift backup. */
+    suspend fun importBackup(text: String): Boolean {
+        val backup = Backup.decode(text) ?: return false
+        if (runCatching { dao.replaceAll(backup) }.isFailure) return false
+        stopwatch.cancel()
+        // A backup from an older version may lack newer built-in exercises.
+        addBuiltInExercises()
+        return true
+    }
 
     /** Ends a workout and its rest stopwatch. Every set should be ticked off by now; any that aren't are dropped. */
     suspend fun finish(workoutId: Long) {

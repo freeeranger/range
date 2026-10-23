@@ -1,15 +1,19 @@
 package dev.freeranger.range.lift.ui.exercise
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -19,8 +23,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import dev.freeranger.range.lift.R
 import dev.freeranger.range.lift.data.Exercise
 import dev.freeranger.range.lift.data.WorkoutSet
@@ -29,7 +36,11 @@ import dev.freeranger.range.ui.components.RangeSectionHeader
 import dev.freeranger.range.ui.icons.RangeIcons
 import dev.freeranger.range.ui.theme.RangeSpace
 
-/** The exercise library, searchable and grouped by muscle, each with its best set so far. Removed exercises are left out. */
+/**
+ * The exercise library, searchable and grouped by muscle, each with its best set so far. Removed
+ * exercises are left out. [recent] ones come first, unless searching. With [selected], tapping
+ * picks exercises instead, numbered in the order they'll be added.
+ */
 @Composable
 fun ExerciseList(
     exercises: List<Exercise>,
@@ -37,6 +48,8 @@ fun ExerciseList(
     onClick: (Exercise) -> Unit,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
+    recent: List<Exercise> = emptyList(),
+    selected: List<Long>? = null,
 ) {
     val format = rememberLiftFormat()
     var query by rememberSaveable { mutableStateOf("") }
@@ -47,6 +60,27 @@ fun ExerciseList(
             .filter { (_, name) -> name.contains(query.trim(), ignoreCase = true) }
             .sortedWith(compareBy<Pair<Exercise, String>> { it.first.muscle.ordinal }.thenBy(format.byName) { it.second })
             .groupBy { it.first.muscle }
+    }
+
+    @Composable
+    fun Row(exercise: Exercise, name: String) {
+        val best = bests[exercise.id]?.let { stringResource(R.string.exercise_best, format.set(it, exercise)) }
+        val supporting = listOfNotNull(format.kind(exercise), best).joinToString(" · ")
+        val order = selected?.indexOf(exercise.id)?.takeIf { it >= 0 }
+        ListItem(
+            headlineContent = { Text(name) },
+            supportingContent = supporting.takeIf { it.isNotEmpty() }?.let { { Text(it) } },
+            trailingContent = order?.let { { SelectedNumber(it + 1) } },
+            colors = ListItemDefaults.colors(
+                // A light wash of the accent; the number says the rest.
+                containerColor = if (order != null) {
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.12f).compositeOver(MaterialTheme.colorScheme.surface)
+                } else {
+                    MaterialTheme.colorScheme.surface
+                },
+            ),
+            modifier = Modifier.clickable { onClick(exercise) },
+        )
     }
 
     LazyColumn(modifier.fillMaxSize(), contentPadding = contentPadding) {
@@ -72,17 +106,26 @@ fun ExerciseList(
                 )
             }
         }
+        if (query.isBlank() && recent.isNotEmpty()) {
+            item(key = "recent") { RangeSectionHeader(stringResource(R.string.exercises_recent)) }
+            items(recent, key = { "recent ${it.id}" }) { Row(it, format.name(it)) }
+        }
         groups.forEach { (muscle, entries) ->
             item(key = "muscle $muscle") { RangeSectionHeader(format.muscle(muscle)) }
-            items(entries, key = { it.first.id }) { (exercise, name) ->
-                val best = bests[exercise.id]?.let { stringResource(R.string.exercise_best, format.set(it, exercise)) }
-                val supporting = listOfNotNull(format.kind(exercise), best).joinToString(" · ")
-                ListItem(
-                    headlineContent = { Text(name) },
-                    supportingContent = supporting.takeIf { it.isNotEmpty() }?.let { { Text(it) } },
-                    modifier = Modifier.clickable { onClick(exercise) },
-                )
-            }
+            items(entries, key = { it.first.id }) { (exercise, name) -> Row(exercise, name) }
         }
+    }
+}
+
+/** The order a picked exercise will be added in. */
+@Composable
+private fun SelectedNumber(number: Int) {
+    Box(
+        Modifier
+            .size(28.dp)
+            .background(MaterialTheme.colorScheme.primary, CircleShape),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(number.toString(), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimary)
     }
 }

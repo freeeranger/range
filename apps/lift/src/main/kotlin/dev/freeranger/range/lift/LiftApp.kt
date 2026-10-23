@@ -2,11 +2,8 @@ package dev.freeranger.range.lift
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.res.stringResource
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
@@ -17,18 +14,16 @@ import dev.freeranger.range.lift.ui.exercise.ExerciseDetailRoute
 import dev.freeranger.range.lift.ui.exercise.ExerciseEditRoute
 import dev.freeranger.range.lift.ui.exercise.ExercisePickerRoute
 import dev.freeranger.range.lift.ui.home.HomeRoute
+import dev.freeranger.range.lift.ui.settings.LiftSettingsRoute
 import dev.freeranger.range.lift.ui.workout.SummaryRoute
 import dev.freeranger.range.lift.ui.workout.WorkoutRoute
 import dev.freeranger.range.ui.settings.RangeAboutScreen
-import dev.freeranger.range.ui.settings.RangeAppearance
 import dev.freeranger.range.ui.settings.RangeComponent
 import dev.freeranger.range.ui.settings.RangeComponents
 import dev.freeranger.range.ui.settings.RangeComponentsScreen
 import dev.freeranger.range.ui.settings.RangeLicense
 import dev.freeranger.range.ui.settings.RangeLicenseScreen
-import dev.freeranger.range.ui.settings.RangeSettingsScreen
 import dev.freeranger.range.ui.theme.RangeTransitions
-import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 
 val LocalAppContainer = staticCompositionLocalOf<AppContainer> { error("No AppContainer provided") }
@@ -138,15 +133,7 @@ fun LiftApp(openWorkout: Long? = null, onOpened: () -> Unit = {}) {
                 )
             }
             entry<SettingsKey> {
-                val store = LocalAppContainer.current.appearance
-                val appearance by store.appearance.collectAsStateWithLifecycle(RangeAppearance())
-                val scope = rememberCoroutineScope()
-                RangeSettingsScreen(
-                    appearance = appearance,
-                    onAppearanceChange = { scope.launch { store.set(it) } },
-                    onBack = back,
-                    onOpenAbout = { backStack.add(AboutKey) },
-                )
+                LiftSettingsRoute(onBack = back, onOpenAbout = { backStack.add(AboutKey) })
             }
             entry<AboutKey> {
                 RangeAboutScreen(

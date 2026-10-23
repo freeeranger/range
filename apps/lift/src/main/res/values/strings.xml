@@ -7,8 +7,18 @@
 
     <string name="action_back">Back</string>
     <string name="action_more">More options</string>
+    <string name="action_undo">Undo</string>
     <string name="settings_title">Settings</string>
     <string name="dialog_cancel">Cancel</string>
+    <string name="dialog_ok">OK</string>
+    <string name="settings_backup">Backup</string>
+    <string name="backup_export">Export backup</string>
+    <string name="backup_restore">Restore backup</string>
+    <string name="backup_restore_title">Replace everything in Lift with this backup?</string>
+    <string name="backup_restore_confirm">Restore</string>
+    <string name="backup_invalid">That file isn’t a Lift backup</string>
+    <string name="backup_saved">Backup saved</string>
+    <string name="backup_restored">Backup restored</string>
     <string name="date_today">Today</string>
     <string name="date_yesterday">Yesterday</string>
 
@@ -44,6 +54,9 @@
     <string name="workout_drag">Drag to reorder</string>
     <string name="workout_delete_set">Delete set</string>
     <string name="workout_edit_notes">Edit notes</string>
+    <string name="workout_edit">Edit sets</string>
+    <string name="workout_set_deleted">Set deleted</string>
+    <string name="workout_exercise_removed">Exercise removed</string>
     <string name="workout_notes">Notes</string>
     <string name="workout_record">Record</string>
     <string name="record_new">New record! %1$s, %2$s</string>
@@ -94,6 +107,11 @@
     <string name="progress_assistance">Least help</string>
     <string name="progress_description">%1$s over %2$d workouts. Latest: %3$s.</string>
     <string name="exercise_pick_title">Add exercise</string>
+    <string name="exercises_recent">Recent</string>
+    <plurals name="exercise_pick_add">
+        <item quantity="one">Add %1$d exercise</item>
+        <item quantity="other">Add %1$d exercises</item>
+    </plurals>
     <string name="exercise_records">Records</string>
     <plurals name="exercise_workouts">
         <item quantity="one">%1$d workout</item>

@@ -10,6 +10,7 @@ import dev.freeranger.range.lift.data.Workout
 import dev.freeranger.range.lift.data.WorkoutSet
 import dev.freeranger.range.lift.data.bestSets
 import dev.freeranger.range.lift.data.progression
+import dev.freeranger.range.lift.data.recentExercises
 import dev.freeranger.range.lift.data.records
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharingStarted
@@ -19,7 +20,12 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-data class PickerState(val exercises: List<Exercise> = emptyList(), val bests: Map<Long, WorkoutSet> = emptyMap())
+data class PickerState(
+    val exercises: List<Exercise> = emptyList(),
+    val bests: Map<Long, WorkoutSet> = emptyMap(),
+    /** Done most recently, newest first. */
+    val recent: List<Exercise> = emptyList(),
+)
 
 class ExercisePickerViewModel(
     private val workoutId: Long,
@@ -28,11 +34,12 @@ class ExercisePickerViewModel(
     private val appScope: CoroutineScope,
 ) : ViewModel() {
     val state: StateFlow<PickerState> = combine(repository.exercises, repository.logs) { exercises, logs ->
-        PickerState(exercises, bestSets(logs))
+        PickerState(exercises, bestSets(logs), recentExercises(logs))
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PickerState())
 
-    fun pick(exerciseId: Long) {
-        appScope.launch { repository.addToWorkout(workoutId, exerciseId) }
+    /** Adds the exercises to the workout, in this order. */
+    fun pick(exerciseIds: List<Long>) {
+        appScope.launch { exerciseIds.forEach { repository.addToWorkout(workoutId, it) } }
     }
 }
 

@@ -16,7 +16,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -60,10 +60,9 @@ fun ExercisePickerRoute(workoutId: Long, onDone: () -> Unit, onCreate: () -> Uni
     val viewModel = viewModel { ExercisePickerViewModel(workoutId, container.repository, container.scope) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     ExercisePickerScreen(
-        exercises = state.exercises,
-        bests = state.bests,
+        state = state,
         onPick = {
-            viewModel.pick(it.id)
+            viewModel.pick(it)
             onDone()
         },
         onCreate = onCreate,
@@ -71,16 +70,20 @@ fun ExercisePickerRoute(workoutId: Long, onDone: () -> Unit, onCreate: () -> Uni
     )
 }
 
-/** The exercise library, opened from a workout: tapping one adds it, and a new one is added straight in. */
+/**
+ * The exercise library, opened from a workout, recent exercises first: tap the ones to add, in
+ * order, then Add. A new exercise is added straight in.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExercisePickerScreen(
-    exercises: List<Exercise>,
-    bests: Map<Long, WorkoutSet>,
-    onPick: (Exercise) -> Unit,
+    state: PickerState,
+    onPick: (List<Long>) -> Unit,
     onCreate: () -> Unit,
     onBack: () -> Unit,
+    initialSelection: List<Long> = emptyList(),
 ) {
+    var selected by rememberSaveable { mutableStateOf(initialSelection) }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -88,23 +91,30 @@ fun ExercisePickerScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) { Icon(RangeIcons.ArrowBack, contentDescription = stringResource(R.string.action_back)) }
                 },
+                actions = {
+                    IconButton(onClick = onCreate) { Icon(RangeIcons.Add, contentDescription = stringResource(R.string.exercise_new)) }
+                },
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = onCreate,
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-            ) {
-                Icon(RangeIcons.Add, contentDescription = stringResource(R.string.exercise_new))
+            if (selected.isNotEmpty()) {
+                ExtendedFloatingActionButton(
+                    text = { Text(pluralStringResource(R.plurals.exercise_pick_add, selected.size, selected.size)) },
+                    icon = { Icon(RangeIcons.Check, contentDescription = null) },
+                    onClick = { onPick(selected) },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                )
             }
         },
     ) { padding ->
         ExerciseList(
-            exercises = exercises,
-            bests = bests,
-            onClick = onPick,
+            exercises = state.exercises,
+            bests = state.bests,
+            onClick = { exercise -> selected = if (exercise.id in selected) selected - exercise.id else selected + exercise.id },
             contentPadding = PaddingValues(top = padding.calculateTopPadding(), bottom = padding.calculateBottomPadding() + 96.dp),
+            recent = state.recent,
+            selected = selected,
         )
     }
 }

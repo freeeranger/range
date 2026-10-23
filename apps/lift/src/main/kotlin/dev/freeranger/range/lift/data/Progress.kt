@@ -140,3 +140,12 @@ fun comparisons(log: WorkoutLog, logs: List<WorkoutLog>): List<Comparison> {
         Comparison(exercise, metric, set, value, metric.best(previous)?.second)
     }
 }
+
+/** The exercises done most recently, newest first, for the top of the exercise picker. Removed ones are left out. */
+fun recentExercises(logs: List<WorkoutLog>, limit: Int = 6): List<Exercise> =
+    logs.filter { it.workout.isFinished }
+        .sortedByDescending { it.workout.startedAt }
+        .flatMap { log -> log.exercises.map { it.exercise } }
+        .filterNot { it.archived }
+        .distinctBy { it.id }
+        .take(limit)

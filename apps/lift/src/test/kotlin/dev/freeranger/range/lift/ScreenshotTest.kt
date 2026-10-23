@@ -24,17 +24,20 @@ import dev.freeranger.range.lift.data.comparisons
 import dev.freeranger.range.lift.data.newRecords
 import dev.freeranger.range.lift.data.previousSets
 import dev.freeranger.range.lift.data.progression
+import dev.freeranger.range.lift.data.recentExercises
 import dev.freeranger.range.lift.data.records
 import dev.freeranger.range.lift.data.workoutLogs
 import dev.freeranger.range.lift.ui.exercise.ExerciseDetailScreen
 import dev.freeranger.range.lift.ui.exercise.ExerciseDetailState
 import dev.freeranger.range.lift.ui.exercise.ExerciseEditScreen
 import dev.freeranger.range.lift.ui.exercise.ExercisePickerScreen
+import dev.freeranger.range.lift.ui.exercise.PickerState
 import dev.freeranger.range.lift.ui.exercise.Session
 import dev.freeranger.range.lift.ui.home.HomeActions
 import dev.freeranger.range.lift.ui.home.HomeScreen
 import dev.freeranger.range.lift.ui.home.HomeState
 import dev.freeranger.range.lift.ui.home.HomeTab
+import dev.freeranger.range.lift.ui.settings.LiftSettingsScreen
 import dev.freeranger.range.lift.ui.workout.SummaryScreen
 import dev.freeranger.range.lift.ui.workout.SummaryState
 import dev.freeranger.range.lift.ui.workout.WorkoutActions
@@ -46,7 +49,6 @@ import dev.freeranger.range.ui.settings.RangeAppIcon
 import dev.freeranger.range.ui.settings.RangeAppearance
 import dev.freeranger.range.ui.settings.RangeLicense
 import dev.freeranger.range.ui.settings.RangeLicenseScreen
-import dev.freeranger.range.ui.settings.RangeSettingsScreen
 import dev.freeranger.range.ui.settings.ThemeMode
 import dev.freeranger.range.ui.theme.RangeAccents
 import dev.freeranger.range.ui.theme.RangeTheme
@@ -222,6 +224,9 @@ class ScreenshotTest {
     }
 
     @Test
+    fun workoutEditing() = capture { WorkoutScreen(finishedState, now, WorkoutActions(), initiallyEditing = true) }
+
+    @Test
     fun workoutNotes() = capture { WorkoutScreen(finishedState, now, WorkoutActions(), initialDialog = WorkoutDialog.Notes) }
 
     @Test
@@ -276,7 +281,7 @@ class ScreenshotTest {
     fun workoutFinished() = capture { WorkoutScreen(finishedState, now, WorkoutActions()) }
 
     @Test
-    fun exercisePicker() = capture { ExercisePickerScreen(exercises, bestSets(logs), onPick = {}, onCreate = {}, onBack = {}) }
+    fun exercisePicker() = capture { ExercisePickerScreen(PickerState(exercises, bestSets(logs), recentExercises(logs)), onPick = {}, onCreate = {}, onBack = {}, initialSelection = listOf(id("bench_press"), id("dip"))) }
 
     @Test
     fun exerciseDetail() = capture { ExerciseDetailScreen(benchDetail, friday, onBack = {}) }
@@ -309,7 +314,7 @@ class ScreenshotTest {
     }
 
     @Test
-    fun settings() = capture { RangeSettingsScreen(RangeAppearance(), onAppearanceChange = {}, onBack = {}, onOpenAbout = {}) }
+    fun settings() = capture { LiftSettingsScreen(RangeAppearance(), onAppearanceChange = {}, onBack = {}, onOpenAbout = {}, onExport = {}, onRestore = {}) }
 
     @Test
     fun about() = capture {

@@ -3,6 +3,7 @@ package dev.freeranger.range.lift.ui.workout
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.freeranger.range.lift.data.LiftRepository
+import dev.freeranger.range.lift.data.LoggedExercise
 import dev.freeranger.range.lift.data.Record
 import dev.freeranger.range.lift.data.WorkoutLog
 import dev.freeranger.range.lift.data.WorkoutSet
@@ -47,16 +48,28 @@ class WorkoutViewModel(
         appScope.launch { repository.updateSet(set) }
     }
 
-    fun deleteSet(setId: Long) {
-        viewModelScope.launch { repository.deleteSet(setId) }
+    fun deleteSet(set: WorkoutSet) {
+        viewModelScope.launch { repository.deleteSet(set.id) }
+    }
+
+    fun restoreSet(set: WorkoutSet) {
+        viewModelScope.launch { repository.restoreSet(set) }
     }
 
     fun reorder(entryIds: List<Long>) {
         appScope.launch { repository.reorder(entryIds) }
     }
 
-    fun removeExercise(entryId: Long) {
-        viewModelScope.launch { repository.removeFromWorkout(entryId) }
+    fun removeExercise(logged: LoggedExercise) {
+        viewModelScope.launch { repository.removeFromWorkout(logged.entry.id) }
+    }
+
+    fun restoreExercise(logged: LoggedExercise) {
+        viewModelScope.launch { repository.restoreExercise(logged) }
+    }
+
+    fun tidy() {
+        appScope.launch { repository.tidy(id) }
     }
 
     fun finish() {

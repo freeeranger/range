@@ -1,5 +1,6 @@
 package dev.freeranger.range.lift.ui.workout
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
@@ -42,8 +43,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.Text
@@ -51,12 +54,14 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -109,6 +114,7 @@ import dev.freeranger.range.ui.icons.RangeIcons
 import dev.freeranger.range.ui.theme.RangeSpace
 import java.time.Duration
 import java.time.Instant
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
@@ -129,9 +135,12 @@ fun WorkoutRoute(id: Long, onBack: () -> Unit, onFinished: () -> Unit, onAddExer
             openExercise = onOpenExercise,
             reorder = viewModel::reorder,
             removeExercise = viewModel::removeExercise,
+            restoreExercise = viewModel::restoreExercise,
             addSet = viewModel::addSet,
             updateSet = viewModel::updateSet,
             deleteSet = viewModel::deleteSet,
+            restoreSet = viewModel::restoreSet,
+            tidy = viewModel::tidy,
             finish = {
                 viewModel.finish()
                 onFinished()
@@ -154,10 +163,16 @@ data class WorkoutActions(
     val addExercise: () -> Unit = {},
     val openExercise: (exerciseId: Long) -> Unit = {},
     val reorder: (entryIds: List<Long>) -> Unit = {},
-    val removeExercise: (entryId: Long) -> Unit = {},
+    val removeExercise: (LoggedExercise) -> Unit = {},
+    /** Puts back an exercise just removed, with its sets. */
+    val restoreExercise: (LoggedExercise) -> Unit = {},
     val addSet: (entryId: Long) -> Unit = {},
     val updateSet: (WorkoutSet) -> Unit = {},
-    val deleteSet: (setId: Long) -> Unit = {},
+    val deleteSet: (WorkoutSet) -> Unit = {},
+    /** Puts back a set just deleted. */
+    val restoreSet: (WorkoutSet) -> Unit = {},
+    /** Drops unticked sets once a finished workout is edited. */
+    val tidy: () -> Unit = {},
     val finish: () -> Unit = {},
     val delete: () -> Unit = {},
     /** A set of the exercise [label] names was ticked off: the rest stopwatch starts again. */
@@ -172,7 +187,8 @@ enum class WorkoutDialog { Rename, Delete, SaveTemplate, Notes }
  * A workout. In progress, it's where sets are logged: a card per exercise, dragged by its handle
  * into any order, each set with last time's numbers as placeholders and its number to tap once
  * it's done, which restarts the rest stopwatch. Finishing needs every set ticked off. Finished, it's a
- * read-only summary with its notes. Sets that beat a record get a trophy.
+ * read-only summary with its notes, which can be opened again for editing to fix a mistake. Sets
+ * that beat a record get a trophy. Deleted sets and removed exercises can be put back.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -182,6 +198,7 @@ fun WorkoutScreen(
     actions: WorkoutActions,
     modifier: Modifier = Modifier,
     initialDialog: WorkoutDialog? = null,
+    initiallyEditing: Boolean = false,
 ) {
     val format = rememberLiftFormat()
     val log = state.log ?: return
@@ -195,10 +212,36 @@ fun WorkoutScreen(
     val savedMessage = stringResource(R.string.template_saved)
     val requestNotifications = rememberNotificationPermissionRequest()
     // The rest stopwatch's notification is the reason to ask, so ask when it first starts.
-    val withRest = actions.copy(
+    // A finished workout can be opened for editing, to fix a mistyped set.
+    var editing by rememberSaveable { mutableStateOf(initiallyEditing) }
+    val stopEditing = {
+        actions.tidy()
+        editing = false
+    }
+    BackHandler(enabled = editing, onBack = stopEditing)
+    val setDeleted = stringResource(R.string.workout_set_deleted)
+    val exerciseRemoved = stringResource(R.string.workout_exercise_removed)
+    val undo = stringResource(R.string.action_undo)
+    val offerUndo = { message: String, restore: () -> Unit ->
+        scope.launch {
+            snackbar.currentSnackbarData?.dismiss()
+            if (snackbar.showSnackbar(message, undo, duration = SnackbarDuration.Short) == SnackbarResult.ActionPerformed) restore()
+        }
+    }
+    val logging = actions.copy(
         setDone = { label ->
-            requestNotifications()
-            actions.setDone(label)
+            if (!workout.isFinished) {
+                requestNotifications()
+                actions.setDone(label)
+            }
+        },
+        deleteSet = { set ->
+            actions.deleteSet(set)
+            offerUndo(setDeleted) { actions.restoreSet(set) }
+        },
+        removeExercise = { logged ->
+            actions.removeExercise(logged)
+            offerUndo(exerciseRemoved) { actions.restoreExercise(logged) }
         },
     )
     AnnounceRecords(state.records, enabled = !workout.isFinished, format, snackbar)
@@ -228,10 +271,14 @@ fun WorkoutScreen(
                     IconButton(onClick = actions.back) { Icon(RangeIcons.ArrowBack, contentDescription = stringResource(R.string.action_back)) }
                 },
                 actions = {
+                    // Each lights up once every set is ticked off.
                     if (!workout.isFinished) {
-                        // Lights up once every set is ticked off.
                         Button(onClick = actions.finish, enabled = ready) {
                             Text(stringResource(R.string.workout_finish))
+                        }
+                    } else if (editing) {
+                        Button(onClick = stopEditing, enabled = ready) {
+                            Text(stringResource(R.string.summary_done))
                         }
                     }
                     Box {
@@ -246,6 +293,16 @@ fun WorkoutScreen(
                                     onClick = {
                                         menu = false
                                         dialog = WorkoutDialog.SaveTemplate
+                                    },
+                                )
+                            }
+                            if (workout.isFinished && !editing) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.workout_edit)) },
+                                    leadingIcon = { Icon(RangeIcons.EditNote, contentDescription = null) },
+                                    onClick = {
+                                        menu = false
+                                        editing = true
                                     },
                                 )
                             }
@@ -283,10 +340,10 @@ fun WorkoutScreen(
     ) { padding ->
         val contentPadding = PaddingValues(top = padding.calculateTopPadding(), bottom = padding.calculateBottomPadding() + RangeSpace.s6)
         val recordSets = state.records.map { it.set.id }.toSet()
-        if (workout.isFinished) {
+        if (workout.isFinished && !editing) {
             FinishedWorkout(log, recordSets, format, actions, contentPadding)
         } else {
-            WorkoutInProgress(log, state.previous, recordSets, format, withRest, contentPadding)
+            WorkoutInProgress(log, state.previous, recordSets, format, logging, contentPadding)
         }
     }
 
@@ -498,7 +555,7 @@ private fun ExerciseHeader(logged: LoggedExercise, format: LiftFormat, actions: 
                         leadingIcon = { Icon(RangeIcons.Delete, contentDescription = null) },
                         onClick = {
                             menu = false
-                            actions.removeExercise(logged.entry.id)
+                            actions.removeExercise(logged)
                         },
                     )
                 }
@@ -559,13 +616,26 @@ private fun SetRow(
     var weight by remember(set.id) { mutableStateOf(set.weight?.let(format::number).orEmpty()) }
     var amount by remember(set.id) { mutableStateOf(amountText(set)) }
     val amountFocus = remember { FocusRequester() }
-    fun typed(done: Boolean) = set.copy(
+    val latest by rememberUpdatedState(set)
+    val save by rememberUpdatedState(actions.updateSet)
+    fun typed(done: Boolean) = latest.copy(
         weight = if (exercise.weighted) format.parseWeight(weight) else null,
         reps = if (timed) set.reps else amount.toIntOrNull(),
         seconds = if (timed) parseTimeDigits(amount) else set.seconds,
         done = done,
     )
+    // Typing is saved once it pauses, not on every key: each save works the whole history out again.
+    var unsaved by remember(set.id) { mutableStateOf(false) }
+    LaunchedEffect(weight, amount, unsaved) {
+        if (!unsaved) return@LaunchedEffect
+        delay(SAVE_AFTER)
+        save(typed(latest.done))
+        unsaved = false
+    }
+    DisposableEffect(set.id) { onDispose { if (unsaved) save(typed(latest.done)) } }
+
     val tick: (Boolean) -> Unit = { checked ->
+        unsaved = false
         if (!checked) {
             actions.updateSet(typed(false))
         } else {
@@ -591,7 +661,7 @@ private fun SetRow(
     SwipeToDismissBox(
         state = dismiss,
         enableDismissFromStartToEnd = false,
-        onDismiss = { actions.deleteSet(set.id) },
+        onDismiss = { actions.deleteSet(set) },
         backgroundContent = {
             Box(
                 Modifier
@@ -627,7 +697,7 @@ private fun SetRow(
                     onValueChange = {
                         if (it.length <= 6 && it.all { c -> c.isDigit() || c == '.' || c == ',' } && it.count { c -> c == '.' || c == ',' } <= 1) {
                             weight = it
-                            actions.updateSet(typed(set.done))
+                            unsaved = true
                         }
                     },
                     placeholder = placeholder?.weight?.let(format::number),
@@ -641,7 +711,7 @@ private fun SetRow(
                 onValueChange = {
                     if (it.length <= (if (timed) 4 else 3) && it.all(Char::isDigit)) {
                         amount = it
-                        actions.updateSet(typed(set.done))
+                        unsaved = true
                     }
                 },
                 placeholder = if (timed) placeholder?.seconds?.let(format::seconds) else placeholder?.reps?.toString(),
@@ -794,3 +864,6 @@ private fun RestBar(since: Duration, format: LiftFormat) {
         }
     }
 }
+
+/** How long typing pauses before it's saved. */
+private const val SAVE_AFTER = 600L

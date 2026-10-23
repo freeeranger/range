@@ -175,6 +175,78 @@ abstract class LiftDao {
         return id
     }
 
+    /** Drops sets never ticked off, and exercises left with none. */
+    @Transaction
+    open suspend fun tidy(workoutId: Long) {
+        deleteUndoneSets(workoutId)
+        deleteEmptyEntries(workoutId)
+    }
+
+    @Query("SELECT * FROM exercises")
+    abstract suspend fun allExercises(): List<Exercise>
+
+    @Query("SELECT * FROM workouts")
+    abstract suspend fun allWorkouts(): List<Workout>
+
+    @Query("SELECT * FROM workout_exercises")
+    abstract suspend fun allEntries(): List<WorkoutExercise>
+
+    @Query("SELECT * FROM sets")
+    abstract suspend fun allSets(): List<WorkoutSet>
+
+    @Query("SELECT * FROM templates")
+    abstract suspend fun allTemplates(): List<Template>
+
+    @Query("SELECT * FROM template_exercises")
+    abstract suspend fun allTemplateExercises(): List<TemplateExercise>
+
+    @Query("DELETE FROM template_exercises")
+    abstract suspend fun clearTemplateExercises()
+
+    @Query("DELETE FROM templates")
+    abstract suspend fun clearTemplates()
+
+    @Query("DELETE FROM sets")
+    abstract suspend fun clearSets()
+
+    @Query("DELETE FROM workout_exercises")
+    abstract suspend fun clearEntries()
+
+    @Query("DELETE FROM workouts")
+    abstract suspend fun clearWorkouts()
+
+    @Query("DELETE FROM exercises")
+    abstract suspend fun clearExercises()
+
+    @Insert
+    abstract suspend fun insertExercises(exercises: List<Exercise>)
+
+    @Insert
+    abstract suspend fun insertWorkouts(workouts: List<Workout>)
+
+    @Insert
+    abstract suspend fun insertEntries(entries: List<WorkoutExercise>)
+
+    @Insert
+    abstract suspend fun insertTemplates(templates: List<Template>)
+
+    /** Replaces everything with [backup], all or nothing. */
+    @Transaction
+    open suspend fun replaceAll(backup: Backup) {
+        clearTemplateExercises()
+        clearTemplates()
+        clearSets()
+        clearEntries()
+        clearWorkouts()
+        clearExercises()
+        insertExercises(backup.exercises)
+        insertWorkouts(backup.workouts)
+        insertEntries(backup.entries)
+        insertSets(backup.sets)
+        insertTemplates(backup.templates)
+        insertTemplateExercises(backup.templateExercises)
+    }
+
     /** Keeps only what was ticked off, then marks the workout finished. */
     @Transaction
     open suspend fun finish(workout: Workout) {
