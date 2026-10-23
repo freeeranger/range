@@ -36,7 +36,8 @@
     <string name="detail_edit_title">Redigera uppgift</string>
     <string name="detail_save">Spara</string>
     <string name="detail_details_label">Detaljer</string>
-    <string name="detail_no_date">Inget datum</string>
+    <string name="detail_no_date">När som helst</string>
+    <string name="detail_anytime_hint">Visas varje dag tills den är klar</string>
     <string name="detail_delete_title">Ta bort uppgiften?</string>
     <string name="detail_delete_text">”%1$s” tas bort för gott.</string>
     <string name="detail_delete_confirm">Ta bort</string>

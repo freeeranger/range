@@ -39,7 +39,8 @@
     <string name="detail_edit_title">Edit task</string>
     <string name="detail_save">Save</string>
     <string name="detail_details_label">Details</string>
-    <string name="detail_no_date">No date</string>
+    <string name="detail_no_date">Anytime</string>
+    <string name="detail_anytime_hint">Shows every day until it’s done</string>
     <string name="detail_delete_title">Delete task?</string>
     <string name="detail_delete_text">“%1$s” will be deleted for good.</string>
     <string name="detail_delete_confirm">Delete</string>

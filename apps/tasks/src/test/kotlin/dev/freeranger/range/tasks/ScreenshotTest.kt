@@ -210,6 +210,9 @@ class ScreenshotTest {
     fun detailLocked() = capture { TaskDetailScreen(plants, now, TaskDetailActions()) }
 
     @Test
+    fun detailAnytime() = capture { TaskDetailScreen(state.tasks.first { it.id == 5L }, now, TaskDetailActions()) }
+
+    @Test
     fun settings() = capture { RangeSettingsScreen(RangeAppearance(), onAppearanceChange = {}, onBack = {}, onOpenAbout = {}) }
 
     @Test

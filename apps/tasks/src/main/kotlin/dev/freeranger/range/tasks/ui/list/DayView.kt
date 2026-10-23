@@ -9,9 +9,10 @@ import java.time.LocalDate
 import java.time.LocalTime
 
 /**
- * What the list shows for one day. Today has every section. A later day only lists what falls
- * on it, including each repeat of a repeating task, which can't be ticked off early. An earlier
- * day only lists what was ticked off on it.
+ * What the list shows for one day. Today has every section. A later day lists what falls on it,
+ * including each repeat of a repeating task, which can't be ticked off early, and every undated
+ * task: those stay on every day until they're done. An earlier day only lists what was ticked
+ * off on it.
  */
 data class DayView(
     val overdue: List<Task> = emptyList(),
@@ -23,7 +24,12 @@ data class DayView(
 }
 
 fun dayView(tasks: List<Task>, completions: List<Completion>, day: LocalDate, today: LocalDate): DayView {
-    if (day > today) return DayView(due = tasks.filter { it.occursOn(day) }.sortedWith(timeOrder))
+    if (day > today) {
+        return DayView(
+            due = tasks.filter { it.occursOn(day) }.sortedWith(timeOrder),
+            anytime = tasks.filter { it.dueDate == null && !it.isCompleted }.sortedBy { it.createdAt },
+        )
+    }
     if (day < today) return DayView(completed = completedOn(day, tasks, completions))
 
     val open = tasks.filterNot { it.isDone(today) }

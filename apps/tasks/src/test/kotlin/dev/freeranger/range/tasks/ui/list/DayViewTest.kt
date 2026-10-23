@@ -91,6 +91,19 @@ class DayViewTest {
     }
 
     @Test
+    fun `undated tasks show on every day from today until done, then only under the day they were done`() {
+        val saturday = friday.plusDays(1)
+        assertEquals(listOf(milk), dayView(all, emptyList(), saturday, friday).anytime)
+        assertEquals(listOf(milk), dayView(all, emptyList(), friday.plusDays(60), friday).anytime)
+        assertEquals(DayView(), dayView(listOf(milk), emptyList(), friday.minusDays(1), friday))
+
+        val done = milk.copy(completedAt = instant(friday.atTime(9, 0)))
+        val history = listOf(ticked(done, friday.atTime(9, 0)))
+        assertEquals(listOf(done), dayView(listOf(done), history, friday, friday).completed)
+        assertEquals(DayView(), dayView(listOf(done), history, saturday, friday))
+    }
+
+    @Test
     fun `repeats stop showing after the series ends`() {
         val short = task(6, "Antibiotics", Schedule(friday, listOf(morning), Repeat(end = RepeatEnd.After(3), anchor = friday)))
         assertEquals(listOf(short), dayView(listOf(short), emptyList(), friday.plusDays(2), friday).due)

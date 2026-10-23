@@ -211,6 +211,11 @@ private fun TaskView(task: Task, now: LocalDateTime, actions: TaskDetailActions,
                         },
                     )
                 },
+                supportingContent = if (task.dueDate == null && !done) {
+                    { Text(stringResource(R.string.detail_anytime_hint)) }
+                } else {
+                    null
+                },
             )
             if (task.steps > 1 && !done) {
                 ListItem(
