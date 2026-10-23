@@ -17,6 +17,7 @@ emoji_events
 expand_more
 fitness_center
 history
+home
 info
 more_vert
 palette
