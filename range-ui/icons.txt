@@ -2,6 +2,7 @@
 # Use the symbol's name as written on that page. After editing, run: python3 -I scripts/icons.py
 add
 arrow_back
+bookmark_add
 brightness_6
 calendar_month
 calendar_today
@@ -10,8 +11,8 @@ check_circle
 close
 dark_mode
 delete
-drag_indicator
 description
+drag_indicator
 edit
 emoji_events
 expand_more
@@ -26,5 +27,10 @@ repeat
 schedule
 search
 settings
+skip_next
+sticky_note_2
 timer
 translate
+trending_down
+trending_flat
+trending_up
