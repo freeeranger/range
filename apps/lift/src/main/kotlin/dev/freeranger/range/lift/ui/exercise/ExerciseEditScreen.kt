@@ -53,19 +53,20 @@ import dev.freeranger.range.lift.data.Exercise
 import dev.freeranger.range.lift.data.Load
 import dev.freeranger.range.lift.data.Measure
 import dev.freeranger.range.lift.data.Muscle
+import dev.freeranger.range.lift.data.PickTarget
 import dev.freeranger.range.lift.ui.common.rememberLiftFormat
 import dev.freeranger.range.ui.components.RangeSectionHeader
 import dev.freeranger.range.ui.icons.RangeIcons
 import dev.freeranger.range.ui.theme.RangeSpace
 
 /**
- * Adds an exercise when [id] is null, straight into the workout [workoutId] if there is one, or
+ * Adds an exercise when [id] is null, straight to where [target] says if it was being picked, or
  * edits exercise [id].
  */
 @Composable
-fun ExerciseEditRoute(id: Long?, workoutId: Long?, onSaved: () -> Unit, onCancel: () -> Unit) {
+fun ExerciseEditRoute(id: Long?, target: PickTarget?, onSaved: () -> Unit, onCancel: () -> Unit) {
     val container = LocalAppContainer.current
-    val viewModel = viewModel { ExerciseEditViewModel(id, workoutId, container.repository, container.scope) }
+    val viewModel = viewModel { ExerciseEditViewModel(id, target, container.repository, container.scope) }
     val exercise by viewModel.exercise.collectAsStateWithLifecycle()
     // Wait for the exercise being edited, so the form starts from it.
     if (id != null && exercise == null) return

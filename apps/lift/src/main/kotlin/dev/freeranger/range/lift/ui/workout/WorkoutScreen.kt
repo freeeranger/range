@@ -101,6 +101,7 @@ import dev.freeranger.range.lift.data.WorkoutSet
 import dev.freeranger.range.lift.data.filledFrom
 import dev.freeranger.range.lift.data.isComplete
 import dev.freeranger.range.lift.data.placeholders
+import dev.freeranger.range.lift.ui.common.DragHandle
 import dev.freeranger.range.lift.ui.common.LiftFormat
 import dev.freeranger.range.lift.ui.common.NameSheet
 import dev.freeranger.range.lift.ui.common.Stat
@@ -120,7 +121,14 @@ import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
 @Composable
-fun WorkoutRoute(id: Long, onBack: () -> Unit, onFinished: () -> Unit, onAddExercise: () -> Unit, onOpenExercise: (Long) -> Unit) {
+fun WorkoutRoute(
+    id: Long,
+    onBack: () -> Unit,
+    onFinished: () -> Unit,
+    onAddExercise: () -> Unit,
+    onSwapExercise: (entryId: Long) -> Unit,
+    onOpenExercise: (Long) -> Unit,
+) {
     val container = LocalAppContainer.current
     val viewModel = viewModel { WorkoutViewModel(id, container.repository, container.scope) }
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -132,6 +140,7 @@ fun WorkoutRoute(id: Long, onBack: () -> Unit, onFinished: () -> Unit, onAddExer
             back = onBack,
             rename = viewModel::rename,
             addExercise = onAddExercise,
+            swapExercise = onSwapExercise,
             openExercise = onOpenExercise,
             reorder = viewModel::reorder,
             removeExercise = viewModel::removeExercise,
@@ -161,6 +170,8 @@ data class WorkoutActions(
     val back: () -> Unit = {},
     val rename: (String) -> Unit = {},
     val addExercise: () -> Unit = {},
+    /** Picks another exercise to take the place of the workout's exercise [entryId]. */
+    val swapExercise: (entryId: Long) -> Unit = {},
     val openExercise: (exerciseId: Long) -> Unit = {},
     val reorder: (entryIds: List<Long>) -> Unit = {},
     val removeExercise: (LoggedExercise) -> Unit = {},
@@ -551,6 +562,14 @@ private fun ExerciseHeader(logged: LoggedExercise, format: LiftFormat, actions: 
                 }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                     DropdownMenuItem(
+                        text = { Text(stringResource(R.string.exercise_swap)) },
+                        leadingIcon = { Icon(RangeIcons.SwapHoriz, contentDescription = null) },
+                        onClick = {
+                            menu = false
+                            actions.swapExercise(logged.entry.id)
+                        },
+                    )
+                    DropdownMenuItem(
                         text = { Text(stringResource(R.string.workout_remove_exercise)) },
                         leadingIcon = { Icon(RangeIcons.Delete, contentDescription = null) },
                         onClick = {
@@ -561,18 +580,6 @@ private fun ExerciseHeader(logged: LoggedExercise, format: LiftFormat, actions: 
                 }
             }
         }
-    }
-}
-
-/** Pressed and dragged to move its card; [modifier] carries the reorder library's drag handling. */
-@Composable
-private fun DragHandle(modifier: Modifier) {
-    Box(modifier.size(48.dp), contentAlignment = Alignment.Center) {
-        Icon(
-            RangeIcons.DragIndicator,
-            contentDescription = stringResource(R.string.workout_drag),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
 

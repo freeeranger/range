@@ -96,4 +96,28 @@ class MigrationTest {
         }
         connection.close()
     }
+
+    @Test
+    fun `4 to 5 retires built-in exercises, keeping those workouts or templates use`() = runTest {
+        helper.createDatabase(4).apply {
+            execSQL(
+                "INSERT INTO exercises (id, `key`, name, muscle, measure, load, perSide, archived) VALUES " +
+                    "(1, 'squat', '', 'Legs', 'Reps', 'Weight', 0, 0), (2, 'bench_press', '', 'Chest', 'Reps', 'Weight', 0, 0), " +
+                    "(3, 'plank', '', 'Core', 'Time', 'Bodyweight', 0, 0), (4, NULL, 'Landmine press', 'Shoulders', 'Reps', 'Weight', 1, 0)",
+            )
+            execSQL("INSERT INTO workouts (id, name, startedAt, finishedAt, notes) VALUES (1, 'Legs', 0, 3600000, '')")
+            execSQL("INSERT INTO workout_exercises (id, workoutId, exerciseId, position) VALUES (1, 1, 1, 0)")
+            execSQL("INSERT INTO templates (id, name, createdAt) VALUES (1, 'Push', 0)")
+            execSQL("INSERT INTO template_exercises (id, templateId, exerciseId, position, sets) VALUES (1, 1, 2, 0, 3)")
+            close()
+        }
+
+        val connection = helper.runMigrationsAndValidate(5)
+        val exercises = mutableListOf<Pair<Long, Long>>()
+        connection.prepare("SELECT id, archived FROM exercises ORDER BY id").use {
+            while (it.step()) exercises += it.getLong(0) to it.getLong(1)
+        }
+        assertEquals(listOf(1L to 1L, 2L to 1L, 4L to 0L), exercises)
+        connection.close()
+    }
 }

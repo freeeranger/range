@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import java.time.Clock
+import java.time.Instant
 
 /** The only way the app changes workouts, exercises and templates. */
 class LiftRepository(
@@ -30,7 +31,7 @@ class LiftRepository(
 
     /** Adds any built-in exercise the library doesn't have yet. Run at every launch; cheap when there's nothing to add. */
     suspend fun addBuiltInExercises() {
-        dao.insertBuiltIn(BuiltInExercises.all.map { it.toExercise() })
+        dao.insertBuiltIn(BuiltInExercises.offered.map { it.toExercise() })
     }
 
     suspend fun addExercise(exercise: Exercise): Long = dao.insert(exercise.copy(id = 0, key = null, name = exercise.name.trim()))
@@ -67,6 +68,24 @@ class LiftRepository(
     }
 
     suspend fun removeFromWorkout(entryId: Long) = dao.deleteEntry(entryId)
+
+    /**
+     * Puts another exercise in place of a workout's exercise [entryId], with as many empty sets as
+     * it had. What was typed in them belonged to the old exercise, so it goes.
+     */
+    suspend fun swapInWorkout(entryId: Long, exerciseId: Long) {
+        dao.swap(entryId, exerciseId, dao.sets(entryId).size.coerceAtLeast(1))
+    }
+
+    /** Adds the [exerciseIds] where [target] says: in order, or the first in place of another exercise. */
+    suspend fun pick(target: PickTarget, exerciseIds: List<Long>) {
+        when (target) {
+            is PickTarget.IntoWorkout -> exerciseIds.forEach { addToWorkout(target.workoutId, it) }
+            is PickTarget.IntoTemplate -> exerciseIds.forEach { addToTemplate(target.templateId, it) }
+            is PickTarget.SwapInWorkout -> exerciseIds.firstOrNull()?.let { swapInWorkout(target.entryId, it) }
+            is PickTarget.SwapInTemplate -> exerciseIds.firstOrNull()?.let { dao.setTemplateExercise(target.entryId, it) }
+        }
+    }
 
     /** Puts a workout's exercises in the order of [entryIds]. */
     suspend fun reorder(entryIds: List<Long>) = dao.reorder(entryIds)
@@ -127,6 +146,12 @@ class LiftRepository(
         dao.deleteWorkout(workoutId)
     }
 
+    /** Corrects when a finished workout started and ended. The end never comes before the start. */
+    suspend fun setTimes(workoutId: Long, startedAt: Instant, finishedAt: Instant) {
+        val workout = dao.workout(workoutId)?.takeIf { it.isFinished } ?: return
+        dao.update(workout.copy(startedAt = startedAt, finishedAt = maxOf(startedAt, finishedAt)))
+    }
+
     suspend fun setNotes(workoutId: Long, notes: String) {
         val workout = dao.workout(workoutId) ?: return
         if (workout.notes != notes.trim()) dao.update(workout.copy(notes = notes.trim()))
@@ -155,6 +180,26 @@ class LiftRepository(
         dao.replace(templateId, plan.toTemplateExercises())
     }
 
+    /** A new template with no exercises yet, returning its id. */
+    suspend fun createTemplate(name: String): Long = dao.insert(Template(name = name.trim(), createdAt = clock().instant()), emptyList())
+
+    /** Adds an exercise at the end of a template, with as many sets as were done last time, else [DEFAULT_SETS]. */
+    suspend fun addToTemplate(templateId: Long, exerciseId: Long) {
+        val position = (dao.lastTemplatePosition(templateId) ?: -1) + 1
+        val sets = dao.lastSets(exerciseId).size.takeIf { it > 0 } ?: DEFAULT_SETS
+        dao.insertTemplateExercises(listOf(TemplateExercise(templateId = templateId, exerciseId = exerciseId, position = position, sets = sets)))
+    }
+
+    suspend fun setTemplateSets(entryId: Long, sets: Int) = dao.setTemplateSets(entryId, sets.coerceIn(1, MAX_SETS))
+
+    suspend fun removeFromTemplate(entryId: Long) = dao.deleteTemplateExercise(entryId)
+
+    /** Puts back an exercise just removed from a template, where it was. */
+    suspend fun restoreTemplateExercise(entry: TemplateExercise) = dao.insertTemplateExercises(listOf(entry))
+
+    /** Puts a template's exercises in the order of [entryIds]. */
+    suspend fun reorderTemplate(entryIds: List<Long>) = dao.reorderTemplate(entryIds)
+
     suspend fun renameTemplate(templateId: Long, name: String) {
         val template = dao.template(templateId) ?: return
         dao.update(template.copy(name = name.trim()))
@@ -175,6 +220,12 @@ class LiftRepository(
                 List(entry.sets.coerceAtLeast(1)) { WorkoutSet(workoutExerciseId = 0, position = it) }
         }
         return dao.insert(Workout(name = template.name, startedAt = clock().instant(), templateId = templateId), entries)
+    }
+
+    companion object {
+        /** Sets of an exercise put in a template that's never been done. */
+        const val DEFAULT_SETS = 3
+        const val MAX_SETS = 20
     }
 
     private fun List<Pair<Long, Int>>.toTemplateExercises() =

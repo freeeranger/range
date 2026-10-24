@@ -13,14 +13,15 @@ import dev.freeranger.range.lift.data.BuiltInExercises
 import dev.freeranger.range.lift.data.Exercise
 import dev.freeranger.range.lift.data.LoggedExercise
 import dev.freeranger.range.lift.data.Muscle
+import dev.freeranger.range.lift.data.PlannedExercise
 import dev.freeranger.range.lift.data.Template
+import dev.freeranger.range.lift.data.TemplateExercise
 import dev.freeranger.range.lift.data.Workout
 import dev.freeranger.range.lift.data.WorkoutExercise
 import dev.freeranger.range.lift.data.WorkoutLog
 import dev.freeranger.range.lift.data.WorkoutSet
 import dev.freeranger.range.lift.data.WorkoutTemplate
 import dev.freeranger.range.lift.data.bestSets
-import dev.freeranger.range.lift.data.comparisons
 import dev.freeranger.range.lift.data.newRecords
 import dev.freeranger.range.lift.data.previousSets
 import dev.freeranger.range.lift.data.progression
@@ -38,6 +39,13 @@ import dev.freeranger.range.lift.ui.home.HomeScreen
 import dev.freeranger.range.lift.ui.home.HomeState
 import dev.freeranger.range.lift.ui.home.HomeTab
 import dev.freeranger.range.lift.ui.settings.LiftSettingsScreen
+import dev.freeranger.range.lift.ui.template.TemplateActions
+import dev.freeranger.range.lift.ui.template.TemplateDialog
+import dev.freeranger.range.lift.ui.template.TemplateScreen
+import dev.freeranger.range.lift.ui.template.TemplateState
+import dev.freeranger.range.lift.ui.template.TemplatesScreen
+import dev.freeranger.range.lift.ui.template.TemplatesState
+import dev.freeranger.range.lift.ui.template.lastDone
 import dev.freeranger.range.lift.ui.workout.SummaryScreen
 import dev.freeranger.range.lift.ui.workout.SummaryState
 import dev.freeranger.range.lift.ui.workout.WorkoutActions
@@ -143,7 +151,12 @@ class ScreenshotTest {
         }
     }.sortedByDescending { it.workout.startedAt }
     private fun template(id: Long, name: String, vararg lifts: Pair<String, Int>) =
-        WorkoutTemplate(Template(id, name, Instant.EPOCH), lifts.map { (key, sets) -> exercises.first { it.key == key } to sets })
+        WorkoutTemplate(
+            Template(id, name, Instant.EPOCH),
+            lifts.mapIndexed { position, (key, sets) ->
+                PlannedExercise(TemplateExercise(id * 10 + position, id, id(key), position, sets), exercises.first { it.key == key })
+            },
+        )
     private val templates = listOf(
         template(1, "Push", "bench_press" to 3, "overhead_press" to 3, "dip" to 2),
         template(2, "Legs", "squat" to 3, "romanian_deadlift" to 2, "pull_up" to 3),
@@ -155,7 +168,6 @@ class ScreenshotTest {
     private fun summaryOf(template: WorkoutTemplate? = null) = SummaryState(
         log = justFinished,
         records = newRecords(justFinished, progress),
-        comparisons = comparisons(justFinished, progress),
         logs = progress,
         template = template,
     )
@@ -212,7 +224,7 @@ class ScreenshotTest {
     @Test
     fun summary() = capture { SummaryScreen(summaryOf(), now, {}, {}, {}, {}) }
 
-    /** Tall, to show the notes and the template's Update button below the comparisons. */
+    /** Tall, to show the notes and the template's Update button below the records. */
     @Test
     @Config(qualifiers = "sv-rSE-w412dp-h1500dp-night-xxhdpi")
     fun summarySwedish() = capture { SummaryScreen(summaryOf(templates[1].copy(exercises = templates[1].exercises.dropLast(1))), now, {}, {}, {}, {}) }
@@ -231,6 +243,44 @@ class ScreenshotTest {
 
     @Test
     fun workoutNotes() = capture { WorkoutScreen(finishedState, now, WorkoutActions(), initialDialog = WorkoutDialog.Notes) }
+
+    @Test
+    fun homeStarting() = capture { HomeScreen(dashboard, now, HomeActions(), initiallyStarting = true) }
+
+    @Test
+    fun homeStartingNoTemplates() = capture { HomeScreen(home, now, HomeActions(), initiallyStarting = true) }
+
+    @Test
+    fun templates() = capture { TemplatesScreen(TemplatesState(templates, lastDone(progress)), now, onBack = {}, onOpen = {}, onCreate = {}) }
+
+    @Test
+    fun templatesCreating() = capture {
+        TemplatesScreen(TemplatesState(templates, lastDone(progress)), now, onBack = {}, onOpen = {}, onCreate = {}, initiallyCreating = true, autoFocus = false)
+    }
+
+    @Test
+    fun template() = capture { TemplateScreen(TemplateState(templates[0], lastDone = lastDone(progress)[1]), now, TemplateActions()) }
+
+    @Test
+    @Config(qualifiers = "sv-rSE-$PHONE")
+    fun templateSwedish() = capture { TemplateScreen(TemplateState(templates[1], lastDone = lastDone(progress)[2]), now, TemplateActions()) }
+
+    @Test
+    fun templateBusy() = capture { TemplateScreen(TemplateState(templates[0], busy = true), now, TemplateActions()) }
+
+    @Test
+    fun templateEmpty() = capture { TemplateScreen(TemplateState(templates[0].copy(exercises = emptyList())), now, TemplateActions()) }
+
+    @Test
+    fun templateDeleting() = capture { TemplateScreen(TemplateState(templates[0]), now, TemplateActions(), initialDialog = TemplateDialog.Delete) }
+
+    @Test
+    fun exercisePickerSwapping() = capture {
+        ExercisePickerScreen(PickerState(exercises, bestSets(logs), recentExercises(logs)), swapping = true, onPick = {}, onCreate = {}, onBack = {})
+    }
+
+    @Test
+    fun exercisesEmpty() = capture { HomeScreen(HomeState(loaded = true), now, HomeActions(), initialTab = HomeTab.Exercises) }
 
     @Test
     fun homeEmpty() = capture { HomeScreen(HomeState(exercises = exercises, loaded = true), now, HomeActions()) }
@@ -284,7 +334,7 @@ class ScreenshotTest {
     fun workoutFinished() = capture { WorkoutScreen(finishedState, now, WorkoutActions()) }
 
     @Test
-    fun exercisePicker() = capture { ExercisePickerScreen(PickerState(exercises, bestSets(logs), recentExercises(logs)), onPick = {}, onCreate = {}, onBack = {}, initialSelection = listOf(id("bench_press"), id("dip"))) }
+    fun exercisePicker() = capture { ExercisePickerScreen(PickerState(exercises, bestSets(logs), recentExercises(logs)), swapping = false, onPick = {}, onCreate = {}, onBack = {}, initialSelection = listOf(id("bench_press"), id("dip"))) }
 
     @Test
     fun exerciseDetail() = capture { ExerciseDetailScreen(benchDetail, friday, onBack = {}) }

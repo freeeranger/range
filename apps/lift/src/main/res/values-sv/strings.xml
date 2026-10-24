@@ -69,9 +69,6 @@
     <string name="summary_done">Klar</string>
     <string name="summary_records">Nya rekord</string>
     <string name="summary_records_was">förut %1$s</string>
-    <string name="summary_compared">Jämfört med förra gången</string>
-    <string name="summary_first_time">Första gången</string>
-    <string name="summary_same">Samma som förra gången</string>
     <plurals name="summary_week">
         <item quantity="one">%1$d pass den här veckan</item>
         <item quantity="other">%1$d pass den här veckan</item>
@@ -79,7 +76,6 @@
 
     <!-- Templates -->
     <string name="home_templates">Mallar</string>
-    <string name="template_start">Starta</string>
     <string name="template_last">Senast %1$s</string>
     <string name="template_delete">Radera mall</string>
     <string name="template_delete_title">Radera %1$s?</string>
@@ -200,4 +196,16 @@
     <string name="exercise_one_arm_dumbbell_row">Enarmsrodd med hantel</string>
     <string name="exercise_plank">Planka</string>
     <string name="exercise_side_plank">Sidoplanka</string>
+    <string name="template_new">Ny mall</string>
+    <string name="template_sets_fewer">Färre set</string>
+    <string name="template_sets_more">Fler set</string>
+    <string name="start_empty">Tomt pass</string>
+    <string name="exercise_swap">Byt ut</string>
+    <string name="exercise_swap_title">Byt övning</string>
+    <string name="home_frequency">Pass per vecka</string>
+    <string name="home_frequency_average">Snitt %1$s</string>
+    <string name="home_frequency_description">Pass per vecka, äldst först: %1$s.</string>
+    <string name="summary_started">Började</string>
+    <string name="summary_ended">Slutade</string>
+    <string name="template_edit">Redigera %1$s</string>
 </resources>

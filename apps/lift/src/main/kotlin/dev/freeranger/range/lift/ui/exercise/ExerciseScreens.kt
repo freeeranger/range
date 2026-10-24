@@ -40,6 +40,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.freeranger.range.lift.LocalAppContainer
 import dev.freeranger.range.lift.R
 import dev.freeranger.range.lift.data.Exercise
+import dev.freeranger.range.lift.data.PickTarget
 import dev.freeranger.range.lift.data.ProgressMetric
 import dev.freeranger.range.lift.data.Progression
 import dev.freeranger.range.lift.data.Record
@@ -55,12 +56,13 @@ import dev.freeranger.range.ui.theme.RangeSpace
 import java.time.LocalDate
 
 @Composable
-fun ExercisePickerRoute(workoutId: Long, onDone: () -> Unit, onCreate: () -> Unit) {
+fun ExercisePickerRoute(target: PickTarget, onDone: () -> Unit, onCreate: () -> Unit) {
     val container = LocalAppContainer.current
-    val viewModel = viewModel { ExercisePickerViewModel(workoutId, container.repository, container.scope) }
+    val viewModel = viewModel { ExercisePickerViewModel(target, container.repository, container.scope) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     ExercisePickerScreen(
         state = state,
+        swapping = target.swaps,
         onPick = {
             viewModel.pick(it)
             onDone()
@@ -71,13 +73,15 @@ fun ExercisePickerRoute(workoutId: Long, onDone: () -> Unit, onCreate: () -> Uni
 }
 
 /**
- * The exercise library, opened from a workout, recent exercises first: tap the ones to add, in
- * order, then Add. A new exercise is added straight in.
+ * The exercise library, opened from a workout or template, recent exercises first: tap the ones
+ * to add, in order, then Add. When [swapping] one exercise for another, tapping one picks it. A
+ * new exercise goes straight in.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExercisePickerScreen(
     state: PickerState,
+    swapping: Boolean,
     onPick: (List<Long>) -> Unit,
     onCreate: () -> Unit,
     onBack: () -> Unit,
@@ -87,7 +91,7 @@ fun ExercisePickerScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.exercise_pick_title)) },
+                title = { Text(stringResource(if (swapping) R.string.exercise_swap_title else R.string.exercise_pick_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) { Icon(RangeIcons.ArrowBack, contentDescription = stringResource(R.string.action_back)) }
                 },
@@ -111,10 +115,16 @@ fun ExercisePickerScreen(
         ExerciseList(
             exercises = state.exercises,
             bests = state.bests,
-            onClick = { exercise -> selected = if (exercise.id in selected) selected - exercise.id else selected + exercise.id },
+            onClick = { exercise ->
+                when {
+                    swapping -> onPick(listOf(exercise.id))
+                    exercise.id in selected -> selected = selected - exercise.id
+                    else -> selected = selected + exercise.id
+                }
+            },
             contentPadding = PaddingValues(top = padding.calculateTopPadding(), bottom = padding.calculateBottomPadding() + 96.dp),
             recent = state.recent,
-            selected = selected,
+            selected = selected.takeUnless { swapping },
         )
     }
 }

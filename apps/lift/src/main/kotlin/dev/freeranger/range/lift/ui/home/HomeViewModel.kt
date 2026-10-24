@@ -40,12 +40,4 @@ class HomeViewModel(private val repository: LiftRepository) : ViewModel() {
     fun startTemplate(templateId: Long, onStarted: (Long) -> Unit) {
         viewModelScope.launch { repository.startTemplate(templateId)?.let(onStarted) }
     }
-
-    fun renameTemplate(templateId: Long, name: String) {
-        viewModelScope.launch { repository.renameTemplate(templateId, name) }
-    }
-
-    fun deleteTemplate(templateId: Long) {
-        viewModelScope.launch { repository.deleteTemplate(templateId) }
-    }
 }

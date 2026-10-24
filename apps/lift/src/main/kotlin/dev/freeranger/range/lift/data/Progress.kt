@@ -18,6 +18,27 @@ fun weekTotals(logs: List<WorkoutLog>, today: LocalDate, firstDayOfWeek: DayOfWe
     return WeekTotals(start, week.size, week.sumOf { it.doneSets.size }, week.sumOf { it.volume })
 }
 
+/** Finished workouts in the week starting [start]. */
+data class WeekCount(val start: LocalDate, val workouts: Int)
+
+/** How many workouts were finished each week, for the [weeks] weeks up to the one with [today], oldest first. */
+fun weeklyWorkouts(logs: List<WorkoutLog>, today: LocalDate, firstDayOfWeek: DayOfWeek, zone: ZoneId, weeks: Int = 12): List<WeekCount> {
+    val thisWeek = today.with(TemporalAdjusters.previousOrSame(firstDayOfWeek))
+    val counts = logs.filter { it.workout.isFinished }
+        .groupingBy { it.workout.startedAt.atZone(zone).toLocalDate().with(TemporalAdjusters.previousOrSame(firstDayOfWeek)) }
+        .eachCount()
+    return (weeks - 1 downTo 0).map { back -> thisWeek.minusWeeks(back.toLong()).let { WeekCount(it, counts[it] ?: 0) } }
+}
+
+/**
+ * The usual number of workouts a week: the average over the finished weeks in [weeks] since the
+ * first one trained. Null until a whole week has passed since then.
+ */
+fun averagePerWeek(weeks: List<WeekCount>): Double? {
+    val since = weeks.dropLast(1).dropWhile { it.workouts == 0 }
+    return if (since.isEmpty()) null else since.sumOf { it.workouts }.toDouble() / since.size
+}
+
 /**
  * The one number per workout that shows getting stronger at an exercise, chosen by how it's
  * logged, so sets of different weights and reps can be compared.
@@ -122,22 +143,6 @@ fun records(logs: List<WorkoutLog>, exercise: Exercise): List<Record> {
     return exercise.recordMetrics().mapNotNull { metric ->
         val (set, value) = metric.best(sets.map { it.first }) ?: return@mapNotNull null
         Record(exercise, metric, set, value, previous = null, at = at.getValue(set.id))
-    }
-}
-
-/** How an exercise went today against the last workout it was done in. [last] is null the first time. */
-data class Comparison(val exercise: Exercise, val metric: ProgressMetric, val set: WorkoutSet, val today: Double, val last: Double?)
-
-/** Each exercise in [log], in order, against the last finished workout before it that had it. */
-fun comparisons(log: WorkoutLog, logs: List<WorkoutLog>): List<Comparison> {
-    val earlier = logs.filter { it.workout.isFinished && it.workout.id != log.workout.id && it.workout.startedAt < log.workout.startedAt }
-        .sortedByDescending { it.workout.startedAt }
-    return log.exercises.map { it.exercise }.distinctBy { it.id }.mapNotNull { exercise ->
-        val today = log.doneSetsOf(exercise.id)
-        val previous = earlier.firstNotNullOfOrNull { it.doneSetsOf(exercise.id).takeIf { sets -> sets.isNotEmpty() } }.orEmpty()
-        val metric = exercise.progressMetric(today + previous)
-        val (set, value) = metric.best(today) ?: return@mapNotNull null
-        Comparison(exercise, metric, set, value, metric.best(previous)?.second)
     }
 }
 

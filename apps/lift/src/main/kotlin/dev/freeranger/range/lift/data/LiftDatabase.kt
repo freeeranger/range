@@ -58,6 +58,30 @@ abstract class LiftDao {
     @Query("DELETE FROM template_exercises WHERE templateId = :templateId")
     abstract suspend fun clearTemplate(templateId: Long)
 
+    @Query("SELECT * FROM template_exercises WHERE id = :id")
+    abstract suspend fun templateExercise(id: Long): TemplateExercise?
+
+    @Query("SELECT MAX(position) FROM template_exercises WHERE templateId = :templateId")
+    abstract suspend fun lastTemplatePosition(templateId: Long): Int?
+
+    @Query("UPDATE template_exercises SET sets = :sets WHERE id = :id")
+    abstract suspend fun setTemplateSets(id: Long, sets: Int)
+
+    @Query("UPDATE template_exercises SET exerciseId = :exerciseId WHERE id = :id")
+    abstract suspend fun setTemplateExercise(id: Long, exerciseId: Long)
+
+    @Query("UPDATE template_exercises SET position = :position WHERE id = :id")
+    abstract suspend fun setTemplatePosition(id: Long, position: Int)
+
+    @Query("DELETE FROM template_exercises WHERE id = :id")
+    abstract suspend fun deleteTemplateExercise(id: Long)
+
+    /** Puts a template's exercises in the order given. */
+    @Transaction
+    open suspend fun reorderTemplate(entryIds: List<Long>) {
+        entryIds.forEachIndexed { position, id -> setTemplatePosition(id, position) }
+    }
+
     /** Also removes its exercises, through the foreign key. */
     @Query("DELETE FROM templates WHERE id = :id")
     abstract suspend fun deleteTemplate(id: Long)
@@ -122,6 +146,20 @@ abstract class LiftDao {
 
     @Query("DELETE FROM workout_exercises WHERE id = :id")
     abstract suspend fun deleteEntry(id: Long)
+
+    @Query("UPDATE workout_exercises SET exerciseId = :exerciseId WHERE id = :id")
+    abstract suspend fun setEntryExercise(id: Long, exerciseId: Long)
+
+    @Query("DELETE FROM sets WHERE workoutExerciseId = :entryId")
+    abstract suspend fun deleteSetsOf(entryId: Long)
+
+    /** Puts another exercise in a workout's place [entryId], with [sets] empty sets for it. */
+    @Transaction
+    open suspend fun swap(entryId: Long, exerciseId: Long, sets: Int) {
+        setEntryExercise(entryId, exerciseId)
+        deleteSetsOf(entryId)
+        insertSets(List(sets) { WorkoutSet(workoutExerciseId = entryId, position = it) })
+    }
 
     @Query("UPDATE workout_exercises SET position = :position WHERE id = :id")
     abstract suspend fun setPosition(id: Long, position: Int)
@@ -258,12 +296,13 @@ abstract class LiftDao {
 
 @Database(
     entities = [Exercise::class, Workout::class, WorkoutExercise::class, WorkoutSet::class, Template::class, TemplateExercise::class],
-    version = 4,
+    version = 5,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 1, to = 2, spec = LiftDatabase.ExerciseTypes::class),
         AutoMigration(from = 2, to = 3),
         AutoMigration(from = 3, to = 4, spec = LiftDatabase.RestStopwatch::class),
+        AutoMigration(from = 4, to = 5, spec = LiftDatabase.RetireBuiltIns::class),
     ],
 )
 @ColumnTypeConverters(Converters::class)
@@ -299,6 +338,26 @@ abstract class LiftDatabase : RoomDatabase() {
         DeleteColumn(tableName = "workouts", columnName = "restSeconds"),
     )
     class RestStopwatch : AutoMigrationSpec
+
+    /**
+     * v5: libraries start with only the [BuiltInExercises.offered] built-ins. The others go, unless a
+     * workout or template uses them; those are kept but removed from the library.
+     */
+    class RetireBuiltIns : AutoMigrationSpec {
+        override suspend fun onPostMigrate(connection: SQLiteConnection) {
+            val offered = BuiltInExercises.offered.map { it.key }
+            val retired = "`key` IS NOT NULL AND `key` NOT IN (${offered.joinToString { "?" }})"
+            fun run(sql: String) = connection.prepare(sql).use { statement ->
+                offered.forEachIndexed { i, key -> statement.bindText(i + 1, key) }
+                statement.step()
+            }
+            run(
+                "DELETE FROM exercises WHERE $retired AND id NOT IN (SELECT exerciseId FROM workout_exercises) " +
+                    "AND id NOT IN (SELECT exerciseId FROM template_exercises)",
+            )
+            run("UPDATE exercises SET archived = 1 WHERE $retired")
+        }
+    }
 
     companion object {
         fun create(context: Context): LiftDatabase =

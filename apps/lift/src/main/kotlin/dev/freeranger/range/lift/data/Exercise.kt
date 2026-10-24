@@ -82,7 +82,10 @@ data class BuiltIn(
     fun toExercise() = Exercise(key = key, muscle = muscle, measure = measure, load = load, perSide = perSide)
 }
 
-/** The exercises every library starts with. Adding one here adds it for existing users on the next launch. */
+/**
+ * Every built-in exercise Lift knows: how it's measured, for the rows libraries already have. Only
+ * the [offered] ones are put in a library; the rest stay only where a workout or template uses them.
+ */
 object BuiltInExercises {
     val all: List<BuiltIn> = listOf(
         BuiltIn("bench_press", Muscle.Chest),
@@ -122,4 +125,7 @@ object BuiltInExercises {
         BuiltIn("plank", Muscle.Core, measure = Measure.Time, load = Load.Bodyweight),
         BuiltIn("side_plank", Muscle.Core, measure = Measure.Time, load = Load.Bodyweight, perSide = true),
     )
+
+    /** The ones every library starts with. Adding one here adds it for existing users on the next launch. */
+    val offered: List<BuiltIn> = emptyList()
 }

@@ -31,10 +31,17 @@ data class TemplateExercise(
     val sets: Int,
 )
 
+/** An exercise in a template, with the row that places it there. */
+data class PlannedExercise(val entry: TemplateExercise, val exercise: Exercise) {
+    val sets: Int get() = entry.sets
+}
+
 /** A template with its exercises, in order. */
-data class WorkoutTemplate(val template: Template, val exercises: List<Pair<Exercise, Int>>) {
+data class WorkoutTemplate(val template: Template, val exercises: List<PlannedExercise>) {
+    val sets: Int get() = exercises.sumOf { it.sets }
+
     /** Whether [log] has the same exercises in the same order with the same number of sets. */
-    fun matches(log: WorkoutLog): Boolean = exercises.map { (e, sets) -> e.id to sets } == log.plan()
+    fun matches(log: WorkoutLog): Boolean = exercises.map { it.exercise.id to it.sets } == log.plan()
 }
 
 /** A workout's exercises and how many sets of each, as a template would keep them: ticked-off sets once it's finished. */
@@ -48,7 +55,7 @@ fun workoutTemplates(templates: List<Template>, entries: List<TemplateExercise>,
     return templates.sortedBy { it.createdAt }.map { template ->
         WorkoutTemplate(
             template,
-            byTemplate[template.id].orEmpty().sortedBy { it.position }.mapNotNull { e -> byId[e.exerciseId]?.let { it to e.sets } },
+            byTemplate[template.id].orEmpty().sortedBy { it.position }.mapNotNull { e -> byId[e.exerciseId]?.let { PlannedExercise(e, it) } },
         )
     }
 }

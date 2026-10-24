@@ -1,59 +1,41 @@
 package dev.freeranger.range.lift.ui.home
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import dev.freeranger.range.lift.R
-import dev.freeranger.range.lift.data.WorkoutTemplate
+import dev.freeranger.range.lift.data.WeekCount
+import dev.freeranger.range.lift.data.averagePerWeek
 import dev.freeranger.range.lift.data.weekTotals
+import dev.freeranger.range.lift.data.weeklyWorkouts
 import dev.freeranger.range.lift.ui.common.LiftFormat
-import dev.freeranger.range.lift.ui.common.NameSheet
 import dev.freeranger.range.lift.ui.common.Stat
 import dev.freeranger.range.lift.ui.common.StatsCard
+import dev.freeranger.range.ui.components.RangeColumnChart
 import dev.freeranger.range.ui.components.RangeSectionHeader
-import dev.freeranger.range.ui.icons.RangeIcons
 import dev.freeranger.range.ui.theme.RangeSpace
 import java.time.Instant
-import java.time.LocalDate
 
-/** Where the app opens: this week's totals, and the templates to start a workout from in one tap. */
+/** Where the app opens: this week's totals, and how often workouts have happened week by week. */
 @Composable
-fun Dashboard(state: HomeState, now: Instant, format: LiftFormat, actions: HomeActions, contentPadding: PaddingValues) {
+fun Dashboard(state: HomeState, now: Instant, format: LiftFormat, contentPadding: PaddingValues) {
     val today = now.atZone(format.zone).toLocalDate()
     val week = remember(state.logs, today, format) { weekTotals(state.logs, today, format.firstDayOfWeek, format.zone) }
-    // When each template was last done, from the workouts started from it.
-    val lastDone = remember(state.logs) {
-        state.history.filter { it.workout.templateId != null }.groupBy { it.workout.templateId!! }.mapValues { (_, logs) -> logs.maxOf { it.workout.startedAt } }
-    }
-    var renaming by rememberSaveable { mutableStateOf<Long?>(null) }
-    var deleting by rememberSaveable { mutableStateOf<Long?>(null) }
+    val weeks = remember(state.logs, today, format) { weeklyWorkouts(state.logs, today, format.firstDayOfWeek, format.zone) }
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = contentPadding) {
         item(key = "week") {
@@ -64,116 +46,37 @@ fun Dashboard(state: HomeState, now: Instant, format: LiftFormat, actions: HomeA
                 Stat(stringResource(R.string.stat_volume), format.volume(week.volume))
             }
         }
-        if (state.templates.isNotEmpty()) {
-            item(key = "templates") { RangeSectionHeader(stringResource(R.string.home_templates)) }
+        if (state.history.isNotEmpty()) {
+            item(key = "frequency") { FrequencyCard(weeks, format) }
         }
-        items(state.templates, key = { it.template.id }) { template ->
-            TemplateCard(
-                template = template,
-                lastDone = lastDone[template.template.id],
-                today = today,
-                format = format,
-                canStart = state.inProgress == null,
-                onStart = { actions.startTemplate(template.template.id) },
-                onRename = { renaming = template.template.id },
-                onDelete = { deleting = template.template.id },
-            )
-        }
-    }
-
-    state.templates.firstOrNull { it.template.id == renaming }?.let { template ->
-        NameSheet(
-            placeholder = stringResource(R.string.workout_default_name),
-            saveLabel = stringResource(R.string.workout_save),
-            onSave = { actions.renameTemplate(template.template.id, it) },
-            onDismiss = { renaming = null },
-            initial = template.template.name,
-        )
-    }
-    state.templates.firstOrNull { it.template.id == deleting }?.let { template ->
-        AlertDialog(
-            onDismissRequest = { deleting = null },
-            icon = { Icon(RangeIcons.Delete, contentDescription = null) },
-            title = { Text(stringResource(R.string.template_delete_title, template.template.name)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        deleting = null
-                        actions.deleteTemplate(template.template.id)
-                    },
-                ) { Text(stringResource(R.string.workout_delete_confirm)) }
-            },
-            dismissButton = { TextButton(onClick = { deleting = null }) { Text(stringResource(R.string.dialog_cancel)) } },
-        )
     }
 }
 
-/** A template: its name, its exercises, when it was last done, and Start. */
+/** A bar per week for the number of workouts in it, with the usual number a week. */
 @Composable
-private fun TemplateCard(
-    template: WorkoutTemplate,
-    lastDone: Instant?,
-    today: LocalDate,
-    format: LiftFormat,
-    canStart: Boolean,
-    onStart: () -> Unit,
-    onRename: () -> Unit,
-    onDelete: () -> Unit,
-) {
-    var menu by remember { mutableStateOf(false) }
-    Card(Modifier.fillMaxWidth().padding(horizontal = RangeSpace.gutter, vertical = RangeSpace.s1)) {
-        Column(Modifier.padding(start = RangeSpace.s4, top = RangeSpace.s2, end = RangeSpace.s1, bottom = RangeSpace.s4)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    template.template.name,
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Box {
-                    IconButton(onClick = { menu = true }) {
-                        Icon(RangeIcons.MoreVert, contentDescription = stringResource(R.string.action_more))
-                    }
-                    DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.workout_rename)) },
-                            leadingIcon = { Icon(RangeIcons.Edit, contentDescription = null) },
-                            onClick = {
-                                menu = false
-                                onRename()
-                            },
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.template_delete)) },
-                            leadingIcon = { Icon(RangeIcons.Delete, contentDescription = null) },
-                            onClick = {
-                                menu = false
-                                onDelete()
-                            },
-                        )
-                    }
-                }
-            }
-            Row(Modifier.padding(end = RangeSpace.s3), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(RangeSpace.s3)) {
-                Column(Modifier.weight(1f)) {
+private fun FrequencyCard(weeks: List<WeekCount>, format: LiftFormat) {
+    val average = remember(weeks) { averagePerWeek(weeks) }
+    val counts = weeks.map { it.workouts }
+    Card(Modifier.fillMaxWidth().padding(horizontal = RangeSpace.gutter).padding(top = RangeSpace.s4)) {
+        Column(Modifier.padding(RangeSpace.s4), verticalArrangement = Arrangement.spacedBy(RangeSpace.s3)) {
+            Column {
+                Text(stringResource(R.string.home_frequency), style = MaterialTheme.typography.titleMedium)
+                average?.let {
                     Text(
-                        template.exercises.joinToString(", ") { (exercise, _) -> format.name(exercise) },
+                        stringResource(R.string.home_frequency_average, format.average(it)),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Text(
-                        listOfNotNull(
-                            format.sets(template.exercises.sumOf { it.second }),
-                            lastDone?.let { stringResource(R.string.template_last, format.day(it, today)) },
-                        ).joinToString(" · "),
-                        modifier = Modifier.padding(top = RangeSpace.s1),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
                 }
-                FilledTonalButton(onClick = onStart, enabled = canStart) { Text(stringResource(R.string.template_start)) }
             }
+            val workouts = weeks.map { pluralStringResource(R.plurals.exercise_workouts, it.workouts, it.workouts) }
+            RangeColumnChart(
+                values = counts,
+                xLabel = { i -> weeks.getOrNull(i)?.let { format.shortDate(it.start) }.orEmpty() },
+                markerLabel = { i -> weeks.getOrNull(i)?.let { format.labelled(workouts[i], format.shortDate(it.start)) }.orEmpty() },
+                description = stringResource(R.string.home_frequency_description, counts.joinToString(", ")),
+                modifier = Modifier.height(160.dp),
+            )
         }
     }
 }

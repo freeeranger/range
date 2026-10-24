@@ -87,15 +87,17 @@ class ProgressTest {
     }
 
     @Test
-    fun `each exercise is compared with the last workout that had it`() {
-        val older = workout(friday.minusDays(14), bench, sets(70.0 to 5))
-        val last = workout(friday.minusDays(7), bench, sets(80.0 to 5))
-        val today = workout(friday, bench, sets(82.5 to 5))
-        val plankToday = workout(friday, plank, listOf(WorkoutSet(nextId++, 0, 0, seconds = 60, done = true)))
-        val comparison = comparisons(today, listOf(older, last, today)).single()
-        assertEquals(ProgressMetric.OneRepMax, comparison.metric)
-        assertEquals(82.5 * (1 + 5 / 30.0), comparison.today, 0.01)
-        assertEquals(80.0 * (1 + 5 / 30.0), comparison.last!!, 0.01)
-        assertNull(comparisons(plankToday, listOf(plankToday)).single().last)
+    fun `workouts are counted by week, and averaged over the finished weeks since the first`() {
+        val logs = listOf(
+            workout(friday.minusWeeks(2), bench, sets(80.0 to 5)),
+            workout(friday.minusWeeks(1), bench, sets(80.0 to 5)),
+            workout(friday.minusWeeks(1).minusDays(2), bench, sets(80.0 to 5)),
+            workout(friday, bench, sets(80.0 to 5)),
+        )
+        val weeks = weeklyWorkouts(logs, friday, DayOfWeek.MONDAY, zone, weeks = 4)
+        assertEquals(listOf(0, 1, 2, 1), weeks.map { it.workouts })
+        assertEquals(friday.with(DayOfWeek.MONDAY), weeks.last().start)
+        assertEquals(1.5, averagePerWeek(weeks)!!, 0.01)
+        assertNull(averagePerWeek(weeklyWorkouts(logs.takeLast(1), friday, DayOfWeek.MONDAY, zone, weeks = 4)))
     }
 }

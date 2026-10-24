@@ -57,7 +57,14 @@ import java.time.Instant
 import java.time.LocalDate
 
 @Composable
-fun HomeRoute(onOpenWorkout: (Long) -> Unit, onOpenExercise: (Long) -> Unit, onNewExercise: () -> Unit, onOpenSettings: () -> Unit) {
+fun HomeRoute(
+    onOpenWorkout: (Long) -> Unit,
+    onOpenTemplate: (Long) -> Unit,
+    onOpenTemplates: (creating: Boolean) -> Unit,
+    onOpenExercise: (Long) -> Unit,
+    onNewExercise: () -> Unit,
+    onOpenSettings: () -> Unit,
+) {
     val container = LocalAppContainer.current
     val viewModel = viewModel { HomeViewModel(container.repository) }
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -67,8 +74,8 @@ fun HomeRoute(onOpenWorkout: (Long) -> Unit, onOpenExercise: (Long) -> Unit, onN
         actions = HomeActions(
             start = { viewModel.start(onOpenWorkout) },
             startTemplate = { viewModel.startTemplate(it, onOpenWorkout) },
-            renameTemplate = viewModel::renameTemplate,
-            deleteTemplate = viewModel::deleteTemplate,
+            openTemplate = onOpenTemplate,
+            openTemplates = onOpenTemplates,
             openWorkout = onOpenWorkout,
             openExercise = onOpenExercise,
             newExercise = onNewExercise,
@@ -79,10 +86,12 @@ fun HomeRoute(onOpenWorkout: (Long) -> Unit, onOpenExercise: (Long) -> Unit, onN
 
 /** Everything the home screen can ask for. */
 data class HomeActions(
+    /** Starts an empty workout. */
     val start: () -> Unit = {},
     val startTemplate: (templateId: Long) -> Unit = {},
-    val renameTemplate: (templateId: Long, name: String) -> Unit = { _, _ -> },
-    val deleteTemplate: (templateId: Long) -> Unit = {},
+    val openTemplate: (templateId: Long) -> Unit = {},
+    /** The templates page, [creating] a new one straight away. */
+    val openTemplates: (creating: Boolean) -> Unit = {},
     val openWorkout: (id: Long) -> Unit = {},
     val openExercise: (id: Long) -> Unit = {},
     val newExercise: () -> Unit = {},
@@ -93,7 +102,8 @@ enum class HomeTab { Workouts, Home, Exercises }
 
 /**
  * Three tabs: past workouts a day at a time under a week strip, the dashboard in the middle where
- * the app opens, and the exercise library.
+ * the app opens, and the exercise library. Starting a workout offers an empty one or a template;
+ * the templates have their own page, from the dashboard's top bar.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -104,6 +114,7 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
     initialTab: HomeTab = HomeTab.Home,
     initialDay: LocalDate? = null,
+    initiallyStarting: Boolean = false,
 ) {
     val format = rememberLiftFormat()
     var tab by rememberSaveable { mutableStateOf(initialTab) }
@@ -115,6 +126,7 @@ fun HomeScreen(
     val day = picked ?: lastTrained
     val select = { date: LocalDate -> picked = date.coerceAtMost(today) }
     var pickingDate by rememberSaveable { mutableStateOf(false) }
+    var starting by rememberSaveable { mutableStateOf(initiallyStarting) }
     val log = tab == HomeTab.Workouts
 
     BackHandler(enabled = log && picked != null) { picked = null }
@@ -132,6 +144,11 @@ fun HomeScreen(
                             }
                             IconButton(onClick = { pickingDate = true }) {
                                 Icon(RangeIcons.CalendarMonth, contentDescription = stringResource(R.string.action_go_to_date))
+                            }
+                        }
+                        if (tab == HomeTab.Home) {
+                            IconButton(onClick = { actions.openTemplates(false) }) {
+                                Icon(RangeIcons.Bookmarks, contentDescription = stringResource(R.string.home_templates))
                             }
                         }
                         IconButton(onClick = actions.openSettings) {
@@ -186,7 +203,7 @@ fun HomeScreen(
                 HomeTab.Workouts, HomeTab.Home -> ExtendedFloatingActionButton(
                     text = { Text(stringResource(if (state.inProgress != null) R.string.workout_continue else R.string.workout_start)) },
                     icon = { Icon(RangeIcons.FitnessCenter, contentDescription = null) },
-                    onClick = actions.start,
+                    onClick = { state.inProgress?.let { actions.openWorkout(it.workout.id) } ?: run { starting = true } },
                     containerColor = container,
                     contentColor = content,
                 )
@@ -202,7 +219,7 @@ fun HomeScreen(
             HomeTab.Workouts -> RangeDayPager(selected = day, onSelect = select, modifier = Modifier.fillMaxSize(), last = today) { page ->
                 DayLog(state, page, format, actions, contentPadding)
             }
-            HomeTab.Home -> Dashboard(state, now, format, actions, contentPadding)
+            HomeTab.Home -> Dashboard(state, now, format, contentPadding)
             HomeTab.Exercises -> ExerciseList(
                 exercises = state.exercises,
                 bests = state.bests,
@@ -210,6 +227,10 @@ fun HomeScreen(
                 contentPadding = contentPadding,
             )
         }
+    }
+
+    if (starting) {
+        StartSheet(state.templates, actions, onDismiss = { starting = false })
     }
 
     if (pickingDate) {

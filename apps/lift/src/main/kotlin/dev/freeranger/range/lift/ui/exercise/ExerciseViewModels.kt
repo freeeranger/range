@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.freeranger.range.lift.data.Exercise
 import dev.freeranger.range.lift.data.LiftRepository
+import dev.freeranger.range.lift.data.PickTarget
 import dev.freeranger.range.lift.data.Progression
 import dev.freeranger.range.lift.data.Record
 import dev.freeranger.range.lift.data.Workout
@@ -28,7 +29,7 @@ data class PickerState(
 )
 
 class ExercisePickerViewModel(
-    private val workoutId: Long,
+    private val target: PickTarget,
     private val repository: LiftRepository,
     /** Outlives this screen, which closes as soon as an exercise is picked. */
     private val appScope: CoroutineScope,
@@ -37,15 +38,15 @@ class ExercisePickerViewModel(
         PickerState(exercises, bestSets(logs), recentExercises(logs))
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PickerState())
 
-    /** Adds the exercises to the workout, in this order. */
+    /** Adds the exercises where they're going, in this order, or puts the one in place of another. */
     fun pick(exerciseIds: List<Long>) {
-        appScope.launch { exerciseIds.forEach { repository.addToWorkout(workoutId, it) } }
+        appScope.launch { repository.pick(target, exerciseIds) }
     }
 }
 
 class ExerciseEditViewModel(
     private val id: Long?,
-    private val workoutId: Long?,
+    private val target: PickTarget?,
     private val repository: LiftRepository,
     /** Outlives this screen, which closes as soon as Save is tapped. */
     private val appScope: CoroutineScope,
@@ -54,14 +55,14 @@ class ExerciseEditViewModel(
         .map { all -> all.firstOrNull { it.id == id } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    /** Saves the changes, or adds the new exercise to the library and, if one is open, the workout. */
+    /** Saves the changes, or adds the new exercise to the library and, if it was being picked for one, the workout or template. */
     fun save(exercise: Exercise) {
         appScope.launch {
             if (id != null) {
                 repository.updateExercise(exercise.copy(id = id))
             } else {
                 val added = repository.addExercise(exercise)
-                if (workoutId != null) repository.addToWorkout(workoutId, added)
+                if (target != null) repository.pick(target, listOf(added))
             }
         }
     }

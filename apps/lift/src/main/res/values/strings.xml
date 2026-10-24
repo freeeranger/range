@@ -72,9 +72,6 @@
     <string name="summary_done">Done</string>
     <string name="summary_records">New records</string>
     <string name="summary_records_was">was %1$s</string>
-    <string name="summary_compared">Compared with last time</string>
-    <string name="summary_first_time">First time</string>
-    <string name="summary_same">Same as last time</string>
     <plurals name="summary_week">
         <item quantity="one">%1$d workout this week</item>
         <item quantity="other">%1$d workouts this week</item>
@@ -82,7 +79,6 @@
 
     <!-- Templates -->
     <string name="home_templates">Templates</string>
-    <string name="template_start">Start</string>
     <string name="template_last">Last done %1$s</string>
     <string name="template_delete">Delete template</string>
     <string name="template_delete_title">Delete %1$s?</string>
@@ -203,4 +199,16 @@
     <string name="exercise_one_arm_dumbbell_row">One-arm dumbbell row</string>
     <string name="exercise_plank">Plank</string>
     <string name="exercise_side_plank">Side plank</string>
+    <string name="template_new">New template</string>
+    <string name="template_sets_fewer">Fewer sets</string>
+    <string name="template_sets_more">More sets</string>
+    <string name="start_empty">Empty workout</string>
+    <string name="exercise_swap">Replace</string>
+    <string name="exercise_swap_title">Replace exercise</string>
+    <string name="home_frequency">Workouts per week</string>
+    <string name="home_frequency_average">Average %1$s</string>
+    <string name="home_frequency_description">Workouts per week, oldest first: %1$s.</string>
+    <string name="summary_started">Started</string>
+    <string name="summary_ended">Ended</string>
+    <string name="template_edit">Edit %1$s</string>
 </resources>

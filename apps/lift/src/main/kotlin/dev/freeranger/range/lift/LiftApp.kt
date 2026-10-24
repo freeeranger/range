@@ -10,11 +10,14 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
+import dev.freeranger.range.lift.data.PickTarget
 import dev.freeranger.range.lift.ui.exercise.ExerciseDetailRoute
 import dev.freeranger.range.lift.ui.exercise.ExerciseEditRoute
 import dev.freeranger.range.lift.ui.exercise.ExercisePickerRoute
 import dev.freeranger.range.lift.ui.home.HomeRoute
 import dev.freeranger.range.lift.ui.settings.LiftSettingsRoute
+import dev.freeranger.range.lift.ui.template.TemplateRoute
+import dev.freeranger.range.lift.ui.template.TemplatesRoute
 import dev.freeranger.range.lift.ui.workout.SummaryRoute
 import dev.freeranger.range.lift.ui.workout.WorkoutRoute
 import dev.freeranger.range.ui.settings.RangeAboutScreen
@@ -38,16 +41,23 @@ data class WorkoutKey(val id: Long) : NavKey
 @Serializable
 data class SummaryKey(val id: Long) : NavKey
 
-/** Picking an exercise to add to the workout [workoutId]. */
+/** Picking exercises for [target]: to add to a workout or template, or to replace one of its exercises. */
 @Serializable
-data class ExercisePickerKey(val workoutId: Long) : NavKey
+data class ExercisePickerKey(val target: PickTarget) : NavKey
+
+/** Every template; [creating] opens onto naming a new one. */
+@Serializable
+data class TemplatesKey(val creating: Boolean = false) : NavKey
+
+@Serializable
+data class TemplateKey(val id: Long) : NavKey
 
 @Serializable
 data class ExerciseKey(val id: Long) : NavKey
 
-/** Editing exercise [id], or adding a new one when it's null: straight into workout [workoutId], if given. */
+/** Editing exercise [id], or adding a new one when it's null: straight to [target], if it was being picked. */
 @Serializable
-data class ExerciseEditKey(val id: Long? = null, val workoutId: Long? = null) : NavKey
+data class ExerciseEditKey(val id: Long? = null, val target: PickTarget? = null) : NavKey
 
 @Serializable
 data object SettingsKey : NavKey
@@ -87,9 +97,13 @@ fun LiftApp(openWorkout: Long? = null, onOpened: () -> Unit = {}) {
             val openLicense: (RangeLicense) -> Unit = { backStack.add(LicenseKey(it.name)) }
             val openExercise: (Long) -> Unit = { backStack.add(ExerciseKey(it)) }
 
+            val openWorkout: (Long) -> Unit = { backStack.add(WorkoutKey(it)) }
+
             entry<HomeKey> {
                 HomeRoute(
-                    onOpenWorkout = { backStack.add(WorkoutKey(it)) },
+                    onOpenWorkout = openWorkout,
+                    onOpenTemplate = { backStack.add(TemplateKey(it)) },
+                    onOpenTemplates = { backStack.add(TemplatesKey(creating = it)) },
                     onOpenExercise = openExercise,
                     onNewExercise = { backStack.add(ExerciseEditKey()) },
                     onOpenSettings = { backStack.add(SettingsKey) },
@@ -103,7 +117,25 @@ fun LiftApp(openWorkout: Long? = null, onOpened: () -> Unit = {}) {
                         back()
                         backStack.add(SummaryKey(key.id))
                     },
-                    onAddExercise = { backStack.add(ExercisePickerKey(key.id)) },
+                    onAddExercise = { backStack.add(ExercisePickerKey(PickTarget.IntoWorkout(key.id))) },
+                    onSwapExercise = { backStack.add(ExercisePickerKey(PickTarget.SwapInWorkout(it))) },
+                    onOpenExercise = openExercise,
+                )
+            }
+            entry<TemplatesKey> { key ->
+                TemplatesRoute(creating = key.creating, onBack = back, onOpen = { backStack.add(TemplateKey(it)) })
+            }
+            entry<TemplateKey> { key ->
+                TemplateRoute(
+                    id = key.id,
+                    onBack = back,
+                    onStarted = { workoutId ->
+                        // The workout takes the templates' place, so finishing it goes home.
+                        while (backStack.lastOrNull().let { it is TemplateKey || it is TemplatesKey }) back()
+                        openWorkout(workoutId)
+                    },
+                    onAddExercise = { backStack.add(ExercisePickerKey(PickTarget.IntoTemplate(key.id))) },
+                    onSwapExercise = { backStack.add(ExercisePickerKey(PickTarget.SwapInTemplate(it))) },
                     onOpenExercise = openExercise,
                 )
             }
@@ -112,9 +144,9 @@ fun LiftApp(openWorkout: Long? = null, onOpened: () -> Unit = {}) {
             }
             entry<ExercisePickerKey> { key ->
                 ExercisePickerRoute(
-                    workoutId = key.workoutId,
+                    target = key.target,
                     onDone = back,
-                    onCreate = { backStack.add(ExerciseEditKey(workoutId = key.workoutId)) },
+                    onCreate = { backStack.add(ExerciseEditKey(target = key.target)) },
                 )
             }
             entry<ExerciseKey> { key ->
@@ -123,11 +155,11 @@ fun LiftApp(openWorkout: Long? = null, onOpened: () -> Unit = {}) {
             entry<ExerciseEditKey> { key ->
                 ExerciseEditRoute(
                     id = key.id,
-                    workoutId = key.workoutId,
+                    target = key.target,
                     onSaved = {
                         back()
-                        // A new exercise went straight into the workout, so the picker is done too.
-                        if (key.workoutId != null && backStack.lastOrNull() is ExercisePickerKey) back()
+                        // A new exercise went straight where it was being picked for, so the picker is done too.
+                        if (key.target != null && backStack.lastOrNull() is ExercisePickerKey) back()
                     },
                     onCancel = back,
                 )

@@ -29,12 +29,15 @@ class UndoBackupTest {
     @After
     fun close() = database.close()
 
+    /** Every built-in exercise, as libraries had them before most were retired. */
+    private suspend fun addAllBuiltIns() = database.lift().insertBuiltIn(BuiltInExercises.all.map { it.toExercise() })
+
     private suspend fun log(id: Long) = repository.log(id).first()!!
     private suspend fun exercise(key: String) = repository.exercises.first().first { it.key == key }
 
     /** A finished workout of bench press (two sets) and squat (one). */
     private suspend fun workout(): Long {
-        repository.addBuiltInExercises()
+        addAllBuiltIns()
         val id = repository.start()
         repository.addToWorkout(id, exercise("bench_press").id)
         repository.addToWorkout(id, exercise("squat").id)

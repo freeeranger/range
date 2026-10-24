@@ -28,7 +28,6 @@ import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.time.temporal.WeekFields
 import java.util.Locale
-import kotlin.math.abs
 
 /** Turns dates, weights, sets and names into the text shown on screen. */
 class LiftFormat(context: Context) {
@@ -54,6 +53,7 @@ class LiftFormat(context: Context) {
     private val shortDateFormat = pattern("MMMd")
     private val weightFormat = NumberFormat.getNumberInstance(locale).apply { maximumFractionDigits = 2 }
     private val volumeFormat = NumberFormat.getIntegerInstance(locale)
+    private val averageFormat = NumberFormat.getNumberInstance(locale).apply { maximumFractionDigits = 1 }
     private val collator = Collator.getInstance(locale)
 
     /** The week starts on the day people expect where they live: Monday in Sweden, Sunday in the US. */
@@ -172,19 +172,11 @@ class LiftFormat(context: Context) {
         ProgressMetric.Time -> seconds(value.toInt())
     }
 
-    /** "+2.5 kg", "−1 rep", "+0:15": the change from [last] to [today], or null if there's none worth showing. */
-    fun change(metric: ProgressMetric, today: Double, last: Double): String? {
-        val difference = when (metric) {
-            ProgressMetric.OneRepMax -> Math.round(today).toDouble() - Math.round(last)
-            else -> today - last
-        }
-        if (abs(difference) < 0.01) return null
-        val sign = if (difference > 0) "+" else "−"
-        return sign + metric(metric, abs(difference))
-    }
-
     /** "62.5" or "62,5": a weight without its unit, as typed into a set. */
     fun number(kg: Double): String = weightFormat.format(kg)
+
+    /** "2.5" or "2,5": an average count, to one decimal. */
+    fun average(value: Double): String = averageFormat.format(value)
 
     fun kg(kg: Double): String = res.getString(R.string.unit_kg, number(kg))
 

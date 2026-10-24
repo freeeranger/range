@@ -84,7 +84,8 @@ fun ExerciseList(
     }
 
     LazyColumn(modifier.fillMaxSize(), contentPadding = contentPadding) {
-        item(key = "search") {
+        // Nothing to search in an empty library.
+        if (exercises.any { !it.archived }) item(key = "search") {
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },

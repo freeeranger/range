@@ -30,20 +30,23 @@ class LiftRepositoryTest {
     @After
     fun close() = database.close()
 
+    /** Every built-in exercise, as libraries had them before most were retired. */
+    private suspend fun addAllBuiltIns() = database.lift().insertBuiltIn(BuiltInExercises.all.map { it.toExercise() })
+
     private suspend fun log(id: Long) = repository.log(id).first()!!
 
     private suspend fun bench(): Long {
-        repository.addBuiltInExercises()
+        addAllBuiltIns()
         return repository.exercises.first().first { it.key == "bench_press" }.id
     }
 
     @Test
-    fun `built-in exercises are added once, and each has a name`() = runTest {
+    fun `only the offered built-in exercises are added, once, and every built-in has a name`() = runTest {
         repository.addBuiltInExercises()
         repository.addBuiltInExercises()
         val keys = repository.exercises.first().mapNotNull { it.key }
-        assertEquals(BuiltInExercises.all.map { it.key }.sorted(), keys.sorted())
-        assertEquals(keys.toSet(), LiftFormat.BUILT_IN_NAMES.keys)
+        assertEquals(BuiltInExercises.offered.map { it.key }.sorted(), keys.sorted())
+        assertEquals(BuiltInExercises.all.map { it.key }.toSet(), LiftFormat.BUILT_IN_NAMES.keys)
     }
 
     @Test
@@ -110,7 +113,7 @@ class LiftRepositoryTest {
 
     @Test
     fun `exercises can be edited, removed and put back, and removed ones stay in past workouts`() = runTest {
-        repository.addBuiltInExercises()
+        addAllBuiltIns()
         val pullUp = repository.exercises.first().first { it.key == "pull_up" }
         assertEquals(Load.ExtraWeight, pullUp.load)
         repository.updateExercise(pullUp.copy(name = "  Chin-up ", load = Load.Bodyweight, key = "something else", archived = true))
