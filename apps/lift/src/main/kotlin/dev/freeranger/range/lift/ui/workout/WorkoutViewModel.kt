@@ -22,6 +22,8 @@ data class WorkoutState(
     val previous: Map<Long, List<WorkoutSet>> = emptyMap(),
     /** The records this workout's ticked-off sets set, so far. */
     val records: List<Record> = emptyList(),
+    /** Another workout is in progress, so this one can't be repeated yet. */
+    val busy: Boolean = false,
 )
 
 class WorkoutViewModel(
@@ -33,7 +35,7 @@ class WorkoutViewModel(
     val state: StateFlow<WorkoutState> = repository.logs.map { logs ->
         val log = logs.firstOrNull { it.workout.id == id }
         val previous = log?.exercises.orEmpty().associate { it.entry.id to previousSets(logs, it.exercise.id, log!!.workout.startedAt) }
-        WorkoutState(log, previous, log?.let { newRecords(it, logs) }.orEmpty())
+        WorkoutState(log, previous, log?.let { newRecords(it, logs) }.orEmpty(), busy = logs.any { !it.workout.isFinished && it.workout.id != id })
     }.stateIn(viewModelScope, SharingStarted.Eagerly, WorkoutState())
 
     fun rename(name: String) {
@@ -87,6 +89,11 @@ class WorkoutViewModel(
 
     fun saveTemplate(name: String) {
         appScope.launch { repository.saveTemplate(id, name) }
+    }
+
+    /** Starts this workout again and hands over the new one's id to open it. */
+    fun repeat(onStarted: (Long) -> Unit) {
+        viewModelScope.launch { repository.repeat(id)?.let(onStarted) }
     }
 
     fun delete() {

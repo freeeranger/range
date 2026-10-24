@@ -1,5 +1,6 @@
 package dev.freeranger.range.lift.ui.exercise
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +18,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -42,6 +44,7 @@ import dev.freeranger.range.lift.R
 import dev.freeranger.range.lift.data.Exercise
 import dev.freeranger.range.lift.data.PickTarget
 import dev.freeranger.range.lift.data.ProgressMetric
+import dev.freeranger.range.lift.data.ProgressPoint
 import dev.freeranger.range.lift.data.Progression
 import dev.freeranger.range.lift.data.Record
 import dev.freeranger.range.lift.data.WorkoutSet
@@ -257,12 +260,24 @@ fun ExerciseDetailScreen(
  */
 @Composable
 private fun ProgressCard(progression: Progression, today: LocalDate, format: LiftFormat) {
-    val points = progression.points
+    // Only ranges that show something different, with a line's worth of points, are offered.
+    val ranges = remember(progression, today, format) {
+        ChartRange.entries.filter { range -> range == ChartRange.All || progression.within(range, today, format).size in 2 until progression.points.size }
+    }
+    var range by rememberSaveable { mutableStateOf(ChartRange.All) }
+    val points = progression.within(range.takeIf { it in ranges } ?: ChartRange.All, today, format)
     val metric = progression.metric
     val value = { v: Double -> format.metric(metric, v) }
     Card(Modifier.fillMaxWidth().padding(horizontal = RangeSpace.gutter, vertical = RangeSpace.s2)) {
         Column(Modifier.padding(RangeSpace.s4), verticalArrangement = Arrangement.spacedBy(RangeSpace.s3)) {
             Text(stringResource(metric.title), style = MaterialTheme.typography.titleMedium)
+            if (ranges.size > 1) {
+                Row(horizontalArrangement = Arrangement.spacedBy(RangeSpace.s2)) {
+                    ranges.forEach {
+                        FilterChip(selected = range == it, onClick = { range = it }, label = { Text(stringResource(it.label)) })
+                    }
+                }
+            }
             RangeLineChart(
                 values = points.map { it.value },
                 xLabel = { i -> points.getOrNull(i)?.let { format.shortDate(it.at.atZone(format.zone).toLocalDate()) }.orEmpty() },
@@ -272,6 +287,19 @@ private fun ProgressCard(progression: Progression, today: LocalDate, format: Lif
             )
         }
     }
+}
+
+/** How far back a progress chart looks. */
+enum class ChartRange(val months: Long?, @StringRes val label: Int) {
+    ThreeMonths(3, R.string.chart_three_months),
+    Year(12, R.string.chart_year),
+    All(null, R.string.chart_all),
+}
+
+/** The points no older than [range] reaches back from [today]. */
+private fun Progression.within(range: ChartRange, today: LocalDate, format: LiftFormat): List<ProgressPoint> {
+    val from = range.months?.let { today.minusMonths(it) } ?: return points
+    return points.filter { it.at.atZone(format.zone).toLocalDate() >= from }
 }
 
 /** The exercise's best ever by each measure it keeps, with the set and the day. */

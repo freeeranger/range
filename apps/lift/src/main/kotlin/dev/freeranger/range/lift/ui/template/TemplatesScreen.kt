@@ -122,20 +122,22 @@ private fun TemplateCard(template: WorkoutTemplate, lastDone: Instant?, today: L
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Text(
-                summary(template, lastDone, today, format),
-                modifier = Modifier.padding(top = RangeSpace.s1),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            summary(template, lastDone, today, format).takeIf { it.isNotEmpty() }?.let {
+                Text(
+                    it,
+                    modifier = Modifier.padding(top = RangeSpace.s1),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }
 
-/** "9 sets · Last done Yesterday". */
+/** "9 sets · Last done Yesterday"; empty for a template with nothing in it yet. */
 @Composable
 internal fun summary(template: WorkoutTemplate, lastDone: Instant?, today: LocalDate, format: LiftFormat): String =
     listOfNotNull(
-        format.sets(template.sets),
+        format.sets(template.sets).takeIf { template.sets > 0 },
         lastDone?.let { stringResource(R.string.template_last, format.day(it, today)) },
     ).joinToString(" · ")

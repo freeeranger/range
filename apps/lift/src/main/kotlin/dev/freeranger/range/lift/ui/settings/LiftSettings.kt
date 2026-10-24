@@ -23,18 +23,23 @@ import dev.freeranger.range.ui.icons.RangeIcons
 import dev.freeranger.range.ui.settings.RangeAppearance
 import dev.freeranger.range.ui.settings.RangeSettingRow
 import dev.freeranger.range.ui.settings.RangeSettingsScreen
+import dev.freeranger.range.ui.settings.RangeSwitchRow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
 
-/** The shared settings, with Lift's backup on top: everything saved to a file the user picks, and restored from one. */
+/**
+ * The shared settings, with Lift's on top: keeping the screen on during workouts, and backup,
+ * everything saved to a file the user picks and restored from one.
+ */
 @Composable
 fun LiftSettingsRoute(onBack: () -> Unit, onOpenAbout: () -> Unit) {
     val container = LocalAppContainer.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val appearance by container.appearance.appearance.collectAsStateWithLifecycle(RangeAppearance())
+    val keepScreenOn by container.preferences.keepScreenOn.collectAsStateWithLifecycle(false)
     // A backup file read and waiting for the go-ahead to replace everything.
     var restoring by remember { mutableStateOf<String?>(null) }
     var invalid by remember { mutableStateOf(false) }
@@ -64,6 +69,8 @@ fun LiftSettingsRoute(onBack: () -> Unit, onOpenAbout: () -> Unit) {
     LiftSettingsScreen(
         appearance = appearance,
         onAppearanceChange = { scope.launch { container.appearance.set(it) } },
+        keepScreenOn = keepScreenOn,
+        onKeepScreenOnChange = { scope.launch { container.preferences.setKeepScreenOn(it) } },
         onBack = onBack,
         onOpenAbout = onOpenAbout,
         onExport = { export.launch("lift-${LocalDate.now()}.json") },
@@ -99,11 +106,13 @@ fun LiftSettingsRoute(onBack: () -> Unit, onOpenAbout: () -> Unit) {
     }
 }
 
-/** The shared settings with Lift's Backup section first. */
+/** The shared settings with Lift's own first: the workout screen, then Backup. */
 @Composable
 fun LiftSettingsScreen(
     appearance: RangeAppearance,
     onAppearanceChange: (RangeAppearance) -> Unit,
+    keepScreenOn: Boolean,
+    onKeepScreenOnChange: (Boolean) -> Unit,
     onBack: () -> Unit,
     onOpenAbout: () -> Unit,
     onExport: () -> Unit,
@@ -115,6 +124,8 @@ fun LiftSettingsScreen(
         onBack = onBack,
         onOpenAbout = onOpenAbout,
         content = {
+            item { RangeSectionHeader(stringResource(R.string.settings_workout)) }
+            item { RangeSwitchRow(RangeIcons.LightMode, stringResource(R.string.settings_keep_screen_on), keepScreenOn, onKeepScreenOnChange) }
             item { RangeSectionHeader(stringResource(R.string.settings_backup)) }
             item { RangeSettingRow(RangeIcons.Save, stringResource(R.string.backup_export), onClick = onExport) }
             item { RangeSettingRow(RangeIcons.SettingsBackupRestore, stringResource(R.string.backup_restore), onClick = onRestore) }

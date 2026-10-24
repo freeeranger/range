@@ -198,10 +198,18 @@ class ScreenshotTest {
     )
 
     /** An exercise's page with three months of history behind it. */
-    private fun detail(key: String): ExerciseDetailState {
+    private fun detail(key: String, logs: List<WorkoutLog> = progress): ExerciseDetailState {
         val exercise = exercises.first { it.key == key }
-        val sessions = progress.mapNotNull { log -> log.exercises.firstOrNull { it.exercise.id == exercise.id }?.let { Session(log.workout, it.sets) } }
-        return ExerciseDetailState(exercise, sessions, bestSets(progress)[exercise.id], progression(progress, exercise), records(progress, exercise))
+        val sessions = logs.mapNotNull { log -> log.exercises.firstOrNull { it.exercise.id == exercise.id }?.let { Session(log.workout, it.sets) } }
+        return ExerciseDetailState(exercise, sessions, bestSets(logs)[exercise.id], progression(logs, exercise), records(logs, exercise))
+    }
+
+    /** The three months of squats, after a lighter few from the spring: long enough to choose how far back to look. */
+    private val longer: List<WorkoutLog> = progress + listOf(8L, 7L, 6L).mapIndexed { i, monthsAgo ->
+        val day = friday.minusMonths(monthsAgo)
+        val workout = Workout(2000L + i, "Legs", at(day.atTime(17, 30)), at(day.atTime(18, 30)))
+        val entry = WorkoutExercise(2100L + i, workout.id, id("squat"), 0)
+        WorkoutLog(workout, listOf(LoggedExercise(entry, exercises.first { it.key == "squat" }, listOf(WorkoutSet(2200L + i, entry.id, 0, 60.0 + 5 * i, 5, done = true)))))
     }
 
     @Test
@@ -333,6 +341,9 @@ class ScreenshotTest {
     }
 
     @Test
+    fun workoutDropUnticked() = capture { WorkoutScreen(activeState, now, WorkoutActions(), initialDialog = WorkoutDialog.DropUnticked) }
+
+    @Test
     fun workoutAllTicked() = capture {
         val allDone = active.copy(exercises = active.exercises.map { e -> e.copy(sets = e.sets.map { it.copy(done = true, reps = it.reps ?: 8, seconds = it.seconds ?: 60) }) })
         WorkoutScreen(WorkoutState(allDone), now, WorkoutActions())
@@ -352,6 +363,9 @@ class ScreenshotTest {
 
     @Test
     fun exerciseProgress() = capture { ExerciseDetailScreen(detail("squat"), friday, onBack = {}) }
+
+    @Test
+    fun exerciseProgressRanges() = capture { ExerciseDetailScreen(detail("squat", longer), friday, onBack = {}) }
 
     @Test
     @Config(qualifiers = "+notnight")
@@ -378,7 +392,9 @@ class ScreenshotTest {
     }
 
     @Test
-    fun settings() = capture { LiftSettingsScreen(RangeAppearance(), onAppearanceChange = {}, onBack = {}, onOpenAbout = {}, onExport = {}, onRestore = {}) }
+    fun settings() = capture {
+        LiftSettingsScreen(RangeAppearance(), onAppearanceChange = {}, keepScreenOn = false, onKeepScreenOnChange = {}, onBack = {}, onOpenAbout = {}, onExport = {}, onRestore = {})
+    }
 
     @Test
     fun about() = capture {

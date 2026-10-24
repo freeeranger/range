@@ -18,6 +18,15 @@ fun weekTotals(logs: List<WorkoutLog>, today: LocalDate, firstDayOfWeek: DayOfWe
     return WeekTotals(start, week.size, week.sumOf { it.doneSets.size }, week.sumOf { it.volume })
 }
 
+/** Sets ticked off for each muscle in the week that has [today], finished workouts only. Every muscle is there, untrained ones at zero. */
+fun weekSetsByMuscle(logs: List<WorkoutLog>, today: LocalDate, firstDayOfWeek: DayOfWeek, zone: ZoneId): Map<Muscle, Int> {
+    val start = today.with(TemporalAdjusters.previousOrSame(firstDayOfWeek))
+    val counts = logs.filter { log ->
+        log.workout.isFinished && log.workout.startedAt.atZone(zone).toLocalDate().let { it >= start && it < start.plusWeeks(1) }
+    }.flatMap { it.exercises }.groupBy { it.exercise.muscle }.mapValues { (_, logged) -> logged.sumOf { e -> e.sets.count { it.done } } }
+    return Muscle.entries.associateWith { counts[it] ?: 0 }
+}
+
 /** Finished workouts in the week starting [start]. */
 data class WeekCount(val start: LocalDate, val workouts: Int)
 

@@ -228,6 +228,20 @@ class LiftRepository(
         const val MAX_SETS = 20
     }
 
+    /**
+     * Starts a new workout with the same name, exercises and number of sets as the finished
+     * [workoutId], last time's numbers showing as placeholders. Null if one is already in progress.
+     */
+    suspend fun repeat(workoutId: Long): Long? {
+        if (dao.inProgress() != null) return null
+        val log = log(workoutId).first() ?: return null
+        val entries = log.plan().mapIndexed { position, (exerciseId, sets) ->
+            WorkoutExercise(workoutId = 0, exerciseId = exerciseId, position = position) to
+                List(sets) { WorkoutSet(workoutExerciseId = 0, position = it) }
+        }
+        return dao.insert(Workout(name = log.workout.name, startedAt = clock().instant(), templateId = log.workout.templateId), entries)
+    }
+
     private fun List<Pair<Long, Int>>.toTemplateExercises() =
         mapIndexed { position, (exerciseId, sets) -> TemplateExercise(templateId = 0, exerciseId = exerciseId, position = position, sets = sets) }
 }

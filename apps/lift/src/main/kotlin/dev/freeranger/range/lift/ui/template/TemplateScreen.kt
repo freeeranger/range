@@ -187,13 +187,15 @@ fun TemplateScreen(
                 title = {
                     Column {
                         Text(template.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(
-                            summary(workoutTemplate, state.lastDone, today, format),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                        summary(workoutTemplate, state.lastDone, today, format).takeIf { it.isNotEmpty() }?.let {
+                            Text(
+                                it,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
                 },
                 navigationIcon = {
@@ -398,6 +400,7 @@ private fun PlannedRow(
             decreaseDescription = stringResource(R.string.template_sets_fewer),
             increaseDescription = stringResource(R.string.template_sets_more),
             range = 1..LiftRepository.MAX_SETS,
+            filled = false,
         )
         Box {
             IconButton(onClick = { menu = true }) {

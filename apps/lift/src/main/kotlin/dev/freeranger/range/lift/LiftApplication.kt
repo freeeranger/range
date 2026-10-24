@@ -3,6 +3,7 @@ package dev.freeranger.range.lift
 import android.app.Application
 import android.content.Context
 import dev.freeranger.range.lift.data.LiftDatabase
+import dev.freeranger.range.lift.data.LiftPreferences
 import dev.freeranger.range.lift.data.LiftRepository
 import dev.freeranger.range.lift.rest.AndroidRestStopwatch
 import dev.freeranger.range.ui.settings.RangeAppearanceStore
@@ -16,6 +17,7 @@ class AppContainer(context: Context) {
     /** For work that must outlive a screen, like saving on exit. */
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val appearance = RangeAppearanceStore(context)
+    val preferences = LiftPreferences(context)
     val repository = LiftRepository(LiftDatabase.create(context).lift(), AndroidRestStopwatch(context))
 }
 

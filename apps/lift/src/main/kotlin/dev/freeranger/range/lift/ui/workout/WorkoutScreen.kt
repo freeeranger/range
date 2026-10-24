@@ -33,6 +33,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -69,6 +70,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.InterceptPlatformTextInput
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.PlatformTextInputMethodRequest
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -79,6 +81,7 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
@@ -133,10 +136,13 @@ fun WorkoutRoute(
     onAddExercise: () -> Unit,
     onSwapExercise: (entryId: Long) -> Unit,
     onOpenExercise: (Long) -> Unit,
+    onRepeated: (workoutId: Long) -> Unit,
 ) {
     val container = LocalAppContainer.current
     val viewModel = viewModel { WorkoutViewModel(id, container.repository, container.scope) }
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val keepScreenOn by container.preferences.keepScreenOn.collectAsStateWithLifecycle(false)
+    KeepScreenOn(keepScreenOn && state.log?.workout?.isFinished == false)
     WorkoutScreen(
         state = state,
         // Each second, for the stopwatch.
@@ -165,6 +171,7 @@ fun WorkoutRoute(
             },
             setDone = viewModel::setDone,
             setNotes = viewModel::setNotes,
+            repeat = { viewModel.repeat(onRepeated) },
             saveTemplate = viewModel::saveTemplate,
         ),
     )
@@ -195,9 +202,11 @@ data class WorkoutActions(
     val setDone: (label: String) -> Unit = {},
     val setNotes: (String) -> Unit = {},
     val saveTemplate: (name: String) -> Unit = {},
+    /** Starts a finished workout again, as a new one. */
+    val repeat: () -> Unit = {},
 )
 
-enum class WorkoutDialog { Rename, Delete, SaveTemplate, Notes }
+enum class WorkoutDialog { Rename, Delete, SaveTemplate, Notes, DropUnticked }
 
 /**
  * A workout. In progress, it's where sets are logged: a card per exercise, dragged by its handle
@@ -235,6 +244,10 @@ fun WorkoutScreen(
         editing = false
     }
     BackHandler(enabled = editing, onBack = stopEditing)
+    val unticked = log.exercises.sumOf { logged -> logged.sets.count { !it.done } }
+    // Finishing the workout, or the editing of a finished one: unticked sets go either way.
+    val end = if (workout.isFinished) stopEditing else actions.finish
+    val endLabel = stringResource(if (workout.isFinished) R.string.summary_done else R.string.workout_finish)
     val setDeleted = stringResource(R.string.workout_set_deleted)
     val exerciseRemoved = stringResource(R.string.workout_exercise_removed)
     val undo = stringResource(R.string.action_undo)
@@ -287,14 +300,20 @@ fun WorkoutScreen(
                     IconButton(onClick = actions.back) { Icon(RangeIcons.ArrowBack, contentDescription = stringResource(R.string.action_back)) }
                 },
                 actions = {
-                    // Each lights up once every set is ticked off.
-                    if (!workout.isFinished) {
-                        Button(onClick = actions.finish, enabled = ready) {
-                            Text(stringResource(R.string.workout_finish))
-                        }
-                    } else if (editing) {
-                        Button(onClick = stopEditing, enabled = ready) {
-                            Text(stringResource(R.string.summary_done))
+                    // Each lights up once every set is ticked off. Before then it looks off but still
+                    // works, offering to drop what's unticked; with nothing ticked at all, it is off.
+                    if (!workout.isFinished || editing) {
+                        val colors = MaterialTheme.colorScheme
+                        Button(
+                            onClick = { if (ready) end() else dialog = WorkoutDialog.DropUnticked },
+                            enabled = unticked < log.exercises.sumOf { it.sets.size },
+                            colors = if (ready) {
+                                ButtonDefaults.buttonColors()
+                            } else {
+                                ButtonDefaults.buttonColors(containerColor = colors.onSurface.copy(alpha = 0.12f), contentColor = colors.onSurface.copy(alpha = 0.38f))
+                            },
+                        ) {
+                            Text(endLabel)
                         }
                     }
                     Box {
@@ -309,6 +328,17 @@ fun WorkoutScreen(
                                     onClick = {
                                         menu = false
                                         dialog = WorkoutDialog.SaveTemplate
+                                    },
+                                )
+                            }
+                            if (workout.isFinished && !editing) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.workout_repeat)) },
+                                    leadingIcon = { Icon(RangeIcons.Repeat, contentDescription = null) },
+                                    enabled = !state.busy,
+                                    onClick = {
+                                        menu = false
+                                        actions.repeat()
                                     },
                                 )
                             }
@@ -395,6 +425,19 @@ fun WorkoutScreen(
             blankAllowed = true,
             autoFocus = initialDialog != WorkoutDialog.Notes,
             multiLine = true,
+        )
+        WorkoutDialog.DropUnticked -> AlertDialog(
+            onDismissRequest = { dialog = null },
+            title = { Text(pluralStringResource(R.plurals.workout_drop_unticked, unticked, unticked)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        dialog = null
+                        end()
+                    },
+                ) { Text(endLabel) }
+            },
+            dismissButton = { TextButton(onClick = { dialog = null }) { Text(stringResource(R.string.dialog_cancel)) } },
         )
         WorkoutDialog.Delete -> AlertDialog(
             onDismissRequest = { dialog = null },
@@ -797,6 +840,16 @@ private fun NumberField(
                 )
             },
         )
+    }
+}
+
+/** Keeps the phone from locking while [enabled]: between sets, with the setting on. */
+@Composable
+private fun KeepScreenOn(enabled: Boolean) {
+    val view = LocalView.current
+    DisposableEffect(view, enabled) {
+        view.keepScreenOn = enabled
+        onDispose { view.keepScreenOn = false }
     }
 }
 

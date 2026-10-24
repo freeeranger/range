@@ -41,6 +41,7 @@ dependencies {
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.androidx.datastore.preferences)
     // Dragging a workout's exercises into a new order (Apache 2.0).
     implementation(libs.reorderable)
 

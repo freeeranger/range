@@ -189,4 +189,29 @@ class TemplateRestTest {
         repository.setTimes(workout, start, start.minusSeconds(60))
         assertEquals(start to start, log(workout).workout.let { it.startedAt to it.finishedAt })
     }
+
+    @Test
+    fun `a finished workout repeats with its name, exercises and ticked set counts, unless one is in progress`() = runTest {
+        addAllBuiltIns()
+        val monday = repository.start()
+        repository.rename(monday, "Push")
+        repository.pick(PickTarget.IntoWorkout(monday), listOf(exercise("bench_press").id, exercise("dip").id))
+        val bench = log(monday).exercises.first().entry.id
+        repository.addSet(bench)
+        repository.addSet(bench)
+        tickAll(monday)
+        repository.deleteSet(log(monday).exercises.last().sets.single().id)
+        repository.finish(monday)
+
+        val other = repository.start()
+        assertNull(repository.repeat(monday))
+        repository.delete(other)
+
+        now = now.plusSeconds(3 * 24 * 3600)
+        val again = log(repository.repeat(monday)!!)
+        assertEquals("Push", again.workout.name)
+        assertEquals(now, again.workout.startedAt)
+        assertEquals(listOf("bench_press" to 3), again.exercises.map { it.exercise.key to it.sets.size })
+        assertTrue(again.exercises.flatMap { it.sets }.none { it.done || it.weight != null })
+    }
 }

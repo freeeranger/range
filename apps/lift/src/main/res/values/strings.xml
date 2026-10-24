@@ -209,4 +209,15 @@
     <string name="template_edit">Edit %1$s</string>
     <string name="unit_kg_signed_label">± kg</string>
     <string name="template_last_time">Last time %1$s</string>
+    <string name="settings_workout">Workout</string>
+    <string name="settings_keep_screen_on">Keep screen on during workouts</string>
+    <string name="workout_repeat">Repeat workout</string>
+    <plurals name="workout_drop_unticked">
+        <item quantity="one">Drop %1$d unticked set?</item>
+        <item quantity="other">Drop %1$d unticked sets?</item>
+    </plurals>
+    <string name="home_muscle_sets">Sets per muscle</string>
+    <string name="chart_three_months">3 months</string>
+    <string name="chart_year">1 year</string>
+    <string name="chart_all">All</string>
 </resources>

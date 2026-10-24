@@ -102,4 +102,18 @@ class ProgressTest {
         assertEquals(1.5, averagePerWeek(weeks)!!, 0.01)
         assertNull(averagePerWeek(weeklyWorkouts(logs.takeLast(1), friday, DayOfWeek.MONDAY, zone, weeks = 4)))
     }
+
+    @Test
+    fun `this week's sets are counted per muscle, every muscle listed`() {
+        val squat = Exercise(id = 5, muscle = Muscle.Legs)
+        val logs = listOf(
+            workout(friday, bench, sets(80.0 to 5, 80.0 to 5) + sets(80.0 to 5, done = false)),
+            workout(friday.minusDays(2), squat, sets(100.0 to 5)),
+            workout(friday.minusDays(7), squat, sets(100.0 to 5)),
+            workout(friday, squat, sets(100.0 to 5), finished = false),
+        )
+        val sets = weekSetsByMuscle(logs, friday, DayOfWeek.MONDAY, zone)
+        assertEquals(Muscle.entries, sets.keys.toList())
+        assertEquals(mapOf(Muscle.Chest to 2, Muscle.Legs to 1), sets.filterValues { it > 0 })
+    }
 }

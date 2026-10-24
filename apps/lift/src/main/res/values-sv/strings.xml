@@ -206,4 +206,15 @@
     <string name="template_edit">Redigera %1$s</string>
     <string name="unit_kg_signed_label">± kg</string>
     <string name="template_last_time">Förra gången %1$s</string>
+    <string name="settings_workout">Pass</string>
+    <string name="settings_keep_screen_on">Håll skärmen på under pass</string>
+    <string name="workout_repeat">Upprepa passet</string>
+    <plurals name="workout_drop_unticked">
+        <item quantity="one">Ta bort %1$d set som inte är avbockat?</item>
+        <item quantity="other">Ta bort %1$d set som inte är avbockade?</item>
+    </plurals>
+    <string name="home_muscle_sets">Set per muskelgrupp</string>
+    <string name="chart_three_months">3 mån</string>
+    <string name="chart_year">1 år</string>
+    <string name="chart_all">Allt</string>
 </resources>

@@ -120,6 +120,10 @@ fun LiftApp(openWorkout: Long? = null, onOpened: () -> Unit = {}) {
                     onAddExercise = { backStack.add(ExercisePickerKey(PickTarget.IntoWorkout(key.id))) },
                     onSwapExercise = { backStack.add(ExercisePickerKey(PickTarget.SwapInWorkout(it))) },
                     onOpenExercise = openExercise,
+                    onRepeated = {
+                        back()
+                        openWorkout(it)
+                    },
                 )
             }
             entry<TemplatesKey> { key ->
