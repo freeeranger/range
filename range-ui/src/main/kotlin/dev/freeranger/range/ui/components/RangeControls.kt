@@ -10,6 +10,7 @@ import androidx.compose.material3.DatePickerState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Text
@@ -49,7 +50,10 @@ fun RangeSectionHeader(text: String, modifier: Modifier = Modifier, color: Color
     )
 }
 
-/** A number with minus and plus buttons, for small counts like "every 2 weeks". Material has none. */
+/**
+ * A number with minus and plus buttons, for small counts like "every 2 weeks". Material has none.
+ * [filled] buttons stand out on their own; plain ones sit quietly in a list of them.
+ */
 @Composable
 fun RangeStepper(
     value: Int,
@@ -58,9 +62,14 @@ fun RangeStepper(
     increaseDescription: String,
     modifier: Modifier = Modifier,
     range: IntRange = 1..99,
+    filled: Boolean = true,
 ) {
+    @Composable
+    fun Step(onClick: () -> Unit, enabled: Boolean, content: @Composable () -> Unit) =
+        if (filled) FilledTonalIconButton(onClick = onClick, enabled = enabled, content = content) else IconButton(onClick = onClick, enabled = enabled, content = content)
+
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
-        FilledTonalIconButton(onClick = { onValueChange(value - 1) }, enabled = value > range.first) {
+        Step(onClick = { onValueChange(value - 1) }, enabled = value > range.first) {
             Icon(RangeIcons.Remove, contentDescription = decreaseDescription)
         }
         Text(
@@ -69,7 +78,7 @@ fun RangeStepper(
             style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = "tnum"),
             textAlign = TextAlign.Center,
         )
-        FilledTonalIconButton(onClick = { onValueChange(value + 1) }, enabled = value < range.last) {
+        Step(onClick = { onValueChange(value + 1) }, enabled = value < range.last) {
             Icon(RangeIcons.Add, contentDescription = increaseDescription)
         }
     }

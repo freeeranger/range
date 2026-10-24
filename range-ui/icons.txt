@@ -22,6 +22,7 @@ fitness_center
 history
 home
 info
+light_mode
 more_vert
 palette
 play_arrow
