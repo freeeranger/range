@@ -114,7 +114,9 @@ private fun rangeDark(primary: Color, onPrimary: Color, container: Color, onCont
     surfaceContainerLow = Color(0xFF1A1A1A),
     surfaceContainer = Color(0xFF1E1E1E),
     surfaceContainerHigh = Color(0xFF282828),
-    surfaceContainerHighest = Color(0xFF333333),
+    // Not surfaceVariant's colour: Material picks a card's text colour by matching its colour,
+    // and surfaceVariant comes first, which would make card text the dimmer onSurfaceVariant.
+    surfaceContainerHighest = Color(0xFF363636),
     outline = Color(0xFF8A8A8A),
     outlineVariant = Color(0xFF3A3A3A),
     error = Color(0xFFF87171),
