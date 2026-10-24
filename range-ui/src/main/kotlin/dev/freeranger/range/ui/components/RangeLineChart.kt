@@ -133,14 +133,16 @@ fun RangeLineChart(
     )
 }
 
-/** Round-numbered ticks around a range of values, with a little air so no point sits on an edge. */
+/** Round-numbered ticks around a range of values, negative ones too, with a little air so no point sits on an edge. */
 internal class NiceScale(val min: Double, val max: Double, val step: Double) {
     companion object {
         fun from(low: Double, high: Double): NiceScale {
             val span = (high - low).takeIf { it > 0 } ?: max(abs(high) * 0.1, 1.0)
             val pad = span * 0.1
             val step = niceStep((span + 2 * pad) / 4)
-            val min = max(0.0, floor((low - pad) / step) * step)
+            // Never below zero for values that never are; negative ones get room underneath.
+            val floored = floor((low - pad) / step) * step
+            val min = if (low >= 0) max(0.0, floored) else floored
             return NiceScale(min, max(ceil((high + pad) / step) * step, min + step), step)
         }
 
