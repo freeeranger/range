@@ -30,19 +30,19 @@ object RangeAccents {
         ),
     )
 
-    /** Tailwind orange. 700 rather than 600 in light mode, so white text on it stays readable. */
+    /** Tailwind teal. 700 rather than 600 in light mode, so white text on it stays readable. */
     val Lift = RangeAccent(
         light = rangeLight(
-            primary = Color(0xFFC2410C),
-            container = Color(0xFFFFEDD5),
-            onContainer = Color(0xFF7C2D12),
+            primary = Color(0xFF0F766E),
+            container = Color(0xFFCCFBF1),
+            onContainer = Color(0xFF134E4A),
         ),
         dark = rangeDark(
-            primary = Color(0xFFFDBA74),
-            onPrimary = Color(0xFF431407),
-            container = Color(0xFF9A3412),
-            onContainer = Color(0xFFFFEDD5),
-            selection = Color(0xFF7C2D12),
+            primary = Color(0xFF5EEAD4),
+            onPrimary = Color(0xFF042F2E),
+            container = Color(0xFF115E59),
+            onContainer = Color(0xFFCCFBF1),
+            selection = Color(0xFF134E4A),
         ),
     )
 }
