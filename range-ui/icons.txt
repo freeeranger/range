@@ -3,6 +3,7 @@
 add
 arrow_back
 bookmark_add
+bookmarks
 brightness_6
 calendar_month
 calendar_today
@@ -23,6 +24,7 @@ home
 info
 more_vert
 palette
+play_arrow
 remove
 repeat
 save
@@ -32,8 +34,6 @@ settings
 settings_backup_restore
 skip_next
 sticky_note_2
+swap_horiz
 timer
 translate
-trending_down
-trending_flat
-trending_up
