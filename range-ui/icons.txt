@@ -24,6 +24,7 @@ home
 info
 light_mode
 more_vert
+notifications
 palette
 play_arrow
 remove
