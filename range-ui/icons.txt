@@ -5,6 +5,7 @@ arrow_back
 bookmark_add
 bookmarks
 brightness_6
+calculate
 calendar_month
 calendar_today
 check
@@ -19,6 +20,7 @@ edit_note
 emoji_events
 expand_more
 fitness_center
+handyman
 history
 home
 info
