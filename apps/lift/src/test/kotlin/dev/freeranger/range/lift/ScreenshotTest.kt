@@ -39,6 +39,8 @@ import dev.freeranger.range.lift.ui.home.HomeScreen
 import dev.freeranger.range.lift.ui.home.HomeState
 import dev.freeranger.range.lift.ui.home.HomeTab
 import dev.freeranger.range.lift.ui.settings.LiftSettingsScreen
+import dev.freeranger.range.lift.ui.tools.RepMaxScreen
+import dev.freeranger.range.lift.ui.tools.ToolsScreen
 import dev.freeranger.range.lift.ui.template.TemplateActions
 import dev.freeranger.range.lift.ui.template.TemplateDialog
 import dev.freeranger.range.lift.ui.template.TemplateScreen
@@ -300,6 +302,19 @@ class ScreenshotTest {
 
     @Test
     fun exercisesEmpty() = capture { HomeScreen(HomeState(loaded = true), now, HomeActions(), initialTab = HomeTab.Exercises) }
+
+    @Test
+    fun tools() = capture { ToolsScreen(onBack = {}, onOpenRepMax = {}) }
+
+    @Test
+    fun repMax() = capture { RepMaxScreen(onBack = {}, initialWeight = "80", initialReps = "5") }
+
+    @Test
+    @Config(qualifiers = "sv-rSE-$PHONE")
+    fun repMaxSwedish() = capture { RepMaxScreen(onBack = {}, initialWeight = "102,5", initialReps = "3") }
+
+    @Test
+    fun repMaxEmpty() = capture { RepMaxScreen(onBack = {}) }
 
     @Test
     fun homeEmpty() = capture { HomeScreen(HomeState(exercises = exercises, loaded = true), now, HomeActions()) }

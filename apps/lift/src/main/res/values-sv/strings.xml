@@ -221,4 +221,6 @@
     <string name="notification_all_done">Alla set klara</string>
     <string name="notification_set">Set %1$d av %2$d</string>
     <string name="notification_tick">Bocka av set</string>
+    <string name="rep_max_title">Repmaxräknare</string>
+    <string name="tools_title">Verktyg</string>
 </resources>

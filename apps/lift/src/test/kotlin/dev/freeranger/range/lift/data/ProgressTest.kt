@@ -116,4 +116,14 @@ class ProgressTest {
         assertEquals(Muscle.entries, sets.keys.toList())
         assertEquals(mapOf(Muscle.Chest to 2, Muscle.Legs to 1), sets.filterValues { it > 0 })
     }
+
+    @Test
+    fun `rep maxes go from any set to any other and back`() {
+        val max = RepMax.oneRepMax(80.0, 5)
+        assertEquals(93.33, max, 0.01)
+        assertEquals(80.0, RepMax.weightFor(max, 5), 0.001)
+        assertEquals(max, RepMax.weightFor(max, 1), 0.001)
+        assertEquals(85.0, RepMax.rounded(RepMax.weightFor(max, 3)), 0.001)
+        assertEquals(max, WorkoutSet(workoutExerciseId = 0, position = 0, weight = 80.0, reps = 5).estimatedMax!!, 0.001)
+    }
 }

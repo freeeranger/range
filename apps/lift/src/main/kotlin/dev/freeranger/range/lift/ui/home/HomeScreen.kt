@@ -60,6 +60,7 @@ import java.time.LocalDate
 fun HomeRoute(
     onOpenWorkout: (Long) -> Unit,
     onOpenTemplates: (creating: Boolean) -> Unit,
+    onOpenTools: () -> Unit,
     onOpenExercise: (Long) -> Unit,
     onNewExercise: () -> Unit,
     onOpenSettings: () -> Unit,
@@ -74,6 +75,7 @@ fun HomeRoute(
             start = { viewModel.start(onOpenWorkout) },
             startTemplate = { viewModel.startTemplate(it, onOpenWorkout) },
             openTemplates = onOpenTemplates,
+            openTools = onOpenTools,
             openWorkout = onOpenWorkout,
             openExercise = onOpenExercise,
             newExercise = onNewExercise,
@@ -89,6 +91,7 @@ data class HomeActions(
     val startTemplate: (templateId: Long) -> Unit = {},
     /** The templates page, [creating] a new one straight away. */
     val openTemplates: (creating: Boolean) -> Unit = {},
+    val openTools: () -> Unit = {},
     val openWorkout: (id: Long) -> Unit = {},
     val openExercise: (id: Long) -> Unit = {},
     val newExercise: () -> Unit = {},
@@ -100,7 +103,7 @@ enum class HomeTab { Workouts, Home, Exercises }
 /**
  * Three tabs: past workouts a day at a time under a week strip, the dashboard in the middle where
  * the app opens, and the exercise library. Starting a workout offers an empty one or a template;
- * the templates have their own page, from the dashboard's top bar.
+ * the templates have their own page, from the dashboard's top bar, as do the tools.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -144,6 +147,9 @@ fun HomeScreen(
                             }
                         }
                         if (tab == HomeTab.Home) {
+                            IconButton(onClick = actions.openTools) {
+                                Icon(RangeIcons.Handyman, contentDescription = stringResource(R.string.tools_title))
+                            }
                             IconButton(onClick = { actions.openTemplates(false) }) {
                                 Icon(RangeIcons.Bookmarks, contentDescription = stringResource(R.string.home_templates))
                             }

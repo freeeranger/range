@@ -76,7 +76,7 @@ data class WorkoutSet(
         get() {
             val kg = weight?.takeIf { it > 0 } ?: return null
             val reps = reps?.takeIf { it > 0 } ?: return null
-            return if (reps == 1) kg else kg * (1 + reps / 30.0)
+            return RepMax.oneRepMax(kg, reps)
         }
 }
 

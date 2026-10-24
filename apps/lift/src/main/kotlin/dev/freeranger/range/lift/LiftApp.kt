@@ -17,6 +17,8 @@ import dev.freeranger.range.lift.ui.exercise.ExercisePickerRoute
 import dev.freeranger.range.lift.ui.home.HomeRoute
 import dev.freeranger.range.lift.ui.settings.LiftSettingsRoute
 import dev.freeranger.range.lift.ui.template.TemplateRoute
+import dev.freeranger.range.lift.ui.tools.RepMaxScreen
+import dev.freeranger.range.lift.ui.tools.ToolsScreen
 import dev.freeranger.range.lift.ui.template.TemplatesRoute
 import dev.freeranger.range.lift.ui.workout.SummaryRoute
 import dev.freeranger.range.lift.ui.workout.WorkoutRoute
@@ -59,6 +61,12 @@ data class ExerciseKey(val id: Long) : NavKey
 /** Editing exercise [id], or adding a new one when it's null: straight to [target], if it was being picked. */
 @Serializable
 data class ExerciseEditKey(val id: Long? = null, val target: PickTarget? = null) : NavKey
+
+@Serializable
+data object ToolsKey : NavKey
+
+@Serializable
+data object RepMaxKey : NavKey
 
 @Serializable
 data object SettingsKey : NavKey
@@ -104,6 +112,7 @@ fun LiftApp(openWorkout: Long? = null, onOpened: () -> Unit = {}) {
                 HomeRoute(
                     onOpenWorkout = openWorkout,
                     onOpenTemplates = { backStack.add(TemplatesKey(creating = it)) },
+                    onOpenTools = { backStack.add(ToolsKey) },
                     onOpenExercise = openExercise,
                     onNewExercise = { backStack.add(ExerciseEditKey()) },
                     onOpenSettings = { backStack.add(SettingsKey) },
@@ -174,6 +183,12 @@ fun LiftApp(openWorkout: Long? = null, onOpened: () -> Unit = {}) {
                     },
                     onCancel = back,
                 )
+            }
+            entry<ToolsKey> {
+                ToolsScreen(onBack = back, onOpenRepMax = { backStack.add(RepMaxKey) })
+            }
+            entry<RepMaxKey> {
+                RepMaxScreen(onBack = back)
             }
             entry<SettingsKey> {
                 LiftSettingsRoute(onBack = back, onOpenAbout = { backStack.add(AboutKey) })
