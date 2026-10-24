@@ -115,10 +115,10 @@ class LiftRepositoryTest {
     fun `exercises can be edited, removed and put back, and removed ones stay in past workouts`() = runTest {
         addAllBuiltIns()
         val pullUp = repository.exercises.first().first { it.key == "pull_up" }
-        assertEquals(Load.ExtraWeight, pullUp.load)
-        repository.updateExercise(pullUp.copy(name = "  Chin-up ", load = Load.Bodyweight, key = "something else", archived = true))
+        assertEquals(Load.Bodyweight, pullUp.load)
+        repository.updateExercise(pullUp.copy(name = "  Chin-up ", load = Load.Weight, key = "something else", archived = true))
         val edited = repository.exercises.first().first { it.id == pullUp.id }
-        assertEquals(pullUp.copy(name = "Chin-up", load = Load.Bodyweight), edited)
+        assertEquals(pullUp.copy(name = "Chin-up", load = Load.Weight), edited)
 
         val workout = repository.start()
         repository.addToWorkout(workout, pullUp.id)
@@ -156,12 +156,12 @@ class LiftRepositoryTest {
 
         val row = Exercise(muscle = Muscle.Back, perSide = true)
         assertEquals(2 * 30.0 * 10, logged(row, set(30.0, 10)).volume, 0.001)
-        assertEquals(10.0 * 5, logged(Exercise(muscle = Muscle.Back, load = Load.ExtraWeight), set(10.0, 5), set(reps = 12)).volume, 0.001)
-        assertEquals(0.0, logged(Exercise(muscle = Muscle.Back, load = Load.Assisted), set(20.0, 8)).volume, 0.001)
+        assertEquals(10.0 * 5, logged(Exercise(muscle = Muscle.Back, load = Load.Bodyweight), set(10.0, 5), set(reps = 12)).volume, 0.001)
+        assertEquals(0.0, logged(Exercise(muscle = Muscle.Back, load = Load.Bodyweight), set(-20.0, 8)).volume, 0.001)
         assertEquals(0.0, logged(Exercise(muscle = Muscle.Core, measure = Measure.Time), set(20.0, seconds = 60)).volume, 0.001)
 
-        val assisted = logged(Exercise(muscle = Muscle.Back, load = Load.Assisted), set(30.0, 8), set(20.0, 6), set(20.0, 5))
-        assertEquals(set(20.0, 6), assisted.best)
+        val assisted = logged(Exercise(muscle = Muscle.Back, load = Load.Bodyweight), set(-30.0, 8), set(-20.0, 6), set(-20.0, 5))
+        assertEquals(set(-20.0, 6), assisted.best)
         val plank = logged(Exercise(muscle = Muscle.Core, measure = Measure.Time, load = Load.Bodyweight), set(seconds = 60), set(seconds = 90))
         assertEquals(90, plank.best!!.seconds)
         val bench = logged(Exercise(muscle = Muscle.Chest), set(100.0, 1), set(90.0, 6))

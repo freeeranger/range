@@ -30,22 +30,30 @@ data class Backup(
     )
 
     companion object {
-        const val FORMAT = 1
+        /** 2: the bodyweight + extra and assisted loads became one bodyweight load, with help as negative weight. */
+        const val FORMAT = 2
         private val json = Json { ignoreUnknownKeys = true }
 
         /** Reads a backup file, or returns null if it isn't one this version understands. */
         fun decode(text: String): Backup? = runCatching {
             val file = json.decodeFromString(BackupFile.serializer(), text)
             require(file.format in 1..FORMAT)
+            // Format 1's help was positive; it's negative weight now.
+            val assisted = file.exercises.filter { it.load == "Assisted" }.map { it.id }.toSet()
+            val helped = file.entries.filter { it.exerciseId in assisted }.map { it.id }.toSet()
             Backup(
                 exercises = file.exercises.map {
-                    Exercise(it.id, it.key, it.name, Muscle.valueOf(it.muscle), Measure.valueOf(it.measure), Load.valueOf(it.load), it.perSide, it.archived)
+                    val load = if (it.load in setOf("ExtraWeight", "Assisted")) Load.Bodyweight else Load.valueOf(it.load)
+                    Exercise(it.id, it.key, it.name, Muscle.valueOf(it.muscle), Measure.valueOf(it.measure), load, it.perSide, it.archived)
                 },
                 workouts = file.workouts.map {
                     Workout(it.id, it.name, Instant.ofEpochMilli(it.startedAt), it.finishedAt?.let(Instant::ofEpochMilli), it.notes, it.templateId)
                 },
                 entries = file.entries.map { WorkoutExercise(it.id, it.workoutId, it.exerciseId, it.position) },
-                sets = file.sets.map { WorkoutSet(it.id, it.workoutExerciseId, it.position, it.weight, it.reps, it.done, it.seconds) },
+                sets = file.sets.map {
+                    val weight = if (it.workoutExerciseId in helped) it.weight?.let { kg -> -kg } else it.weight
+                    WorkoutSet(it.id, it.workoutExerciseId, it.position, weight, it.reps, it.done, it.seconds)
+                },
                 templates = file.templates.map { Template(it.id, it.name, Instant.ofEpochMilli(it.createdAt)) },
                 templateExercises = file.templateExercises.map { TemplateExercise(it.id, it.templateId, it.exerciseId, it.position, it.sets) },
             )

@@ -167,13 +167,13 @@ fun ExerciseEditScreen(
             }
 
             RangeSectionHeader(stringResource(R.string.exercise_load))
-            Column(Modifier.selectableGroup()) {
-                Load.entries.forEach {
-                    ListItem(
-                        headlineContent = { Text(format.load(it)) },
-                        leadingContent = { RadioButton(selected = load == it, onClick = null) },
-                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                        modifier = Modifier.selectable(selected = load == it, role = Role.RadioButton) { load = it },
+            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(horizontal = RangeSpace.gutter)) {
+                Load.entries.forEachIndexed { i, it ->
+                    SegmentedButton(
+                        selected = load == it,
+                        onClick = { load = it },
+                        shape = SegmentedButtonDefaults.itemShape(i, Load.entries.size),
+                        label = { Text(format.load(it)) },
                     )
                 }
             }

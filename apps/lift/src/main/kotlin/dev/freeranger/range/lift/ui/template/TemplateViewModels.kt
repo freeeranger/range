@@ -5,7 +5,9 @@ import androidx.lifecycle.viewModelScope
 import dev.freeranger.range.lift.data.LiftRepository
 import dev.freeranger.range.lift.data.TemplateExercise
 import dev.freeranger.range.lift.data.WorkoutLog
+import dev.freeranger.range.lift.data.WorkoutSet
 import dev.freeranger.range.lift.data.WorkoutTemplate
+import dev.freeranger.range.lift.data.previousSets
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -42,6 +44,8 @@ data class TemplateState(
     /** A workout is in progress, so this one can't start yet. */
     val busy: Boolean = false,
     val lastDone: Instant? = null,
+    /** Each of its exercises' best set the last time it was done, by exercise id. */
+    val lastBest: Map<Long, WorkoutSet> = emptyMap(),
 )
 
 class TemplateViewModel(
@@ -51,7 +55,11 @@ class TemplateViewModel(
     private val appScope: CoroutineScope,
 ) : ViewModel() {
     val state: StateFlow<TemplateState> = combine(repository.templates, repository.logs) { templates, logs ->
-        TemplateState(templates.firstOrNull { it.template.id == id }, logs.any { !it.workout.isFinished }, lastDone(logs)[id])
+        val template = templates.firstOrNull { it.template.id == id }
+        val lastBest = template?.exercises.orEmpty().map { it.exercise }.distinctBy { it.id }.mapNotNull { exercise ->
+            previousSets(logs, exercise.id, Instant.MAX).maxWithOrNull(exercise.setOrder)?.let { exercise.id to it }
+        }.toMap()
+        TemplateState(template, logs.any { !it.workout.isFinished }, lastDone(logs)[id], lastBest)
     }.stateIn(viewModelScope, SharingStarted.Eagerly, TemplateState())
 
     fun rename(name: String) {

@@ -47,17 +47,17 @@ enum class ProgressMetric {
     /** Weight lifted for reps: the most the best set says could be lifted once (Epley), so 80 × 5 and 90 × 2 compare. */
     OneRepMax,
 
-    /** The heaviest weight: for timed sets with a weight, and for bodyweight exercises once extra weight is added. */
+    /** The heaviest weight: weights held for time. */
     Weight,
 
-    /** The most reps in a set: bodyweight exercises without extra weight. */
+    /** The most added to bodyweight, or the least help, once either is logged: −20 kg up to +10 kg is progress. */
+    AddedWeight,
+
+    /** The most reps in a set: bodyweight exercises with nothing added or taken off. */
     Reps,
 
     /** The longest set: timed exercises. */
     Time,
-
-    /** The least help in a set: assisted exercises. Going down is progress. */
-    Assistance,
 }
 
 /** A workout's best set by the [ProgressMetric], and its [value]. */
@@ -81,24 +81,27 @@ fun WorkoutLog.doneSetsOf(exerciseId: Long): List<WorkoutSet> =
 
 /** The number that shows progress at this exercise, given the [sets] done of it so far. */
 fun Exercise.progressMetric(sets: List<WorkoutSet>): ProgressMetric = when {
-    measure == Measure.Time -> if (load == Load.Weight) ProgressMetric.Weight else ProgressMetric.Time
-    load == Load.Weight -> ProgressMetric.OneRepMax
-    load == Load.Assisted -> ProgressMetric.Assistance
-    // Once extra weight goes on, reps alone stop telling the story.
-    load == Load.ExtraWeight && sets.any { (it.weight ?: 0.0) > 0 } -> ProgressMetric.Weight
+    load == Load.Weight -> if (measure == Measure.Time) ProgressMetric.Weight else ProgressMetric.OneRepMax
+    measure == Measure.Time -> ProgressMetric.Time
+    // Once weight goes on or help comes off, reps alone stop telling the story.
+    sets.addsWeight() -> ProgressMetric.AddedWeight
     else -> ProgressMetric.Reps
 }
 
-/** Every number this exercise keeps a record of. */
-fun Exercise.recordMetrics(): List<ProgressMetric> = when (load) {
-    Load.Weight -> if (measure == Measure.Reps) listOf(ProgressMetric.OneRepMax, ProgressMetric.Weight) else listOf(ProgressMetric.Weight, ProgressMetric.Time)
-    Load.Bodyweight -> listOf(if (measure == Measure.Reps) ProgressMetric.Reps else ProgressMetric.Time)
-    Load.ExtraWeight -> listOf(ProgressMetric.Weight, if (measure == Measure.Reps) ProgressMetric.Reps else ProgressMetric.Time)
-    Load.Assisted -> listOf(ProgressMetric.Assistance)
+/** Every number this exercise keeps a record of, given the [sets] done of it. */
+fun Exercise.recordMetrics(sets: List<WorkoutSet>): List<ProgressMetric> {
+    val amount = if (measure == Measure.Reps) ProgressMetric.Reps else ProgressMetric.Time
+    return when (load) {
+        Load.Weight -> if (measure == Measure.Reps) listOf(ProgressMetric.OneRepMax, ProgressMetric.Weight) else listOf(ProgressMetric.Weight, ProgressMetric.Time)
+        Load.Bodyweight -> listOfNotNull(ProgressMetric.AddedWeight.takeIf { sets.addsWeight() }, amount)
+    }
 }
 
-/** Less help is better; for everything else, more is. */
-fun ProgressMetric.isBetter(value: Double, than: Double): Boolean = if (this == ProgressMetric.Assistance) value < than else value > than
+/** Some of these bodyweight sets had weight added or help taken. */
+private fun List<WorkoutSet>.addsWeight(): Boolean = any { (it.weight ?: 0.0) != 0.0 }
+
+/** More is better, for every measure: for added weight, more on and less help. */
+fun ProgressMetric.isBetter(value: Double, than: Double): Boolean = value > than
 
 /** The best of [sets] by this measure, and its value. */
 fun ProgressMetric.best(sets: List<WorkoutSet>): Pair<WorkoutSet, Double>? =
@@ -108,10 +111,10 @@ fun ProgressMetric.best(sets: List<WorkoutSet>): Pair<WorkoutSet, Double>? =
 fun ProgressMetric.valueOf(set: WorkoutSet): Double? = when (this) {
     ProgressMetric.OneRepMax -> set.estimatedMax
     ProgressMetric.Weight -> set.weight?.takeIf { it > 0 }
+    // Nothing logged means plain bodyweight.
+    ProgressMetric.AddedWeight -> if ((set.reps ?: 0) > 0 || (set.seconds ?: 0) > 0) set.weight ?: 0.0 else null
     ProgressMetric.Reps -> set.reps?.takeIf { it > 0 }?.toDouble()
     ProgressMetric.Time -> set.seconds?.takeIf { it > 0 }?.toDouble()
-    // No help logged means none was needed.
-    ProgressMetric.Assistance -> if ((set.reps ?: 0) > 0 || (set.seconds ?: 0) > 0) set.weight ?: 0.0 else null
 }
 
 /** A best ever: the set, its value by [metric], what the record was before it (null if there was none), and when. */
@@ -128,7 +131,7 @@ fun newRecords(log: WorkoutLog, logs: List<WorkoutLog>): List<Record> {
         val before = earlier.flatMap { it.doneSetsOf(exercise.id) }
         if (before.isEmpty()) return@flatMap emptyList()
         val today = log.doneSetsOf(exercise.id)
-        exercise.recordMetrics().mapNotNull { metric ->
+        exercise.recordMetrics(before + today).mapNotNull { metric ->
             val (set, value) = metric.best(today) ?: return@mapNotNull null
             val previous = metric.best(before)?.second
             if (previous == null || metric.isBetter(value, previous)) Record(exercise, metric, set, value, previous, log.workout.startedAt) else null
@@ -140,7 +143,7 @@ fun newRecords(log: WorkoutLog, logs: List<WorkoutLog>): List<Record> {
 fun records(logs: List<WorkoutLog>, exercise: Exercise): List<Record> {
     val sets = logs.filter { it.workout.isFinished }.flatMap { log -> log.doneSetsOf(exercise.id).map { it to log.workout.startedAt } }
     val at = sets.associate { (set, at) -> set.id to at }
-    return exercise.recordMetrics().mapNotNull { metric ->
+    return exercise.recordMetrics(sets.map { it.first }).mapNotNull { metric ->
         val (set, value) = metric.best(sets.map { it.first }) ?: return@mapNotNull null
         Record(exercise, metric, set, value, previous = null, at = at.getValue(set.id))
     }

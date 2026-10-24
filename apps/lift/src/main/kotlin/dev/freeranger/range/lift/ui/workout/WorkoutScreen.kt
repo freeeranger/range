@@ -1,5 +1,6 @@
 package dev.freeranger.range.lift.ui.workout
 
+import android.text.InputType
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -65,7 +66,10 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.InterceptPlatformTextInput
+import androidx.compose.ui.platform.PlatformTextInputMethodRequest
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -92,6 +96,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.freeranger.range.lift.LocalAppContainer
 import dev.freeranger.range.lift.R
 import dev.freeranger.range.lift.data.Exercise
+import dev.freeranger.range.lift.data.Load
 import dev.freeranger.range.lift.data.LoggedExercise
 import dev.freeranger.range.lift.data.Measure
 import dev.freeranger.range.lift.data.ProgressMetric
@@ -592,9 +597,7 @@ private fun ColumnHeaders(exercise: Exercise, format: LiftFormat) {
         horizontalArrangement = Arrangement.spacedBy(RangeSpace.s3),
     ) {
         Text(stringResource(R.string.workout_column_set), Modifier.width(SetColumn), style = style, color = color, textAlign = TextAlign.Center)
-        if (exercise.weighted) {
-            Text(format.weightLabel(exercise.load), Modifier.weight(1f), style = style, color = color, textAlign = TextAlign.Center)
-        }
+        Text(format.weightLabel(exercise.load), Modifier.weight(1f), style = style, color = color, textAlign = TextAlign.Center)
         Text(format.measure(exercise.measure), Modifier.weight(1f), style = style, color = color, textAlign = TextAlign.Center)
     }
 }
@@ -620,13 +623,14 @@ private fun SetRow(
     fun amountText(set: WorkoutSet?) = (if (timed) set?.seconds?.let(::timeDigits) else set?.reps?.toString()).orEmpty()
 
     // Typed text is kept here, not re-read from the database, so the cursor never jumps while typing.
-    var weight by remember(set.id) { mutableStateOf(set.weight?.let(format::number).orEmpty()) }
+    val weightText = { kg: Double? -> kg?.let { format.typedWeight(it, exercise.load) } }
+    var weight by remember(set.id) { mutableStateOf(weightText(set.weight).orEmpty()) }
     var amount by remember(set.id) { mutableStateOf(amountText(set)) }
     val amountFocus = remember { FocusRequester() }
     val latest by rememberUpdatedState(set)
     val save by rememberUpdatedState(actions.updateSet)
     fun typed(done: Boolean) = latest.copy(
-        weight = if (exercise.weighted) format.parseWeight(weight) else null,
+        weight = format.parseWeight(weight),
         reps = if (timed) set.reps else amount.toIntOrNull(),
         seconds = if (timed) parseTimeDigits(amount) else set.seconds,
         done = done,
@@ -648,7 +652,7 @@ private fun SetRow(
         } else {
             val filled = typed(true).filledFrom(placeholder)
             if (filled.isComplete(exercise)) {
-                weight = filled.weight?.let(format::number).orEmpty()
+                weight = weightText(filled.weight).orEmpty()
                 amount = amountText(filled)
                 actions.updateSet(filled)
                 actions.setDone(format.name(exercise))
@@ -698,21 +702,22 @@ private fun SetRow(
                 )
                 if (record) RecordBadge(Modifier.align(Alignment.TopEnd))
             }
-            if (exercise.weighted) {
-                NumberField(
-                    value = weight,
-                    onValueChange = {
-                        if (it.length <= 6 && it.all { c -> c.isDigit() || c == '.' || c == ',' } && it.count { c -> c == '.' || c == ',' } <= 1) {
-                            weight = it
-                            unsaved = true
-                        }
-                    },
-                    placeholder = placeholder?.weight?.let(format::number),
-                    description = stringResource(R.string.workout_set_weight, number),
-                    keyboardType = KeyboardType.Decimal,
-                    modifier = Modifier.weight(1f),
-                )
-            }
+            // Bodyweight takes a sign: plus for weight added, minus for help.
+            val signed = exercise.load == Load.Bodyweight
+            NumberField(
+                value = weight,
+                onValueChange = {
+                    if (isWeight(it, signed)) {
+                        weight = it
+                        unsaved = true
+                    }
+                },
+                placeholder = weightText(placeholder?.weight),
+                description = stringResource(R.string.workout_set_weight, number),
+                keyboardType = KeyboardType.Decimal,
+                signed = signed,
+                modifier = Modifier.weight(1f),
+            )
             NumberField(
                 value = amount,
                 onValueChange = {
@@ -744,6 +749,7 @@ private fun NumberField(
     keyboardType: KeyboardType,
     modifier: Modifier = Modifier,
     visualTransformation: VisualTransformation = VisualTransformation.None,
+    signed: Boolean = false,
 ) {
     val colors = MaterialTheme.colorScheme
     val interactions = remember { MutableInteractionSource() }
@@ -753,42 +759,69 @@ private fun NumberField(
         unfocusedBorderColor = Color.Transparent,
     )
     val textStyle = MaterialTheme.typography.bodyLarge.copy(color = colors.onSurface, textAlign = TextAlign.Center, fontFeatureSettings = "tnum")
-    BasicTextField(
-        value = value,
-        onValueChange = onValueChange,
-        modifier = modifier
-            .height(40.dp)
-            .semantics { contentDescription = description },
-        singleLine = true,
-        textStyle = textStyle,
-        cursorBrush = SolidColor(colors.primary),
-        keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = ImeAction.Next),
-        visualTransformation = visualTransformation,
-        interactionSource = interactions,
-        decorationBox = { field ->
-            OutlinedTextFieldDefaults.DecorationBox(
-                value = value,
-                innerTextField = field,
-                enabled = true,
-                singleLine = true,
-                visualTransformation = visualTransformation,
-                interactionSource = interactions,
-                placeholder = placeholder?.let {
-                    { Text(it, Modifier.fillMaxWidth(), style = textStyle.copy(color = colors.onSurfaceVariant.copy(alpha = 0.6f))) }
-                },
-                colors = fieldColors,
-                contentPadding = PaddingValues(horizontal = RangeSpace.s1),
-                container = {
-                    OutlinedTextFieldDefaults.Container(
-                        enabled = true,
-                        isError = false,
-                        interactionSource = interactions,
-                        colors = fieldColors,
-                        shape = RoundedCornerShape(8.dp),
-                    )
+    SignedKeyboard(signed) {
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = modifier
+                .height(40.dp)
+                .semantics { contentDescription = description },
+            singleLine = true,
+            textStyle = textStyle,
+            cursorBrush = SolidColor(colors.primary),
+            keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = ImeAction.Next),
+            visualTransformation = visualTransformation,
+            interactionSource = interactions,
+            decorationBox = { field ->
+                OutlinedTextFieldDefaults.DecorationBox(
+                    value = value,
+                    innerTextField = field,
+                    enabled = true,
+                    singleLine = true,
+                    visualTransformation = visualTransformation,
+                    interactionSource = interactions,
+                    placeholder = placeholder?.let {
+                        { Text(it, Modifier.fillMaxWidth(), style = textStyle.copy(color = colors.onSurfaceVariant.copy(alpha = 0.6f))) }
+                    },
+                    colors = fieldColors,
+                    contentPadding = PaddingValues(horizontal = RangeSpace.s1),
+                    container = {
+                        OutlinedTextFieldDefaults.Container(
+                            enabled = true,
+                            isError = false,
+                            interactionSource = interactions,
+                            colors = fieldColors,
+                            shape = RoundedCornerShape(8.dp),
+                        )
+                    },
+                )
+            },
+        )
+    }
+}
+
+/** A weight as it's typed: up to six digits with one decimal mark, and a leading sign if [signed]. */
+private fun isWeight(text: String, signed: Boolean): Boolean {
+    val digits = if (signed) text.removePrefix("-").removePrefix("−").removePrefix("+") else text
+    return digits.length <= 6 && digits.all { it.isDigit() || it == '.' || it == ',' } && digits.count { it == '.' || it == ',' } <= 1
+}
+
+/** Asks the keyboard for a minus key when [enabled], which Compose's number keyboards leave out. */
+@OptIn(ExperimentalComposeUiApi::class)
+@Composable
+private fun SignedKeyboard(enabled: Boolean, content: @Composable () -> Unit) {
+    if (!enabled) return content()
+    InterceptPlatformTextInput(
+        interceptor = { request, next ->
+            next.startInputMethod(
+                PlatformTextInputMethodRequest { attributes ->
+                    request.createInputConnection(attributes).also {
+                        attributes.inputType = attributes.inputType or InputType.TYPE_NUMBER_FLAG_SIGNED
+                    }
                 },
             )
         },
+        content = content,
     )
 }
 

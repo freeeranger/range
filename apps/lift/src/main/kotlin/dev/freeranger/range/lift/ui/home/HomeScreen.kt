@@ -59,7 +59,6 @@ import java.time.LocalDate
 @Composable
 fun HomeRoute(
     onOpenWorkout: (Long) -> Unit,
-    onOpenTemplate: (Long) -> Unit,
     onOpenTemplates: (creating: Boolean) -> Unit,
     onOpenExercise: (Long) -> Unit,
     onNewExercise: () -> Unit,
@@ -74,7 +73,6 @@ fun HomeRoute(
         actions = HomeActions(
             start = { viewModel.start(onOpenWorkout) },
             startTemplate = { viewModel.startTemplate(it, onOpenWorkout) },
-            openTemplate = onOpenTemplate,
             openTemplates = onOpenTemplates,
             openWorkout = onOpenWorkout,
             openExercise = onOpenExercise,
@@ -89,7 +87,6 @@ data class HomeActions(
     /** Starts an empty workout. */
     val start: () -> Unit = {},
     val startTemplate: (templateId: Long) -> Unit = {},
-    val openTemplate: (templateId: Long) -> Unit = {},
     /** The templates page, [creating] a new one straight away. */
     val openTemplates: (creating: Boolean) -> Unit = {},
     val openWorkout: (id: Long) -> Unit = {},
@@ -230,7 +227,7 @@ fun HomeScreen(
     }
 
     if (starting) {
-        StartSheet(state.templates, actions, onDismiss = { starting = false })
+        StartSheet(state.templates.filter { it.exercises.isNotEmpty() }, actions, onDismiss = { starting = false })
     }
 
     if (pickingDate) {

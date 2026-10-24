@@ -12,8 +12,7 @@ class ProgressTest {
     private val zone = ZoneOffset.UTC
     private val bench = Exercise(id = 1, muscle = Muscle.Chest)
     private val plank = Exercise(id = 2, muscle = Muscle.Core, measure = Measure.Time, load = Load.Bodyweight)
-    private val pullUp = Exercise(id = 3, muscle = Muscle.Back, load = Load.ExtraWeight)
-    private val assisted = Exercise(id = 4, muscle = Muscle.Back, load = Load.Assisted)
+    private val pullUp = Exercise(id = 3, muscle = Muscle.Back, load = Load.Bodyweight)
     private var nextId = 1L
 
     private fun workout(day: LocalDate, exercise: Exercise, sets: List<WorkoutSet>, finished: Boolean = true): WorkoutLog {
@@ -52,18 +51,21 @@ class ProgressTest {
     }
 
     @Test
-    fun `bodyweight work follows reps until extra weight goes on, holds follow time, and help should go down`() {
+    fun `bodyweight work follows reps until weight goes on or help comes off, and holds follow time`() {
         val reps = listOf(workout(friday.minusDays(7), pullUp, sets(null to 8)), workout(friday, pullUp, sets(null to 10, null to 7)))
         assertEquals(ProgressMetric.Reps to listOf(8.0, 10.0), progression(reps, pullUp).let { it.metric to it.points.map { p -> p.value } })
 
-        val weighted = reps + workout(friday.plusDays(3), pullUp, sets(10.0 to 5, 5.0 to 8))
-        assertEquals(ProgressMetric.Weight to listOf(10.0), progression(weighted, pullUp).let { it.metric to it.points.map { p -> p.value } })
+        // From help to none to weight added: one line going up.
+        val weighted = listOf(
+            workout(friday.minusDays(14), pullUp, sets(-30.0 to 8, -20.0 to 6)),
+            workout(friday.minusDays(7), pullUp, sets(null to 3)),
+            workout(friday, pullUp, sets(10.0 to 5, 5.0 to 8)),
+        )
+        assertEquals(ProgressMetric.AddedWeight to listOf(-20.0, 0.0, 10.0), progression(weighted, pullUp).let { it.metric to it.points.map { p -> p.value } })
+        assertEquals(listOf(ProgressMetric.AddedWeight to 10.0), newRecords(weighted.last(), weighted).map { it.metric to it.value })
 
         val holds = listOf(workout(friday, plank, listOf(WorkoutSet(nextId++, 0, 0, seconds = 60, done = true), WorkoutSet(nextId++, 0, 1, seconds = 90, done = true))))
         assertEquals(ProgressMetric.Time to listOf(90.0), progression(holds, plank).let { it.metric to it.points.map { p -> p.value } })
-
-        val helped = listOf(workout(friday.minusDays(7), assisted, sets(30.0 to 8, 20.0 to 6)), workout(friday, assisted, sets(null to 3)))
-        assertEquals(ProgressMetric.Assistance to listOf(20.0, 0.0), progression(helped, assisted).let { it.metric to it.points.map { p -> p.value } })
     }
 
     @Test

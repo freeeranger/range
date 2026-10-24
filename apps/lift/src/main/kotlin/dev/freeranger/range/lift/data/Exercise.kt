@@ -11,19 +11,16 @@ enum class Muscle { Chest, Back, Legs, Shoulders, Arms, Core }
 /** What a set of the exercise counts: repetitions, or how long it was held or kept up. */
 enum class Measure { Reps, Time }
 
-/** What the weight logged with a set means, if the exercise takes one at all. */
+/** What the weight logged with a set means. */
 enum class Load {
     /** A barbell, dumbbells or a machine: the weight lifted. */
     Weight,
 
-    /** The body alone, with no weight to log. */
+    /**
+     * The body, with a weight that's optional and signed: added on top (a belt or vest) when
+     * positive, help taken off (a band or machine) when negative. None is plain bodyweight.
+     */
     Bodyweight,
-
-    /** The body plus optional extra weight, like a weighted pull-up: the extra is logged. */
-    ExtraWeight,
-
-    /** The body with help from a band or machine: the weight taken off is logged, and less is better. */
-    Assisted,
 }
 
 /**
@@ -48,25 +45,17 @@ data class Exercise(
      */
     @ColumnInfo(defaultValue = "0") val archived: Boolean = false,
 ) {
-    /** Sets carry a weight: shown as a column while logging. */
-    val weighted: Boolean get() = load != Load.Bodyweight
-
     /** Comparing sets by estimated one-rep max makes sense: a weight lifted for reps. */
     val hasOneRepMax: Boolean get() = load == Load.Weight && measure == Measure.Reps
 
-    /** Orders sets from worst to best: heavier, longer or more reps, or for assisted ones, less help. */
+    /** Orders sets from worst to best: heavier (or, for bodyweight, more added and less help), then longer or more reps. */
     val setOrder: Comparator<WorkoutSet>
         get() {
             val amount = compareBy<WorkoutSet> { if (measure == Measure.Time) it.seconds ?: 0 else it.reps ?: 0 }
-            return when (load) {
-                Load.Weight -> if (measure == Measure.Reps) {
-                    compareBy<WorkoutSet> { it.estimatedMax ?: 0.0 }.then(amount)
-                } else {
-                    compareBy<WorkoutSet> { it.weight ?: 0.0 }.then(amount)
-                }
-                Load.Bodyweight -> amount
-                Load.ExtraWeight -> compareBy<WorkoutSet> { it.weight ?: 0.0 }.then(amount)
-                Load.Assisted -> compareByDescending<WorkoutSet> { it.weight ?: 0.0 }.then(amount)
+            return if (hasOneRepMax) {
+                compareBy<WorkoutSet> { it.estimatedMax ?: 0.0 }.then(amount)
+            } else {
+                compareBy<WorkoutSet> { it.weight ?: 0.0 }.then(amount)
             }
         }
 }
@@ -93,11 +82,11 @@ object BuiltInExercises {
         BuiltIn("dumbbell_bench_press", Muscle.Chest),
         BuiltIn("push_up", Muscle.Chest, load = Load.Bodyweight),
         BuiltIn("cable_fly", Muscle.Chest),
-        BuiltIn("dip", Muscle.Chest, load = Load.ExtraWeight),
+        BuiltIn("dip", Muscle.Chest, load = Load.Bodyweight),
         BuiltIn("deadlift", Muscle.Back),
         BuiltIn("barbell_row", Muscle.Back),
-        BuiltIn("pull_up", Muscle.Back, load = Load.ExtraWeight),
-        BuiltIn("assisted_pull_up", Muscle.Back, load = Load.Assisted),
+        BuiltIn("pull_up", Muscle.Back, load = Load.Bodyweight),
+        BuiltIn("assisted_pull_up", Muscle.Back, load = Load.Bodyweight),
         BuiltIn("lat_pulldown", Muscle.Back),
         BuiltIn("seated_cable_row", Muscle.Back),
         BuiltIn("one_arm_dumbbell_row", Muscle.Back, perSide = true),

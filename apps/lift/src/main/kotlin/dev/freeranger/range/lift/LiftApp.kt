@@ -49,8 +49,9 @@ data class ExercisePickerKey(val target: PickTarget) : NavKey
 @Serializable
 data class TemplatesKey(val creating: Boolean = false) : NavKey
 
+/** Template [id], opened straight into [editing] it; [isNew] if it was just made. */
 @Serializable
-data class TemplateKey(val id: Long) : NavKey
+data class TemplateKey(val id: Long, val editing: Boolean = false, val isNew: Boolean = false) : NavKey
 
 @Serializable
 data class ExerciseKey(val id: Long) : NavKey
@@ -102,7 +103,6 @@ fun LiftApp(openWorkout: Long? = null, onOpened: () -> Unit = {}) {
             entry<HomeKey> {
                 HomeRoute(
                     onOpenWorkout = openWorkout,
-                    onOpenTemplate = { backStack.add(TemplateKey(it)) },
                     onOpenTemplates = { backStack.add(TemplatesKey(creating = it)) },
                     onOpenExercise = openExercise,
                     onNewExercise = { backStack.add(ExerciseEditKey()) },
@@ -123,11 +123,18 @@ fun LiftApp(openWorkout: Long? = null, onOpened: () -> Unit = {}) {
                 )
             }
             entry<TemplatesKey> { key ->
-                TemplatesRoute(creating = key.creating, onBack = back, onOpen = { backStack.add(TemplateKey(it)) })
+                TemplatesRoute(
+                    creating = key.creating,
+                    onBack = back,
+                    onOpen = { backStack.add(TemplateKey(it)) },
+                    onCreated = { backStack.add(TemplateKey(it, editing = true, isNew = true)) },
+                )
             }
             entry<TemplateKey> { key ->
                 TemplateRoute(
                     id = key.id,
+                    editing = key.editing,
+                    isNew = key.isNew,
                     onBack = back,
                     onStarted = { workoutId ->
                         // The workout takes the templates' place, so finishing it goes home.

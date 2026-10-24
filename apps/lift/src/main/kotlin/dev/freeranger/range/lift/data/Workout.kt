@@ -60,7 +60,7 @@ data class WorkoutSet(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val workoutExerciseId: Long,
     val position: Int,
-    /** In kilograms: the weight lifted, the extra weight, or the help, by the exercise's [Load]. Null if none. */
+    /** In kilograms: the weight lifted, or for bodyweight exercises, added (positive) or help (negative). Null if none. */
     val weight: Double? = null,
     /** For exercises measured in reps. */
     val reps: Int? = null,
@@ -84,13 +84,13 @@ data class WorkoutSet(
 data class LoggedExercise(val entry: WorkoutExercise, val exercise: Exercise, val sets: List<WorkoutSet>) {
     /**
      * Kilograms moved: weight times reps over the finished sets, both sides counted. Only weights
-     * actually lifted count, so bodyweight, assisted and timed sets add nothing.
+     * actually lifted count, so the body itself, help and timed sets add nothing.
      */
     val volume: Double
         get() {
-            if (exercise.measure != Measure.Reps || exercise.load !in setOf(Load.Weight, Load.ExtraWeight)) return 0.0
+            if (exercise.measure != Measure.Reps) return 0.0
             val sides = if (exercise.perSide) 2 else 1
-            return sets.filter { it.done }.sumOf { (it.weight ?: 0.0) * (it.reps ?: 0) } * sides
+            return sets.filter { it.done }.sumOf { (it.weight ?: 0.0).coerceAtLeast(0.0) * (it.reps ?: 0) } * sides
         }
 
     /** The best finished set, by the exercise's own [Exercise.setOrder]. */

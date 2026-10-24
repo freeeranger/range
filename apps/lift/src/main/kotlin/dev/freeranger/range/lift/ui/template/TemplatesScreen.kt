@@ -41,7 +41,7 @@ import java.time.LocalDate
 
 /** [creating] opens straight onto naming a new template. */
 @Composable
-fun TemplatesRoute(creating: Boolean, onBack: () -> Unit, onOpen: (Long) -> Unit) {
+fun TemplatesRoute(creating: Boolean, onBack: () -> Unit, onOpen: (Long) -> Unit, onCreated: (Long) -> Unit) {
     val container = LocalAppContainer.current
     val viewModel = viewModel { TemplatesViewModel(container.repository) }
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -50,7 +50,7 @@ fun TemplatesRoute(creating: Boolean, onBack: () -> Unit, onOpen: (Long) -> Unit
         now = rememberNow(),
         onBack = onBack,
         onOpen = onOpen,
-        onCreate = { name -> viewModel.create(name, onOpen) },
+        onCreate = { name -> viewModel.create(name, onCreated) },
         initiallyCreating = creating,
     )
 }

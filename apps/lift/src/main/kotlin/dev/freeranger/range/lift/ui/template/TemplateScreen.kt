@@ -1,5 +1,13 @@
 package dev.freeranger.range.lift.ui.template
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
+import dev.freeranger.range.lift.data.WorkoutSet
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -70,6 +78,8 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
 @Composable
 fun TemplateRoute(
     id: Long,
+    editing: Boolean,
+    isNew: Boolean,
     onBack: () -> Unit,
     onStarted: (workoutId: Long) -> Unit,
     onAddExercise: () -> Unit,
@@ -98,6 +108,8 @@ fun TemplateRoute(
             restore = viewModel::restore,
             reorder = viewModel::reorder,
         ),
+        initiallyEditing = editing,
+        isNew = isNew,
     )
 }
 
@@ -121,24 +133,44 @@ data class TemplateActions(
 enum class TemplateDialog { Rename, Delete }
 
 /**
- * A template at a glance, and the place to change it: its exercises in order, each with its number
- * of sets to step up or down, dragged by its handle to move, and a menu to replace or remove it.
- * Add exercise puts more on the end. Start begins a workout from it, unless one is in progress.
+ * A template at a glance: its exercises in order, with their sets and how the best set went last
+ * time, and Start to begin a workout from it unless one is in progress. Edit turns it into the
+ * place to change it: each exercise's sets stepped up or down, dragged by its handle to move, a
+ * menu to replace or remove it, and Add exercise for more on the end.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TemplateScreen(state: TemplateState, now: Instant, actions: TemplateActions, initialDialog: TemplateDialog? = null) {
+fun TemplateScreen(
+    state: TemplateState,
+    now: Instant,
+    actions: TemplateActions,
+    initialDialog: TemplateDialog? = null,
+    initiallyEditing: Boolean = false,
+    /** Just made, so leaving it with no exercises throws it away rather than asking. */
+    isNew: Boolean = false,
+) {
     val format = rememberLiftFormat()
     val workoutTemplate = state.template ?: return
     val template = workoutTemplate.template
     val today = now.atZone(format.zone).toLocalDate()
     var dialog by rememberSaveable { mutableStateOf(initialDialog) }
     var menu by remember { mutableStateOf(false) }
+    // A template needs an exercise to be kept, so an empty one stays open for adding one.
+    val empty = workoutTemplate.exercises.isEmpty()
+    var editing by rememberSaveable { mutableStateOf(initiallyEditing || empty) }
+    val stopEditing = {
+        when {
+            !empty -> editing = false
+            isNew -> actions.delete()
+            else -> dialog = TemplateDialog.Delete
+        }
+    }
+    BackHandler(enabled = editing, onBack = stopEditing)
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val removed = stringResource(R.string.workout_exercise_removed)
     val undo = stringResource(R.string.action_undo)
-    val editing = actions.copy(
+    val editable = actions.copy(
         remove = { entry ->
             actions.remove(entry)
             scope.launch {
@@ -159,13 +191,24 @@ fun TemplateScreen(state: TemplateState, now: Instant, actions: TemplateActions,
                             summary(workoutTemplate, state.lastDone, today, format),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = actions.back) { Icon(RangeIcons.ArrowBack, contentDescription = stringResource(R.string.action_back)) }
+                    IconButton(onClick = { if (empty) stopEditing() else actions.back() }) {
+                        Icon(RangeIcons.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                    }
                 },
                 actions = {
+                    if (editing) {
+                        Button(onClick = stopEditing, enabled = !empty) { Text(stringResource(R.string.summary_done)) }
+                    } else {
+                        IconButton(onClick = { editing = true }) {
+                            Icon(RangeIcons.Edit, contentDescription = stringResource(R.string.template_edit, template.name))
+                        }
+                    }
                     Box {
                         IconButton(onClick = { menu = true }) {
                             Icon(RangeIcons.MoreVert, contentDescription = stringResource(R.string.action_more))
@@ -173,7 +216,7 @@ fun TemplateScreen(state: TemplateState, now: Instant, actions: TemplateActions,
                         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.workout_rename)) },
-                                leadingIcon = { Icon(RangeIcons.Edit, contentDescription = null) },
+                                leadingIcon = { Icon(RangeIcons.EditNote, contentDescription = null) },
                                 onClick = {
                                     menu = false
                                     dialog = TemplateDialog.Rename
@@ -193,7 +236,7 @@ fun TemplateScreen(state: TemplateState, now: Instant, actions: TemplateActions,
             )
         },
         bottomBar = {
-            Surface {
+            if (!editing) Surface {
                 Button(
                     onClick = actions.start,
                     enabled = workoutTemplate.exercises.isNotEmpty() && !state.busy,
@@ -208,12 +251,12 @@ fun TemplateScreen(state: TemplateState, now: Instant, actions: TemplateActions,
             }
         },
     ) { padding ->
-        PlannedExercises(
-            workoutTemplate.exercises,
-            format,
-            editing,
-            contentPadding = PaddingValues(top = padding.calculateTopPadding() + RangeSpace.s2, bottom = padding.calculateBottomPadding() + RangeSpace.s4),
-        )
+        val contentPadding = PaddingValues(top = padding.calculateTopPadding() + RangeSpace.s2, bottom = padding.calculateBottomPadding() + RangeSpace.s4)
+        if (editing) {
+            PlannedExercises(workoutTemplate.exercises, format, editable, contentPadding)
+        } else {
+            Overview(workoutTemplate.exercises, state.lastBest, format, actions.openExercise, contentPadding)
+        }
     }
 
     when (dialog) {
@@ -240,6 +283,37 @@ fun TemplateScreen(state: TemplateState, now: Instant, actions: TemplateActions,
             dismissButton = { TextButton(onClick = { dialog = null }) { Text(stringResource(R.string.dialog_cancel)) } },
         )
         null -> {}
+    }
+}
+
+/** The template's exercises, numbered, each with its sets and last time's best set. Tap one for its page. */
+@Composable
+private fun Overview(
+    exercises: List<PlannedExercise>,
+    lastBest: Map<Long, WorkoutSet>,
+    format: LiftFormat,
+    onOpenExercise: (Long) -> Unit,
+    contentPadding: PaddingValues,
+) {
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = contentPadding) {
+        itemsIndexed(exercises, key = { _, it -> it.entry.id }) { index, planned ->
+            val best = lastBest[planned.exercise.id]?.let { stringResource(R.string.template_last_time, format.set(it, planned.exercise)) }
+            ListItem(
+                leadingContent = {
+                    Text(
+                        "${index + 1}",
+                        modifier = Modifier.width(24.dp),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                    )
+                },
+                headlineContent = { Text(format.name(planned.exercise)) },
+                supportingContent = { Text(listOfNotNull(format.sets(planned.sets), best).joinToString(" · ")) },
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                modifier = Modifier.clickable { onOpenExercise(planned.exercise.id) },
+            )
+        }
     }
 }
 

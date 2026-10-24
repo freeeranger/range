@@ -146,7 +146,7 @@ class ScreenshotTest {
             val monday = friday.minusWeeks(11L - week).with(java.time.DayOfWeek.MONDAY)
             log(monday, "Push", "bench_press" to List(3) { 60.0 + 2.5 * week to 5 }, "overhead_press" to List(3) { 35.0 + week to 6 }, "dip" to List(2) { 0.0 to 10 })
             if (monday.plusDays(3) < friday) {
-                log(monday.plusDays(3), "Legs", "squat" to List(3) { 80.0 + 5 * week to 5 }, "romanian_deadlift" to List(2) { 70.0 + 2.5 * week to 8 }, "pull_up" to List(3) { 0.0 to 8 + week / 3 })
+                log(monday.plusDays(3), "Legs", "squat" to List(3) { 80.0 + 5 * week to 5 }, "romanian_deadlift" to List(2) { 70.0 + 2.5 * week to 8 }, "pull_up" to List(3) { -15.0 + 2.5 * week to 8 })
             }
         }
     }.sortedByDescending { it.workout.startedAt }
@@ -160,6 +160,14 @@ class ScreenshotTest {
     private val templates = listOf(
         template(1, "Push", "bench_press" to 3, "overhead_press" to 3, "dip" to 2),
         template(2, "Legs", "squat" to 3, "romanian_deadlift" to 2, "pull_up" to 3),
+    )
+    /** A template as its page shows it, with three months of workouts behind it. */
+    private fun templateState(template: WorkoutTemplate) = TemplateState(
+        template,
+        lastDone = lastDone(progress)[template.template.id],
+        lastBest = template.exercises.associate { planned ->
+            planned.exercise.id to previousSets(progress, planned.exercise.id, Instant.MAX).maxWith(planned.exercise.setOrder)
+        },
     )
     private val dashboard = HomeState(progress, exercises, templates, loaded = true)
 
@@ -259,11 +267,14 @@ class ScreenshotTest {
     }
 
     @Test
-    fun template() = capture { TemplateScreen(TemplateState(templates[0], lastDone = lastDone(progress)[1]), now, TemplateActions()) }
+    fun template() = capture { TemplateScreen(templateState(templates[0]), now, TemplateActions()) }
 
     @Test
     @Config(qualifiers = "sv-rSE-$PHONE")
-    fun templateSwedish() = capture { TemplateScreen(TemplateState(templates[1], lastDone = lastDone(progress)[2]), now, TemplateActions()) }
+    fun templateSwedish() = capture { TemplateScreen(templateState(templates[1]), now, TemplateActions()) }
+
+    @Test
+    fun templateEditing() = capture { TemplateScreen(TemplateState(templates[0]), now, TemplateActions(), initiallyEditing = true) }
 
     @Test
     fun templateBusy() = capture { TemplateScreen(TemplateState(templates[0], busy = true), now, TemplateActions()) }

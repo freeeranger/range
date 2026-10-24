@@ -7,7 +7,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.ModalBottomSheet
@@ -28,8 +27,8 @@ import dev.freeranger.range.ui.theme.RangeSpace
 import kotlinx.coroutines.launch
 
 /**
- * What to start: an empty workout, or a template, tapped to start it as it is. A template's edit
- * button opens it to look over or change first. With no templates yet, it offers making one.
+ * What to start: an empty workout, or a template, tapped to start it as it is. With no templates
+ * yet, it offers making one.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -78,14 +77,8 @@ fun StartSheet(templates: List<WorkoutTemplate>, actions: HomeActions, onDismiss
                         }
                     },
                     leadingContent = { Icon(RangeIcons.PlayArrow, contentDescription = null) },
-                    trailingContent = {
-                        IconButton(onClick = { then { actions.openTemplate(id) } }) {
-                            Icon(RangeIcons.Edit, contentDescription = stringResource(R.string.template_edit, template.template.name))
-                        }
-                    },
                     colors = rowColors,
-                    // An empty template has nothing to start yet: open it to fill it in.
-                    modifier = Modifier.clickable { then { if (template.exercises.isEmpty()) actions.openTemplate(id) else actions.startTemplate(id) } },
+                    modifier = Modifier.clickable { then { actions.startTemplate(id) } },
                 )
             }
         }

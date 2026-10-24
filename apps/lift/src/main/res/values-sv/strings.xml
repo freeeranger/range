@@ -99,7 +99,7 @@
     <string name="progress_weight">Tyngsta vikt</string>
     <string name="progress_reps">Flest reps</string>
     <string name="progress_time">Längsta set</string>
-    <string name="progress_assistance">Minst hjälp</string>
+    <string name="progress_added_weight">Extravikt</string>
     <string name="progress_description">%1$s över %2$d pass. Senast: %3$s.</string>
     <string name="exercise_pick_title">Lägg till övning</string>
     <string name="exercises_recent">Senaste</string>
@@ -117,7 +117,7 @@
     <string name="exercise_save">Spara</string>
     <string name="exercise_name">Namn</string>
     <string name="exercise_measure">Mäts i</string>
-    <string name="exercise_load">Vikt</string>
+    <string name="exercise_load">Belastning</string>
     <string name="exercise_more">Mer</string>
     <string name="exercise_each_side">Varje sida</string>
     <string name="exercise_remove">Ta bort ur biblioteket</string>
@@ -127,10 +127,8 @@
 
     <string name="measure_reps">Reps</string>
     <string name="measure_time">Tid</string>
-    <string name="load_weight">Vikt</string>
+    <string name="load_weight">Vikter</string>
     <string name="load_bodyweight">Kroppsvikt</string>
-    <string name="load_extra_weight">Kroppsvikt + extra</string>
-    <string name="load_assisted">Assisterad</string>
 
     <string name="muscle_chest">Bröst</string>
     <string name="muscle_back">Rygg</string>
@@ -143,9 +141,7 @@
     <string name="unit_kg">%1$s kg</string>
     <string name="unit_kg_label">kg</string>
     <string name="unit_kg_extra">+%1$s kg</string>
-    <string name="unit_kg_extra_label">+kg</string>
     <string name="unit_kg_assist">−%1$s kg</string>
-    <string name="unit_kg_assist_label">−kg</string>
     <string name="set_weight_amount">%1$s × %2$s</string>
     <string name="value_label">%1$s · %2$s</string>
     <plurals name="set_reps">
@@ -208,4 +204,6 @@
     <string name="summary_started">Började</string>
     <string name="summary_ended">Slutade</string>
     <string name="template_edit">Redigera %1$s</string>
+    <string name="unit_kg_signed_label">± kg</string>
+    <string name="template_last_time">Förra gången %1$s</string>
 </resources>

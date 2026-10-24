@@ -10,5 +10,5 @@ val ProgressMetric.title: Int
         ProgressMetric.Weight -> R.string.progress_weight
         ProgressMetric.Reps -> R.string.progress_reps
         ProgressMetric.Time -> R.string.progress_time
-        ProgressMetric.Assistance -> R.string.progress_assistance
+        ProgressMetric.AddedWeight -> R.string.progress_added_weight
     }

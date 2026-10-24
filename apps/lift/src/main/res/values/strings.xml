@@ -102,7 +102,7 @@
     <string name="progress_weight">Heaviest weight</string>
     <string name="progress_reps">Most reps</string>
     <string name="progress_time">Longest set</string>
-    <string name="progress_assistance">Least help</string>
+    <string name="progress_added_weight">Added weight</string>
     <string name="progress_description">%1$s over %2$d workouts. Latest: %3$s.</string>
     <string name="exercise_pick_title">Add exercise</string>
     <string name="exercises_recent">Recent</string>
@@ -120,7 +120,7 @@
     <string name="exercise_save">Save</string>
     <string name="exercise_name">Name</string>
     <string name="exercise_measure">Measured in</string>
-    <string name="exercise_load">Weight</string>
+    <string name="exercise_load">Load</string>
     <string name="exercise_more">More</string>
     <string name="exercise_each_side">Each side</string>
     <string name="exercise_remove">Remove from library</string>
@@ -130,10 +130,8 @@
 
     <string name="measure_reps">Reps</string>
     <string name="measure_time">Time</string>
-    <string name="load_weight">Weight</string>
+    <string name="load_weight">Weights</string>
     <string name="load_bodyweight">Bodyweight</string>
-    <string name="load_extra_weight">Bodyweight + extra</string>
-    <string name="load_assisted">Assisted</string>
 
     <string name="muscle_chest">Chest</string>
     <string name="muscle_back">Back</string>
@@ -146,9 +144,7 @@
     <string name="unit_kg">%1$s kg</string>
     <string name="unit_kg_label">kg</string>
     <string name="unit_kg_extra">+%1$s kg</string>
-    <string name="unit_kg_extra_label">+kg</string>
     <string name="unit_kg_assist">−%1$s kg</string>
-    <string name="unit_kg_assist_label">−kg</string>
     <string name="set_weight_amount">%1$s × %2$s</string>
     <string name="value_label">%1$s · %2$s</string>
     <plurals name="set_reps">
@@ -211,4 +207,6 @@
     <string name="summary_started">Started</string>
     <string name="summary_ended">Ended</string>
     <string name="template_edit">Edit %1$s</string>
+    <string name="unit_kg_signed_label">± kg</string>
+    <string name="template_last_time">Last time %1$s</string>
 </resources>

@@ -91,8 +91,6 @@ class LiftFormat(context: Context) {
         when (load) {
             Load.Weight -> R.string.load_weight
             Load.Bodyweight -> R.string.load_bodyweight
-            Load.ExtraWeight -> R.string.load_extra_weight
-            Load.Assisted -> R.string.load_assisted
         },
     )
 
@@ -106,12 +104,11 @@ class LiftFormat(context: Context) {
     /** "Legs · Each side": what the exercise trains, and how it's logged if that's unusual. */
     fun about(exercise: Exercise): String = listOfNotNull(muscle(exercise.muscle), kind(exercise)).joinToString(" · ")
 
-    /** The weight column's heading: "kg", "+kg" for extra weight, "−kg" for help taken off. */
+    /** The weight column's heading: "kg", or "± kg" for bodyweight, where weight is added or taken off. */
     fun weightLabel(load: Load): String = res.getString(
         when (load) {
-            Load.Assisted -> R.string.unit_kg_assist_label
-            Load.ExtraWeight -> R.string.unit_kg_extra_label
-            else -> R.string.unit_kg_label
+            Load.Weight -> R.string.unit_kg_label
+            Load.Bodyweight -> R.string.unit_kg_signed_label
         },
     )
 
@@ -167,13 +164,18 @@ class LiftFormat(context: Context) {
     /** A [ProgressMetric]'s value: "102 kg", "12 reps", "1:30". The estimated one-rep max rounds to the kilo. */
     fun metric(metric: ProgressMetric, value: Double): String = when (metric) {
         ProgressMetric.OneRepMax -> kg(Math.round(value).toDouble())
-        ProgressMetric.Weight, ProgressMetric.Assistance -> kg(value)
+        ProgressMetric.Weight -> kg(value)
+        ProgressMetric.AddedWeight -> weight(value, Load.Bodyweight)
         ProgressMetric.Reps -> reps(value.toInt())
         ProgressMetric.Time -> seconds(value.toInt())
     }
 
     /** "62.5" or "62,5": a weight without its unit, as typed into a set. */
     fun number(kg: Double): String = weightFormat.format(kg)
+
+    /** A set's weight as typed for [load]: bodyweight ones carry their sign, "+10" or "−20". */
+    fun typedWeight(kg: Double, load: Load): String =
+        if (load == Load.Bodyweight && kg > 0) "+" + number(kg) else number(kg)
 
     /** "2.5" or "2,5": an average count, to one decimal. */
     fun average(value: Double): String = averageFormat.format(value)
@@ -183,16 +185,16 @@ class LiftFormat(context: Context) {
     /** "4,320 kg" moved in a workout. */
     fun volume(kg: Double): String = res.getString(R.string.unit_kg, volumeFormat.format(kg))
 
-    /** A weight as [load] means it: "80 kg", "+10 kg" extra, or "−20 kg" of help. */
-    fun weight(kg: Double, load: Load): String = when (load) {
-        Load.ExtraWeight -> res.getString(R.string.unit_kg_extra, number(kg))
-        Load.Assisted -> res.getString(R.string.unit_kg_assist, number(kg))
-        else -> kg(kg)
+    /** A weight as [load] means it: "80 kg" lifted, or on bodyweight "+10 kg" added or "−20 kg" of help. */
+    fun weight(kg: Double, load: Load): String = when {
+        load == Load.Weight || kg == 0.0 -> kg(kg)
+        kg > 0 -> res.getString(R.string.unit_kg_extra, number(kg))
+        else -> res.getString(R.string.unit_kg_assist, number(-kg))
     }
 
     /** "80 kg × 5", "8 reps", "+10 kg × 8", "1:30" or "20 kg × 0:45", as the exercise measures it. */
     fun set(set: WorkoutSet, exercise: Exercise): String {
-        val weight = set.weight?.takeIf { it > 0 && exercise.weighted }
+        val weight = set.weight?.takeIf { if (exercise.load == Load.Weight) it > 0 else it != 0.0 }
         val amount = when (exercise.measure) {
             Measure.Reps -> set.reps?.toString()
             Measure.Time -> set.seconds?.let(::seconds)
@@ -214,7 +216,7 @@ class LiftFormat(context: Context) {
     fun sets(count: Int): String = res.getQuantityString(R.plurals.sets_count, count, count)
 
     /** A typed weight, with either decimal mark. Null if it isn't a number. */
-    fun parseWeight(text: String): Double? = text.replace(',', '.').toDoubleOrNull()
+    fun parseWeight(text: String): Double? = text.replace(',', '.').replace('−', '-').toDoubleOrNull()
 
     // Swedish writes weekdays and months in lowercase, even at the start of a line.
     private fun String.capitalized() = replaceFirstChar { it.titlecase(locale) }

@@ -17,6 +17,7 @@ import androidx.room3.Update
 import androidx.room3.migration.AutoMigrationSpec
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.driver.AndroidSQLiteDriver
+import androidx.sqlite.execSQL
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
 
@@ -296,13 +297,14 @@ abstract class LiftDao {
 
 @Database(
     entities = [Exercise::class, Workout::class, WorkoutExercise::class, WorkoutSet::class, Template::class, TemplateExercise::class],
-    version = 5,
+    version = 6,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 1, to = 2, spec = LiftDatabase.ExerciseTypes::class),
         AutoMigration(from = 2, to = 3),
         AutoMigration(from = 3, to = 4, spec = LiftDatabase.RestStopwatch::class),
         AutoMigration(from = 4, to = 5, spec = LiftDatabase.RetireBuiltIns::class),
+        AutoMigration(from = 5, to = 6, spec = LiftDatabase.SignedBodyweight::class),
     ],
 )
 @ColumnTypeConverters(Converters::class)
@@ -356,6 +358,20 @@ abstract class LiftDatabase : RoomDatabase() {
                     "AND id NOT IN (SELECT exerciseId FROM template_exercises)",
             )
             run("UPDATE exercises SET archived = 1 WHERE $retired")
+        }
+    }
+
+    /**
+     * v6: "bodyweight + extra" and "assisted" exercises become plain bodyweight ones, whose weight
+     * is signed: extra stays positive, and help, which was logged positive, turns negative.
+     */
+    class SignedBodyweight : AutoMigrationSpec {
+        override suspend fun onPostMigrate(connection: SQLiteConnection) {
+            connection.execSQL(
+                "UPDATE sets SET weight = -weight WHERE weight IS NOT NULL AND workoutExerciseId IN " +
+                    "(SELECT e.id FROM workout_exercises e JOIN exercises x ON e.exerciseId = x.id WHERE x.load = 'Assisted')",
+            )
+            connection.execSQL("UPDATE exercises SET load = 'Bodyweight' WHERE load IN ('ExtraWeight', 'Assisted')")
         }
     }
 

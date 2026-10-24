@@ -115,4 +115,24 @@ class UndoBackupTest {
         assertEquals(listOf("deadlift", "bench_press"), recentExercises(repository.logs.first()).map { it.key })
         assertEquals(first, log(first).workout.id)
     }
+
+    @Test
+    fun `a backup from before signed bodyweight turns help into negative weight`() {
+        val old = """
+            {"format": 1,
+             "exercises": [
+               {"id": 1, "key": null, "name": "Band pull-up", "muscle": "Back", "measure": "Reps", "load": "Assisted", "perSide": false, "archived": false},
+               {"id": 2, "key": null, "name": "Dip", "muscle": "Chest", "measure": "Reps", "load": "ExtraWeight", "perSide": false, "archived": false}
+             ],
+             "workouts": [{"id": 1, "name": "", "startedAt": 0, "finishedAt": 3600000, "notes": "", "templateId": null}],
+             "entries": [{"id": 1, "workoutId": 1, "exerciseId": 1, "position": 0}, {"id": 2, "workoutId": 1, "exerciseId": 2, "position": 1}],
+             "sets": [
+               {"id": 1, "workoutExerciseId": 1, "position": 0, "weight": 20.0, "reps": 6, "seconds": null, "done": true},
+               {"id": 2, "workoutExerciseId": 2, "position": 0, "weight": 10.0, "reps": 8, "seconds": null, "done": true}
+             ]}
+        """.trimIndent()
+        val backup = Backup.decode(old)!!
+        assertEquals(listOf(Load.Bodyweight, Load.Bodyweight), backup.exercises.map { it.load })
+        assertEquals(listOf(-20.0, 10.0), backup.sets.map { it.weight })
+    }
 }

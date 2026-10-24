@@ -41,7 +41,7 @@ class MigrationTest {
         }
         assertEquals(
             listOf(
-                listOf("", "Reps", "ExtraWeight", "0", "0"),
+                listOf("", "Reps", "Bodyweight", "0", "0"),
                 listOf("", "Reps", "Weight", "0", "0"),
                 listOf("Landmine press", "Reps", "Weight", "0", "0"),
             ),
@@ -118,6 +118,30 @@ class MigrationTest {
             while (it.step()) exercises += it.getLong(0) to it.getLong(1)
         }
         assertEquals(listOf(1L to 1L, 2L to 1L, 4L to 0L), exercises)
+        connection.close()
+    }
+
+    @Test
+    fun `5 to 6 makes extra weight and help one signed bodyweight load`() = runTest {
+        helper.createDatabase(5).apply {
+            execSQL(
+                "INSERT INTO exercises (id, `key`, name, muscle, measure, load, perSide, archived) VALUES " +
+                    "(1, NULL, 'Dip', 'Chest', 'Reps', 'ExtraWeight', 0, 0), (2, NULL, 'Band pull-up', 'Back', 'Reps', 'Assisted', 0, 0), " +
+                    "(3, NULL, 'Squat', 'Legs', 'Reps', 'Weight', 0, 0)",
+            )
+            execSQL("INSERT INTO workouts (id, name, startedAt, finishedAt, notes) VALUES (1, '', 0, 3600000, '')")
+            execSQL("INSERT INTO workout_exercises (id, workoutId, exerciseId, position) VALUES (1, 1, 1, 0), (2, 1, 2, 1), (3, 1, 3, 2)")
+            execSQL("INSERT INTO sets (id, workoutExerciseId, position, weight, reps, done) VALUES (1, 1, 0, 10.0, 8, 1), (2, 2, 0, 20.0, 6, 1), (3, 2, 1, NULL, 3, 1), (4, 3, 0, 100.0, 5, 1)")
+            close()
+        }
+
+        val connection = helper.runMigrationsAndValidate(6)
+        val loads = mutableListOf<String>()
+        connection.prepare("SELECT load FROM exercises ORDER BY id").use { while (it.step()) loads += it.getText(0) }
+        assertEquals(listOf("Bodyweight", "Bodyweight", "Weight"), loads)
+        val weights = mutableListOf<Double?>()
+        connection.prepare("SELECT weight FROM sets ORDER BY id").use { while (it.step()) weights += if (it.isNull(0)) null else it.getDouble(0) }
+        assertEquals(listOf(10.0, -20.0, null, 100.0), weights)
         connection.close()
     }
 }
