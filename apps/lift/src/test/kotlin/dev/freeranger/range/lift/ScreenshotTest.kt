@@ -393,7 +393,7 @@ class ScreenshotTest {
 
     @Test
     fun settings() = capture {
-        LiftSettingsScreen(RangeAppearance(), onAppearanceChange = {}, keepScreenOn = false, onKeepScreenOnChange = {}, onBack = {}, onOpenAbout = {}, onExport = {}, onRestore = {})
+        LiftSettingsScreen(RangeAppearance(), onAppearanceChange = {}, keepScreenOn = false, onKeepScreenOnChange = {}, workoutNotification = true, onWorkoutNotificationChange = {}, onBack = {}, onOpenAbout = {}, onExport = {}, onRestore = {})
     }
 
     @Test

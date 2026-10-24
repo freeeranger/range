@@ -1,8 +1,12 @@
 package dev.freeranger.range.lift.data
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -12,7 +16,6 @@ import java.time.Instant
 /** The only way the app changes workouts, exercises and templates. */
 class LiftRepository(
     private val dao: LiftDao,
-    private val stopwatch: RestStopwatch = RestStopwatch.None,
     private val clock: () -> Clock = { Clock.systemDefaultZone() },
 ) {
     val exercises: Flow<List<Exercise>> = dao.observeExercises()
@@ -25,7 +28,41 @@ class LiftRepository(
     val logs: Flow<List<WorkoutLog>> =
         combine(dao.observeWorkouts(), dao.observeEntries(), dao.observeSets(), dao.observeExercises(), ::workoutLogs).flowOn(Dispatchers.Default)
 
+    /** The workout in progress with what's logged in it so far, or null. Only its own rows are read, so it's cheap to follow all the time. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val inProgress: Flow<WorkoutLog?> = dao.observeInProgress().flatMapLatest { workout ->
+        if (workout == null) {
+            flowOf(null)
+        } else {
+            combine(dao.observeEntriesOf(workout.id), dao.observeSetsOf(workout.id), dao.observeExercises()) { entries, sets, exercises ->
+                workoutLogs(listOf(workout), entries, sets, exercises).single()
+            }
+        }
+    }.distinctUntilChanged()
+
     suspend fun workout(id: Long): Workout? = dao.workout(id)
+
+    /**
+     * The first set in [log] not ticked off yet, with any empty number filled from its placeholder
+     * (last time's set, else the set above), as ticking it would save it. Null once all are done.
+     */
+    suspend fun upNext(log: WorkoutLog): UpNext? {
+        for (logged in log.exercises) {
+            val index = logged.sets.indexOfFirst { !it.done }.takeIf { it >= 0 } ?: continue
+            val shown = placeholders(logged.sets, dao.lastSets(logged.exercise.id))
+            return UpNext(logged, index, logged.sets[index].filledFrom(shown[index]))
+        }
+        return null
+    }
+
+    /** Ticks off the next set of the workout in progress, as [upNext] fills it. False if there's no set, or nothing to fill it with. */
+    suspend fun tickNext(): Boolean {
+        val log = inProgress.first() ?: return false
+        val next = upNext(log)?.takeIf { it.set.isComplete(it.logged.exercise) } ?: return false
+        dao.update(next.set.copy(done = true))
+        setDone(log.workout.id)
+        return true
+    }
 
     fun log(id: Long): Flow<WorkoutLog?> = logs.map { logs -> logs.firstOrNull { it.workout.id == id } }
 
@@ -127,7 +164,6 @@ class LiftRepository(
     suspend fun importBackup(text: String): Boolean {
         val backup = Backup.decode(text) ?: return false
         if (runCatching { dao.replaceAll(backup) }.isFailure) return false
-        stopwatch.cancel()
         // A backup from an older version may lack newer built-in exercises.
         addBuiltInExercises()
         return true
@@ -138,13 +174,9 @@ class LiftRepository(
         val workout = dao.workout(workoutId) ?: return
         if (workout.isFinished) return
         dao.finish(workout.copy(finishedAt = clock().instant(), lastSetAt = null))
-        stopwatch.cancel()
     }
 
-    suspend fun delete(workoutId: Long) {
-        if (dao.workout(workoutId)?.isFinished == false) stopwatch.cancel()
-        dao.deleteWorkout(workoutId)
-    }
+    suspend fun delete(workoutId: Long) = dao.deleteWorkout(workoutId)
 
     /** Corrects when a finished workout started and ended. The end never comes before the start. */
     suspend fun setTimes(workoutId: Long, startedAt: Instant, finishedAt: Instant) {
@@ -157,12 +189,10 @@ class LiftRepository(
         if (workout.notes != notes.trim()) dao.update(workout.copy(notes = notes.trim()))
     }
 
-    /** Restarts the rest stopwatch: a set of [label] was just ticked off. */
-    suspend fun setDone(workoutId: Long, label: String) {
+    /** Restarts the rest stopwatch: a set was just ticked off. */
+    suspend fun setDone(workoutId: Long) {
         val workout = dao.workout(workoutId)?.takeIf { !it.isFinished } ?: return
-        val updated = workout.copy(lastSetAt = clock().instant())
-        dao.update(updated)
-        stopwatch.show(updated, label)
+        dao.update(workout.copy(lastSetAt = clock().instant()))
     }
 
     /** Saves [workoutId]'s exercises and set counts as a new template, and links the workout to it. */
@@ -246,16 +276,5 @@ class LiftRepository(
         mapIndexed { position, (exerciseId, sets) -> TemplateExercise(templateId = 0, exerciseId = exerciseId, position = position, sets = sets) }
 }
 
-/** Shows the time since the last set outside the app, counting up on its own, even on the lock screen. */
-interface RestStopwatch {
-    /** Starts counting from [workout]'s last set, of the exercise [label] names. */
-    fun show(workout: Workout, label: String)
-
-    fun cancel()
-
-    /** For tests, and anywhere without a phone to show it on. */
-    object None : RestStopwatch {
-        override fun show(workout: Workout, label: String) {}
-        override fun cancel() {}
-    }
-}
+/** The next set to do in a workout: set [index] of [logged], filled as ticking it off would save it. */
+data class UpNext(val logged: LoggedExercise, val index: Int, val set: WorkoutSet)

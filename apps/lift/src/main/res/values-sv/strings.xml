@@ -62,7 +62,6 @@
 
     <!-- Rest timer -->
     <string name="rest_label">Vila</string>
-    <string name="notification_channel_stopwatch">Vilostoppur</string>
 
     <!-- Finishing -->
     <string name="summary_title">Passet är klart</string>
@@ -217,4 +216,9 @@
     <string name="chart_three_months">3 mån</string>
     <string name="chart_year">1 år</string>
     <string name="chart_all">Allt</string>
+    <string name="settings_workout_notification">Notis under pass</string>
+    <string name="notification_channel_workout">Pass</string>
+    <string name="notification_all_done">Alla set klara</string>
+    <string name="notification_set">Set %1$d av %2$d</string>
+    <string name="notification_tick">Bocka av set</string>
 </resources>

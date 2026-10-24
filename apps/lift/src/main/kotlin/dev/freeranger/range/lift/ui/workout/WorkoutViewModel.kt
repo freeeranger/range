@@ -78,9 +78,9 @@ class WorkoutViewModel(
         appScope.launch { repository.finish(id) }
     }
 
-    /** Restarts the rest stopwatch after a set of the exercise [label] names. */
-    fun setDone(label: String) {
-        appScope.launch { repository.setDone(id, label) }
+    /** Restarts the rest stopwatch after a set. */
+    fun setDone() {
+        appScope.launch { repository.setDone(id) }
     }
 
     fun setNotes(notes: String) {

@@ -65,7 +65,6 @@
 
     <!-- Rest timer -->
     <string name="rest_label">Rest</string>
-    <string name="notification_channel_stopwatch">Rest stopwatch</string>
 
     <!-- Finishing -->
     <string name="summary_title">Workout complete</string>
@@ -220,4 +219,9 @@
     <string name="chart_three_months">3 months</string>
     <string name="chart_year">1 year</string>
     <string name="chart_all">All</string>
+    <string name="settings_workout_notification">Workout notification</string>
+    <string name="notification_channel_workout">Workout</string>
+    <string name="notification_all_done">All sets done</string>
+    <string name="notification_set">Set %1$d of %2$d</string>
+    <string name="notification_tick">Tick off set</string>
 </resources>

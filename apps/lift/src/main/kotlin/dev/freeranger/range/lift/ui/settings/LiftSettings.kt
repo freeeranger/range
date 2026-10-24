@@ -18,6 +18,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.freeranger.range.lift.LocalAppContainer
 import dev.freeranger.range.lift.R
 import dev.freeranger.range.lift.data.Backup
+import dev.freeranger.range.lift.ui.common.rememberNotificationPermissionRequest
 import dev.freeranger.range.ui.components.RangeSectionHeader
 import dev.freeranger.range.ui.icons.RangeIcons
 import dev.freeranger.range.ui.settings.RangeAppearance
@@ -30,7 +31,7 @@ import kotlinx.coroutines.withContext
 import java.time.LocalDate
 
 /**
- * The shared settings, with Lift's on top: keeping the screen on during workouts, and backup,
+ * The shared settings, with Lift's on top: keeping the screen on and a notification during workouts, and backup,
  * everything saved to a file the user picks and restored from one.
  */
 @Composable
@@ -40,6 +41,8 @@ fun LiftSettingsRoute(onBack: () -> Unit, onOpenAbout: () -> Unit) {
     val scope = rememberCoroutineScope()
     val appearance by container.appearance.appearance.collectAsStateWithLifecycle(RangeAppearance())
     val keepScreenOn by container.preferences.keepScreenOn.collectAsStateWithLifecycle(false)
+    val workoutNotification by container.preferences.workoutNotification.collectAsStateWithLifecycle(false)
+    val requestNotifications = rememberNotificationPermissionRequest()
     // A backup file read and waiting for the go-ahead to replace everything.
     var restoring by remember { mutableStateOf<String?>(null) }
     var invalid by remember { mutableStateOf(false) }
@@ -71,6 +74,11 @@ fun LiftSettingsRoute(onBack: () -> Unit, onOpenAbout: () -> Unit) {
         onAppearanceChange = { scope.launch { container.appearance.set(it) } },
         keepScreenOn = keepScreenOn,
         onKeepScreenOnChange = { scope.launch { container.preferences.setKeepScreenOn(it) } },
+        workoutNotification = workoutNotification,
+        onWorkoutNotificationChange = {
+            if (it) requestNotifications()
+            scope.launch { container.preferences.setWorkoutNotification(it) }
+        },
         onBack = onBack,
         onOpenAbout = onOpenAbout,
         onExport = { export.launch("lift-${LocalDate.now()}.json") },
@@ -113,6 +121,8 @@ fun LiftSettingsScreen(
     onAppearanceChange: (RangeAppearance) -> Unit,
     keepScreenOn: Boolean,
     onKeepScreenOnChange: (Boolean) -> Unit,
+    workoutNotification: Boolean,
+    onWorkoutNotificationChange: (Boolean) -> Unit,
     onBack: () -> Unit,
     onOpenAbout: () -> Unit,
     onExport: () -> Unit,
@@ -126,6 +136,9 @@ fun LiftSettingsScreen(
         content = {
             item { RangeSectionHeader(stringResource(R.string.settings_workout)) }
             item { RangeSwitchRow(RangeIcons.LightMode, stringResource(R.string.settings_keep_screen_on), keepScreenOn, onKeepScreenOnChange) }
+            item {
+                RangeSwitchRow(RangeIcons.Notifications, stringResource(R.string.settings_workout_notification), workoutNotification, onWorkoutNotificationChange)
+            }
             item { RangeSectionHeader(stringResource(R.string.settings_backup)) }
             item { RangeSettingRow(RangeIcons.Save, stringResource(R.string.backup_export), onClick = onExport) }
             item { RangeSettingRow(RangeIcons.SettingsBackupRestore, stringResource(R.string.backup_restore), onClick = onRestore) }

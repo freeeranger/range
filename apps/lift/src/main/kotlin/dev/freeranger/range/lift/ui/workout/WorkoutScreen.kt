@@ -198,8 +198,8 @@ data class WorkoutActions(
     val tidy: () -> Unit = {},
     val finish: () -> Unit = {},
     val delete: () -> Unit = {},
-    /** A set of the exercise [label] names was ticked off: the rest stopwatch starts again. */
-    val setDone: (label: String) -> Unit = {},
+    /** A set was ticked off: the rest stopwatch starts again. */
+    val setDone: () -> Unit = {},
     val setNotes: (String) -> Unit = {},
     val saveTemplate: (name: String) -> Unit = {},
     /** Starts a finished workout again, as a new one. */
@@ -258,10 +258,10 @@ fun WorkoutScreen(
         }
     }
     val logging = actions.copy(
-        setDone = { label ->
+        setDone = {
             if (!workout.isFinished) {
                 requestNotifications()
-                actions.setDone(label)
+                actions.setDone()
             }
         },
         deleteSet = { set ->
@@ -687,6 +687,13 @@ private fun SetRow(
         unsaved = false
     }
     DisposableEffect(set.id) { onDispose { if (unsaved) save(typed(latest.done)) } }
+    // Ticked off elsewhere, from the notification: show the numbers it took, where nothing was typed.
+    LaunchedEffect(set.done) {
+        if (set.done && !unsaved) {
+            if (weight.isEmpty()) weight = weightText(set.weight).orEmpty()
+            if (amount.isEmpty()) amount = amountText(set)
+        }
+    }
 
     val tick: (Boolean) -> Unit = { checked ->
         unsaved = false
@@ -698,7 +705,7 @@ private fun SetRow(
                 weight = weightText(filled.weight).orEmpty()
                 amount = amountText(filled)
                 actions.updateSet(filled)
-                actions.setDone(format.name(exercise))
+                actions.setDone()
             } else {
                 // Nothing to go on: ask for the reps or time first.
                 amountFocus.requestFocus()

@@ -17,15 +17,14 @@ import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
 
-/** Templates, the rest stopwatch and notes, on the real Room database in memory. */
+/** Templates, the rest stopwatch, the workout notification's data and notes, on the real Room database in memory. */
 @RunWith(RobolectricTestRunner::class)
 class TemplateRestTest {
     private val database = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), LiftDatabase::class.java)
         .setDriver(AndroidSQLiteDriver())
         .build()
     private var now: Instant = Instant.parse("2026-10-20T17:00:00Z")
-    private val stopwatch = FakeStopwatch()
-    private val repository = LiftRepository(database.lift(), stopwatch) { Clock.fixed(now, ZoneOffset.UTC) }
+    private val repository = LiftRepository(database.lift()) { Clock.fixed(now, ZoneOffset.UTC) }
 
     @After
     fun close() = database.close()
@@ -35,19 +34,6 @@ class TemplateRestTest {
 
     private suspend fun log(id: Long) = repository.log(id).first()!!
     private suspend fun exercise(key: String) = repository.exercises.first().first { it.key == key }
-
-    /** Remembers what the phone would have been told. */
-    private class FakeStopwatch : RestStopwatch {
-        var since: Instant? = null
-        var label: String? = null
-        override fun show(workout: Workout, label: String) {
-            since = workout.lastSetAt
-            this.label = label
-        }
-        override fun cancel() {
-            since = null
-        }
-    }
 
     private suspend fun tickAll(workoutId: Long) {
         log(workoutId).exercises.flatMap { it.sets }.forEach { repository.updateSet(it.copy(weight = 60.0, reps = 8, done = true)) }
@@ -102,21 +88,50 @@ class TemplateRestTest {
     fun `the rest stopwatch counts from the last set and stops with the workout`() = runTest {
         val workout = repository.start()
         assertNull(log(workout).workout.sinceLastSet(now))
-        repository.setDone(workout, "Bench press")
-        assertEquals(now, stopwatch.since)
-        assertEquals("Bench press", stopwatch.label)
+        repository.setDone(workout)
+        assertEquals(now, log(workout).workout.lastSetAt)
 
         now = now.plusSeconds(95)
         assertEquals(95, log(workout).workout.sinceLastSet(now)!!.seconds)
-        repository.setDone(workout, "Curl")
+        repository.setDone(workout)
         assertEquals(0, log(workout).workout.sinceLastSet(now)!!.seconds)
-        assertEquals("Curl", stopwatch.label)
 
         repository.finish(workout)
-        assertNull(stopwatch.since)
         assertNull(log(workout).workout.sinceLastSet(now))
-        repository.setDone(workout, "After finishing")
-        assertNull(stopwatch.since)
+        assertNull(repository.inProgress.first())
+        repository.setDone(workout)
+        assertNull(log(workout).workout.lastSetAt)
+    }
+
+    @Test
+    fun `the notification's next set takes last time's numbers, and ticking it off moves on`() = runTest {
+        addAllBuiltIns()
+        val bench = exercise("bench_press")
+        val last = repository.start()
+        repository.addToWorkout(last, bench.id)
+        repository.addSet(log(last).exercises.single().entry.id)
+        log(last).exercises.single().sets.forEachIndexed { i, set -> repository.updateSet(set.copy(weight = 80.0 - 5 * i, reps = 5, done = true)) }
+        repository.finish(last)
+
+        now = now.plusSeconds(3 * 24 * 3600)
+        val today = repository.start()
+        repository.addToWorkout(today, bench.id)
+        repository.addToWorkout(today, exercise("plank").id)
+        val first = repository.upNext(repository.inProgress.first()!!)!!
+        assertEquals(bench.id to 0, first.logged.exercise.id to first.index)
+        assertEquals(80.0 to 5, first.set.weight to first.set.reps)
+
+        assertTrue(repository.tickNext())
+        assertEquals(now, log(today).workout.lastSetAt)
+        assertEquals(listOf(true, false), log(today).exercises.first().sets.map { it.done })
+        assertTrue(repository.tickNext())
+        assertEquals(75.0, log(today).exercises.first().sets.last().weight!!, 0.01)
+
+        // A plank never done before has no time to take: it's typed in the app instead.
+        val plank = repository.upNext(repository.inProgress.first()!!)!!
+        assertEquals("plank", plank.logged.exercise.key)
+        assertFalse(repository.tickNext())
+        assertFalse(log(today).exercises.last().sets.single().done)
     }
 
     @Test

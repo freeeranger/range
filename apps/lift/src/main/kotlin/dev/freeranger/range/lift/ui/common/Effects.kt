@@ -12,7 +12,8 @@ import androidx.core.content.ContextCompat
 
 /**
  * Returns a function that asks for notification permission if the app doesn't have it yet.
- * Called when the first rest timer starts, so the request comes with an obvious reason. Before
+ * Called when the rest stopwatch first starts, or the workout notification is turned on, so the
+ * request comes with an obvious reason. Before
  * Android 13 notifications need no permission, so there's nothing to ask.
  */
 @Composable

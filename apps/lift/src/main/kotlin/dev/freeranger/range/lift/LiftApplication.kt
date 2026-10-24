@@ -5,7 +5,7 @@ import android.content.Context
 import dev.freeranger.range.lift.data.LiftDatabase
 import dev.freeranger.range.lift.data.LiftPreferences
 import dev.freeranger.range.lift.data.LiftRepository
-import dev.freeranger.range.lift.rest.AndroidRestStopwatch
+import dev.freeranger.range.lift.notification.WorkoutNotification
 import dev.freeranger.range.ui.settings.RangeAppearanceStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -18,7 +18,8 @@ class AppContainer(context: Context) {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val appearance = RangeAppearanceStore(context)
     val preferences = LiftPreferences(context)
-    val repository = LiftRepository(LiftDatabase.create(context).lift(), AndroidRestStopwatch(context))
+    val repository = LiftRepository(LiftDatabase.create(context).lift())
+    val notification = WorkoutNotification(context, repository, preferences)
 }
 
 class LiftApplication : Application() {
@@ -28,7 +29,8 @@ class LiftApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
-        AndroidRestStopwatch.createChannel(this)
+        WorkoutNotification.createChannel(this)
+        container.notification.follow(container.scope)
         container.scope.launch { container.repository.addBuiltInExercises() }
     }
 }

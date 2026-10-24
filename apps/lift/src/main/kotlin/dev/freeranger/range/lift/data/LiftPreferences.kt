@@ -20,7 +20,15 @@ class LiftPreferences(context: Context) {
         store.edit { it[KEEP_SCREEN_ON] = on }
     }
 
+    /** A notification stays for the whole workout, not just the rest between sets. Off unless the user turns it on. */
+    val workoutNotification: Flow<Boolean> = store.data.map { it[WORKOUT_NOTIFICATION] ?: false }
+
+    suspend fun setWorkoutNotification(on: Boolean) {
+        store.edit { it[WORKOUT_NOTIFICATION] = on }
+    }
+
     private companion object {
         val KEEP_SCREEN_ON = booleanPreferencesKey("keep_screen_on")
+        val WORKOUT_NOTIFICATION = booleanPreferencesKey("workout_notification")
     }
 }

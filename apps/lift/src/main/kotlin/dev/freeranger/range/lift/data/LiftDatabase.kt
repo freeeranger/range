@@ -35,6 +35,15 @@ abstract class LiftDao {
     @Query("SELECT * FROM sets")
     abstract fun observeSets(): Flow<List<WorkoutSet>>
 
+    @Query("SELECT * FROM workouts WHERE finishedAt IS NULL ORDER BY startedAt DESC LIMIT 1")
+    abstract fun observeInProgress(): Flow<Workout?>
+
+    @Query("SELECT * FROM workout_exercises WHERE workoutId = :workoutId")
+    abstract fun observeEntriesOf(workoutId: Long): Flow<List<WorkoutExercise>>
+
+    @Query("SELECT s.* FROM sets s JOIN workout_exercises e ON s.workoutExerciseId = e.id WHERE e.workoutId = :workoutId")
+    abstract fun observeSetsOf(workoutId: Long): Flow<List<WorkoutSet>>
+
     @Query("SELECT * FROM templates")
     abstract fun observeTemplates(): Flow<List<Template>>
 
