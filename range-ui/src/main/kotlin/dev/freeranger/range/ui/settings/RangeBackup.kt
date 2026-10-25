@@ -37,6 +37,10 @@ class RangeBackup(
     val isBackup: (String) -> Boolean,
     /** Replaces everything with the backup. False, and nothing changed, if it couldn't. */
     val restore: suspend (String) -> Boolean,
+    /** Runs before a file is picked to save to, and calls [proceed] if the export may go ahead (say, once something is unlocked). */
+    val beforeExport: (proceed: () -> Unit) -> Unit = { it() },
+    /** Runs with a backup file's text before asking to replace everything, and calls [proceed] if the restore may go ahead. */
+    val beforeRestore: (text: String, proceed: () -> Unit) -> Unit = { _, proceed -> proceed() },
 )
 
 /** Starts saving or restoring [RangeBackup]s, and shows what comes of it. */
@@ -69,7 +73,7 @@ internal fun rememberBackupActions(backup: RangeBackup?): BackupActions {
             val text = withContext(Dispatchers.IO) {
                 runCatching { context.contentResolver.openInputStream(uri)?.use { it.readBytes().decodeToString() } }.getOrNull()
             }
-            if (text != null && backup.isBackup(text)) restoring = text else invalid = true
+            if (text != null && backup.isBackup(text)) backup.beforeRestore(text) { restoring = text } else invalid = true
         }
     }
 
@@ -104,7 +108,7 @@ internal fun rememberBackupActions(backup: RangeBackup?): BackupActions {
     }
 
     return BackupActions(
-        export = { if (backup != null) export.launch("${backup.filePrefix}-${LocalDate.now()}.json") },
+        export = { backup?.beforeExport { export.launch("${backup.filePrefix}-${LocalDate.now()}.json") } },
         restore = { import.launch(arrayOf("*/*")) },
     )
 }
