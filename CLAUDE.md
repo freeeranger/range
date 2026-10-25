@@ -2,7 +2,7 @@
 
 The user never writes code here; Claude does all of it and shows results as screenshots or builds on the phone.
 
-- Keep text to what's needed: no hints, explanations or empty-state sentences when the screen speaks for itself.
+- Text earns its place by saying something the screen can't: a rule that isn't visible, what happens before something is deleted, or a little warmth at moments that matter (a first empty screen, all done, after a workout). Cut text that repeats a label, describes what's visible, or tells you to tap the obvious button.
 - Screens are built from Material 3 components (top bars, list items, chips, buttons, sheets, dialogs) so the apps feel native. `RangeTheme` sets Space Grotesk and the colours: Material You by default, the app's `RangeAccents` fallback otherwise, light/dark/pure black per the user's Appearance settings. Use `MaterialTheme.colorScheme`/`typography`, never hard-coded colours or fonts.
 - Write a custom component only when Material has none (e.g. `RangeCheckbox`, `RangeStepper`), and put it in `range-ui`.
 - Each app differs only by its accent (`RangeAccents`) and its screens. Page transitions come from `RangeTransitions`.
