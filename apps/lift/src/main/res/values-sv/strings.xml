@@ -8,14 +8,6 @@
     <string name="settings_title">Inställningar</string>
     <string name="dialog_cancel">Avbryt</string>
     <string name="dialog_ok">OK</string>
-    <string name="settings_backup">Säkerhetskopia</string>
-    <string name="backup_export">Exportera säkerhetskopia</string>
-    <string name="backup_restore">Återställ säkerhetskopia</string>
-    <string name="backup_restore_title">Ersätta allt i Lift med den här säkerhetskopian?</string>
-    <string name="backup_restore_confirm">Återställ</string>
-    <string name="backup_invalid">Filen är ingen säkerhetskopia från Lift</string>
-    <string name="backup_saved">Säkerhetskopian är sparad</string>
-    <string name="backup_restored">Säkerhetskopian är återställd</string>
     <string name="date_today">Idag</string>
     <string name="date_yesterday">Igår</string>
 

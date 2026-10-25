@@ -11,14 +11,6 @@
     <string name="settings_title">Settings</string>
     <string name="dialog_cancel">Cancel</string>
     <string name="dialog_ok">OK</string>
-    <string name="settings_backup">Backup</string>
-    <string name="backup_export">Export backup</string>
-    <string name="backup_restore">Restore backup</string>
-    <string name="backup_restore_title">Replace everything in Lift with this backup?</string>
-    <string name="backup_restore_confirm">Restore</string>
-    <string name="backup_invalid">That file isn’t a Lift backup</string>
-    <string name="backup_saved">Backup saved</string>
-    <string name="backup_restored">Backup restored</string>
     <string name="date_today">Today</string>
     <string name="date_yesterday">Yesterday</string>
 

@@ -57,11 +57,14 @@ import dev.freeranger.range.lift.ui.workout.WorkoutState
 import dev.freeranger.range.ui.settings.RangeAboutScreen
 import dev.freeranger.range.ui.settings.RangeAppIcon
 import dev.freeranger.range.ui.settings.RangeAppearance
+import dev.freeranger.range.ui.settings.RangeBackup
 import dev.freeranger.range.ui.settings.RangeLicense
 import dev.freeranger.range.ui.settings.RangeLicenseScreen
 import dev.freeranger.range.ui.settings.ThemeMode
 import dev.freeranger.range.ui.theme.RangeAccents
 import dev.freeranger.range.ui.theme.RangeTheme
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -414,7 +417,7 @@ class ScreenshotTest {
 
     @Test
     fun settings() = capture {
-        LiftSettingsScreen(RangeAppearance(), onAppearanceChange = {}, keepScreenOn = false, onKeepScreenOnChange = {}, workoutNotification = true, onWorkoutNotificationChange = {}, onBack = {}, onOpenAbout = {}, onExport = {}, onRestore = {})
+        LiftSettingsScreen(RangeAppearance(), onAppearanceChange = {}, keepScreenOn = false, onKeepScreenOnChange = {}, workoutNotification = true, onWorkoutNotificationChange = {}, onBack = {}, onOpenAbout = {}, backup = RangeBackup("Lift", "lift", CoroutineScope(Dispatchers.Unconfined), { "" }, { true }, { true }))
     }
 
     @Test
