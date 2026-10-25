@@ -1,0 +1,49 @@
+<resources>
+    <string name="app_name">Range Notes</string>
+    <!-- Dates are formatted in this language, with the phone's region deciding order and clock. -->
+    <string name="format_language" translatable="false">en</string>
+    <!-- The top bar shows the app's name, untranslated, in every language. -->
+    <string name="app_title" translatable="false">Notes</string>
+
+    <string name="action_back">Back</string>
+    <string name="action_more">More options</string>
+    <string name="action_undo">Undo</string>
+    <string name="settings_title">Settings</string>
+    <string name="date_yesterday">Yesterday</string>
+
+    <!-- List -->
+    <string name="notes_search">Search notes</string>
+    <string name="notes_clear_search">Clear search</string>
+    <string name="notes_empty">No notes yet.</string>
+    <string name="notes_none_found">No notes match “%1$s”.</string>
+    <string name="notes_pinned">Pinned</string>
+    <string name="notes_others">Others</string>
+    <string name="note_new">New note</string>
+    <string name="checklist_new">New checklist</string>
+    <string name="note_deleted">Note deleted</string>
+    <plurals name="checklist_more_ticked">
+        <item quantity="one">+ %1$d ticked item</item>
+        <item quantity="other">+ %1$d ticked items</item>
+    </plurals>
+
+    <!-- Note -->
+    <string name="note_title">Title</string>
+    <string name="note_body">Note</string>
+    <string name="note_pin">Pin</string>
+    <string name="note_unpin">Unpin</string>
+    <string name="note_share">Share</string>
+    <string name="note_show_checkboxes">Show checkboxes</string>
+    <string name="note_hide_checkboxes">Hide checkboxes</string>
+    <string name="note_delete">Delete</string>
+    <string name="note_edited">Edited %1$s</string>
+    <string name="format_heading">Heading</string>
+    <string name="format_bold">Bold</string>
+    <string name="format_italic">Italic</string>
+    <string name="format_bullets">Bulleted list</string>
+    <string name="checklist_add">List item</string>
+    <string name="checklist_remove">Remove item</string>
+    <plurals name="checklist_ticked">
+        <item quantity="one">%1$d ticked item</item>
+        <item quantity="other">%1$d ticked items</item>
+    </plurals>
+</resources>

@@ -38,3 +38,4 @@ rootProject.name = "range-kit"
 include(":range-ui")
 include(":apps:tasks")
 include(":apps:lift")
+include(":apps:notes")

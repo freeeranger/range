@@ -1,0 +1,44 @@
+<resources>
+    <string name="app_name">Range Notes</string>
+    <string name="format_language" translatable="false">sv</string>
+
+    <string name="action_back">Tillbaka</string>
+    <string name="action_more">Fler alternativ</string>
+    <string name="action_undo">Ångra</string>
+    <string name="settings_title">Inställningar</string>
+    <string name="date_yesterday">Igår</string>
+
+    <string name="notes_search">Sök anteckningar</string>
+    <string name="notes_clear_search">Rensa sökningen</string>
+    <string name="notes_empty">Inga anteckningar än.</string>
+    <string name="notes_none_found">Inga anteckningar matchar ”%1$s”.</string>
+    <string name="notes_pinned">Fästa</string>
+    <string name="notes_others">Övriga</string>
+    <string name="note_new">Ny anteckning</string>
+    <string name="checklist_new">Ny lista</string>
+    <string name="note_deleted">Anteckningen raderad</string>
+    <plurals name="checklist_more_ticked">
+        <item quantity="one">+ %1$d avbockat objekt</item>
+        <item quantity="other">+ %1$d avbockade objekt</item>
+    </plurals>
+
+    <string name="note_title">Rubrik</string>
+    <string name="note_body">Anteckning</string>
+    <string name="note_pin">Fäst</string>
+    <string name="note_unpin">Lossa</string>
+    <string name="note_share">Dela</string>
+    <string name="note_show_checkboxes">Visa kryssrutor</string>
+    <string name="note_hide_checkboxes">Dölj kryssrutor</string>
+    <string name="note_delete">Radera</string>
+    <string name="note_edited">Ändrad %1$s</string>
+    <string name="format_heading">Rubrik</string>
+    <string name="format_bold">Fet</string>
+    <string name="format_italic">Kursiv</string>
+    <string name="format_bullets">Punktlista</string>
+    <string name="checklist_add">Listobjekt</string>
+    <string name="checklist_remove">Ta bort objekt</string>
+    <plurals name="checklist_ticked">
+        <item quantity="one">%1$d avbockat objekt</item>
+        <item quantity="other">%1$d avbockade objekt</item>
+    </plurals>
+</resources>

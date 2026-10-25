@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Range Notes mark: a sheet with its top corner folded over and three lines of writing.
+     Drawn within the 66dp adaptive-icon safe zone; also the monochrome layer for themed icons. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M41,31H59L73,45V72A5,5 0,0 1,68,77H41A5,5 0,0 1,36,72V36A5,5 0,0 1,41,31Z
+            M57,35V44A3,3 0,0 0,60,47H69Z
+            M43,53H65A2.5,2.5 0,0 1,65,58H43A2.5,2.5 0,0 1,43,53Z
+            M43,62H65A2.5,2.5 0,0 1,65,67H43A2.5,2.5 0,0 1,43,62Z
+            M43,44H50A2.5,2.5 0,0 1,50,49H43A2.5,2.5 0,0 1,43,44Z" />
+</vector>
