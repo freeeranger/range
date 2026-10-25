@@ -119,7 +119,7 @@ fun RangeSwitchRow(
 
 /**
  * The settings every Range app shares: appearance, language and About. Pass app-specific rows
- * as [content]; they appear above the shared ones.
+ * as [content]; they appear above the shared ones, followed by Backup if the app has a [backup].
  */
 @Composable
 fun RangeSettingsScreen(
@@ -127,8 +127,10 @@ fun RangeSettingsScreen(
     onAppearanceChange: (RangeAppearance) -> Unit,
     onBack: () -> Unit,
     onOpenAbout: () -> Unit,
+    backup: RangeBackup? = null,
     content: LazyListScope.() -> Unit = {},
 ) {
+    val backupActions = rememberBackupActions(backup)
     val context = LocalContext.current
     var language by remember { mutableStateOf(RangeLanguages.current(context)) }
     var choosing by remember { mutableStateOf<Choice?>(null) }
@@ -153,6 +155,11 @@ fun RangeSettingsScreen(
 
     RangePage(title = stringResource(R.string.range_settings), onBack = onBack) {
         content()
+        if (backup != null) {
+            item { RangeSectionHeader(stringResource(R.string.range_backup)) }
+            item { RangeSettingRow(RangeIcons.Save, stringResource(R.string.range_backup_export), onClick = backupActions.export) }
+            item { RangeSettingRow(RangeIcons.SettingsBackupRestore, stringResource(R.string.range_backup_restore), onClick = backupActions.restore) }
+        }
         item { RangeSectionHeader(strings.appearance) }
         item {
             RangeSettingRow(RangeIcons.Brightness6, strings.theme, value = themeNames.getValue(appearance.theme), onClick = { choosing = Choice.Theme })

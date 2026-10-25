@@ -21,4 +21,13 @@
     <string name="range_dynamic_color_hint">Colours from your wallpaper</string>
     <string name="range_pure_black">Pure black</string>
     <string name="range_pure_black_hint">A black background in dark mode, easier on OLED screens</string>
+    <string name="range_ok">OK</string>
+    <string name="range_backup">Backup</string>
+    <string name="range_backup_export">Export backup</string>
+    <string name="range_backup_restore">Restore backup</string>
+    <string name="range_backup_restore_title">Replace everything in %1$s with this backup?</string>
+    <string name="range_backup_restore_confirm">Restore</string>
+    <string name="range_backup_invalid">That file isn’t a %1$s backup</string>
+    <string name="range_backup_saved">Backup saved</string>
+    <string name="range_backup_restored">Backup restored</string>
 </resources>

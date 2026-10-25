@@ -20,4 +20,13 @@
     <string name="range_dynamic_color_hint">Färger från din bakgrundsbild</string>
     <string name="range_pure_black">Helt svart</string>
     <string name="range_pure_black_hint">Svart bakgrund i mörkt läge, skonsamt för OLED-skärmar</string>
+    <string name="range_ok">OK</string>
+    <string name="range_backup">Säkerhetskopia</string>
+    <string name="range_backup_export">Exportera säkerhetskopia</string>
+    <string name="range_backup_restore">Återställ säkerhetskopia</string>
+    <string name="range_backup_restore_title">Ersätta allt i %1$s med den här säkerhetskopian?</string>
+    <string name="range_backup_restore_confirm">Återställ</string>
+    <string name="range_backup_invalid">Filen är ingen säkerhetskopia från %1$s</string>
+    <string name="range_backup_saved">Säkerhetskopian är sparad</string>
+    <string name="range_backup_restored">Säkerhetskopian är återställd</string>
 </resources>
