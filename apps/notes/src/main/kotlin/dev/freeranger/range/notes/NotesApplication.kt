@@ -2,6 +2,7 @@ package dev.freeranger.range.notes
 
 import android.app.Application
 import android.content.Context
+import dev.freeranger.range.notes.data.NoteLock
 import dev.freeranger.range.notes.data.NoteRepository
 import dev.freeranger.range.notes.data.NotesDatabase
 import dev.freeranger.range.ui.settings.RangeAppearanceStore
@@ -14,7 +15,8 @@ class AppContainer(context: Context) {
     /** For work that must outlive a screen, like saving a note as it's left. */
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val appearance = RangeAppearanceStore(context)
-    val repository = NoteRepository(NotesDatabase.create(context).notes())
+    val lock = NoteLock(context, scope)
+    val repository = NoteRepository(NotesDatabase.create(context).notes(), lock)
 }
 
 class NotesApplication : Application() {

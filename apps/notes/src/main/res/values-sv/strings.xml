@@ -42,4 +42,14 @@
         <item quantity="one">%1$d avbockat objekt</item>
         <item quantity="other">%1$d avbockade objekt</item>
     </plurals>
+
+    <string name="note_lock">Lås</string>
+    <string name="note_remove_lock">Ta bort låset</string>
+    <string name="note_unlock">Lås upp</string>
+    <string name="note_locked">Låst</string>
+    <string name="note_locked_untitled">Låst anteckning</string>
+    <string name="unlock_title">Lås upp låsta anteckningar</string>
+    <string name="lock_needs_screen_lock">Ställ in ett skärmlås på telefonen först: låsta anteckningar öppnas med fingeravtryck eller telefonens pinkod.</string>
+    <string name="lock_lost">Låsta anteckningar kan inte öppnas längre, eftersom telefonens skärmlås togs bort efter att de låstes. En säkerhetskopia tar tillbaka dem.</string>
+    <string name="dialog_ok">OK</string>
 </resources>

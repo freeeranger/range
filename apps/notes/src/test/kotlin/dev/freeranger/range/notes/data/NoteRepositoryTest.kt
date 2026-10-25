@@ -24,7 +24,8 @@ class NoteRepositoryTest {
         .setDriver(AndroidSQLiteDriver())
         .build()
     private var now: Instant = Instant.parse("2026-10-23T08:00:00Z")
-    private val repository = NoteRepository(database.notes()) { Clock.fixed(now, ZoneOffset.UTC) }
+    private val cipher = FakeCipher()
+    private val repository = NoteRepository(database.notes(), cipher) { Clock.fixed(now, ZoneOffset.UTC) }
 
     @After
     fun close() = database.close()
@@ -111,5 +112,72 @@ class NoteRepositoryTest {
         val ticked = checklist.copy(items = checklist.items!!.mapIndexed { i, it -> it.copy(checked = i == 0) })
         assertEquals("eggs\nbread\nmilk", ticked.toText().body)
         assertEquals("Shop\n\n☑ milk\n☐ eggs\n☐ bread", ticked.shareText())
+    }
+
+    @Test
+    fun `a locked note keeps only its title in the clear, and comes back whole once unlocked`() = runTest {
+        val id = repository.create(checklist = true)
+        repository.save(repository.get(id)!!.copy(title = "Bank", items = listOf(ChecklistItem(1, "PIN 4821"))))
+        val editedAt = repository.get(id)!!.editedAt
+        now = now.plusSeconds(60)
+        repository.setLocked(id, true)
+
+        val stored = repository.get(id)!!
+        assertTrue(stored.locked)
+        assertEquals("", stored.body)
+        assertNull(stored.items)
+        assertFalse("4821" in stored.secret!!)
+        assertEquals(editedAt, stored.editedAt)
+        assertEquals(listOf("PIN 4821"), repository.reveal(stored).items!!.map { it.text })
+
+        // Edits while unlocked stay encrypted.
+        repository.save(repository.reveal(stored).copy(items = listOf(ChecklistItem(1, "PIN 9930"))))
+        assertFalse("9930" in repository.get(id)!!.secret!!)
+        assertEquals("PIN 9930", repository.reveal(repository.get(id)!!).items!!.single().text)
+
+        repository.setLocked(id, false)
+        val unlocked = repository.get(id)!!
+        assertFalse(unlocked.locked)
+        assertNull(unlocked.secret)
+        assertEquals("PIN 9930", unlocked.items!!.single().text)
+    }
+
+    @Test
+    fun `locked notes are found by title only, and never discarded as blank`() = runTest {
+        val id = repository.create(checklist = false)
+        repository.save(repository.get(id)!!.copy(body = "door code 1234"))
+        repository.setLocked(id, true)
+        val stored = repository.get(id)!!
+        assertFalse(stored.matches("1234"))
+        repository.discardIfBlank(id)
+        assertTrue(repository.get(id) != null)
+        repository.save(repository.reveal(stored).copy(title = "Codes"))
+        assertTrue(repository.get(id)!!.matches("codes"))
+    }
+
+    @Test
+    fun `a backup carries locked notes, locked again on restore, or unlocked on a phone that can't lock them`() = runTest {
+        val id = repository.create(checklist = false)
+        repository.save(repository.get(id)!!.copy(title = "Diary", body = "Dear diary"))
+        repository.setLocked(id, true)
+        val backup = repository.exportBackup()
+        assertTrue("Dear diary" in backup)
+
+        assertTrue(repository.importBackup(backup))
+        val restored = repository.get(id)!!
+        assertTrue(restored.locked)
+        assertEquals("Dear diary", repository.reveal(restored).body)
+
+        cipher.isUnlocked = false
+        assertTrue(repository.importBackup(backup))
+        assertEquals("Dear diary", repository.get(id)!!.body)
+        assertFalse(repository.get(id)!!.locked)
+    }
+
+    /** Scrambles reversibly, so plain text never shows in what's stored. */
+    private class FakeCipher : NoteCipher {
+        override var isUnlocked = true
+        override fun encrypt(plain: String): String = java.util.Base64.getEncoder().encodeToString(plain.reversed().toByteArray())
+        override fun decrypt(secret: String): String = String(java.util.Base64.getDecoder().decode(secret)).reversed()
     }
 }

@@ -7,6 +7,7 @@ import java.time.Instant
 /**
  * Every note, as one file the user saves wherever they like and restores from. Kept apart from
  * the Room entity, so the file's shape only changes on purpose: [FORMAT] goes up when it does.
+ * Locked notes are written with their content in the clear, as [Note.locked] notes to lock again.
  */
 data class Backup(val notes: List<Note>) {
     fun encode(): String = json.encodeToString(
@@ -22,13 +23,15 @@ data class Backup(val notes: List<Note>) {
                     pinned = it.pinned,
                     createdAt = it.createdAt.toEpochMilli(),
                     editedAt = it.editedAt.toEpochMilli(),
+                    locked = it.locked,
                 )
             },
         ),
     )
 
     companion object {
-        const val FORMAT = 1
+        /** 2: notes can be locked. Their content is in the file as written, so restoring can lock them again. */
+        const val FORMAT = 2
         private val json = Json { ignoreUnknownKeys = true }
 
         /** Reads a backup file, or returns null if it isn't one this version understands. */
@@ -45,6 +48,7 @@ data class Backup(val notes: List<Note>) {
                         pinned = it.pinned,
                         createdAt = Instant.ofEpochMilli(it.createdAt),
                         editedAt = Instant.ofEpochMilli(it.editedAt),
+                        locked = it.locked,
                     )
                 },
             )
@@ -65,6 +69,8 @@ private data class BackupFile(val format: Int, val notes: List<NoteRow>) {
         val pinned: Boolean,
         val createdAt: Long,
         val editedAt: Long,
+        /** Its content is still in the clear here: locked on restore. */
+        val locked: Boolean = false,
     )
 
     @Serializable

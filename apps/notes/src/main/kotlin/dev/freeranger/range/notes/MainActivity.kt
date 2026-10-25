@@ -43,4 +43,15 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onStart() {
+        super.onStart()
+        (application as NotesApplication).container.lock.appReturned()
+    }
+
+    // Leaving the app (or turning the screen off) locks locked notes again; turning the phone doesn't.
+    override fun onStop() {
+        super.onStop()
+        if (!isChangingConfigurations) (application as NotesApplication).container.lock.appLeft()
+    }
 }

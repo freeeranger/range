@@ -47,4 +47,15 @@
         <item quantity="one">%1$d ticked item</item>
         <item quantity="other">%1$d ticked items</item>
     </plurals>
+
+    <!-- Locked notes -->
+    <string name="note_lock">Lock</string>
+    <string name="note_remove_lock">Remove lock</string>
+    <string name="note_unlock">Unlock</string>
+    <string name="note_locked">Locked</string>
+    <string name="note_locked_untitled">Locked note</string>
+    <string name="unlock_title">Unlock locked notes</string>
+    <string name="lock_needs_screen_lock">Set a screen lock on your phone first: locked notes open with your fingerprint or the phone’s PIN.</string>
+    <string name="lock_lost">Locked notes can’t be opened any more, as the phone’s screen lock was removed after they were locked. A backup brings them back.</string>
+    <string name="dialog_ok">OK</string>
 </resources>

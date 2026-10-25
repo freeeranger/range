@@ -1,7 +1,9 @@
 package dev.freeranger.range.notes.ui.note
 
 import android.content.Intent
+import android.view.WindowManager
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -26,6 +28,9 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -35,8 +40,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
@@ -73,6 +80,7 @@ import dev.freeranger.range.notes.LocalAppContainer
 import dev.freeranger.range.notes.R
 import dev.freeranger.range.notes.data.ChecklistItem
 import dev.freeranger.range.notes.data.Note
+import dev.freeranger.range.notes.data.NoteLock
 import dev.freeranger.range.notes.ui.common.Markdown
 import dev.freeranger.range.notes.ui.common.rememberMarkdownStyles
 import dev.freeranger.range.notes.ui.common.rememberNoteFormat
@@ -84,8 +92,44 @@ import java.time.LocalDate
 fun NoteRoute(id: Long, isNew: Boolean, onBack: () -> Unit, onDelete: () -> Unit) {
     val container = LocalAppContainer.current
     val context = LocalContext.current
-    val viewModel = viewModel(key = "note-$id") { NoteViewModel(id, container.repository, container.scope) }
+    val activity = LocalActivity.current
+    val viewModel = viewModel(key = "note-$id") { NoteViewModel(id, container.repository, container.lock, container.scope) }
     val note = viewModel.note ?: return
+    var problem by remember { mutableStateOf<NoteLock.Result?>(null) }
+    val unlockTitle = stringResource(R.string.unlock_title)
+    val unlock = { then: () -> Unit ->
+        if (activity != null) {
+            container.lock.unlock(activity, unlockTitle) { result ->
+                when (result) {
+                    NoteLock.Result.Unlocked -> then()
+                    NoteLock.Result.Cancelled -> Unit
+                    else -> problem = result
+                }
+            }
+        }
+    }
+
+    // An open locked note stays out of screenshots and the recent apps screen.
+    val secure = note.locked && !viewModel.hidden
+    DisposableEffect(activity, secure) {
+        if (secure) activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        onDispose { if (secure) activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE) }
+    }
+
+    problem?.let { result ->
+        AlertDialog(
+            onDismissRequest = { problem = null },
+            text = { Text(stringResource(if (result == NoteLock.Result.Lost) R.string.lock_lost else R.string.lock_needs_screen_lock)) },
+            confirmButton = { TextButton(onClick = { problem = null }) { Text(stringResource(R.string.dialog_ok)) } },
+        )
+    }
+
+    if (viewModel.hidden) {
+        // Asks straight away, and again whenever the note locks while it's open.
+        LaunchedEffect(Unit) { unlock {} }
+        LockedNoteScreen(note, onBack = onBack, onUnlock = { unlock {} })
+        return
+    }
 
     NoteScreen(
         note = note,
@@ -107,8 +151,50 @@ fun NoteRoute(id: Long, isNew: Boolean, onBack: () -> Unit, onDelete: () -> Unit
                 context.startActivity(Intent.createChooser(send, null))
             },
             delete = { viewModel.delete(then = onDelete) },
+            toggleLocked = {
+                when {
+                    note.locked -> viewModel.setLocked(false)
+                    container.lock.isUnlocked -> viewModel.setLocked(true)
+                    else -> unlock { viewModel.setLocked(true) }
+                }
+            },
         ),
     )
+}
+
+/** A locked note while notes are locked: its title, and a way to unlock. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LockedNoteScreen(note: Note, onBack: () -> Unit, onUnlock: () -> Unit, modifier: Modifier = Modifier) {
+    Scaffold(
+        modifier = modifier,
+        topBar = {
+            TopAppBar(
+                title = {},
+                navigationIcon = {
+                    IconButton(onClick = onBack) { Icon(RangeIcons.ArrowBack, contentDescription = stringResource(R.string.action_back)) }
+                },
+            )
+        },
+    ) { padding ->
+        Column(Modifier.padding(padding).fillMaxSize().padding(horizontal = RangeSpace.gutter)) {
+            if (note.title.isNotBlank()) {
+                Text(note.title.trim(), modifier = Modifier.padding(vertical = RangeSpace.s3), style = MaterialTheme.typography.headlineSmall)
+            }
+            Column(
+                Modifier.fillMaxWidth().weight(1f),
+                verticalArrangement = Arrangement.spacedBy(RangeSpace.s6, Alignment.CenterVertically),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Icon(RangeIcons.Lock, contentDescription = stringResource(R.string.note_locked), modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Button(onClick = onUnlock, contentPadding = ButtonDefaults.ButtonWithIconContentPadding) {
+                    Icon(RangeIcons.LockOpen, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                    Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                    Text(stringResource(R.string.note_unlock))
+                }
+            }
+        }
+    }
 }
 
 /** Everything the note page can ask for. */
@@ -125,6 +211,7 @@ data class NoteActions(
     val toggleChecklist: () -> Unit = {},
     val share: () -> Unit = {},
     val delete: () -> Unit = {},
+    val toggleLocked: () -> Unit = {},
 )
 
 /**
@@ -190,6 +277,13 @@ fun NoteScreen(
                             ) {
                                 menu = false
                                 actions.toggleChecklist()
+                            }
+                            MenuItem(
+                                if (note.locked) RangeIcons.LockOpen else RangeIcons.Lock,
+                                stringResource(if (note.locked) R.string.note_remove_lock else R.string.note_lock),
+                            ) {
+                                menu = false
+                                actions.toggleLocked()
                             }
                             MenuItem(RangeIcons.Delete, stringResource(R.string.note_delete)) {
                                 menu = false

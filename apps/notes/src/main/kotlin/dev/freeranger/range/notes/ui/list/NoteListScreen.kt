@@ -222,6 +222,16 @@ private fun NoteCard(note: Note, styles: Markdown.Styles, onClick: () -> Unit, m
     val colors = MaterialTheme.colorScheme
     Card(onClick = onClick, modifier = modifier.fillMaxWidth()) {
         Column(Modifier.padding(RangeSpace.s4), verticalArrangement = Arrangement.spacedBy(RangeSpace.s2)) {
+            if (note.locked) {
+                Text(
+                    note.title.trim().ifEmpty { stringResource(R.string.note_locked_untitled) },
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Icon(RangeIcons.Lock, contentDescription = stringResource(R.string.note_locked), modifier = Modifier.size(18.dp), tint = colors.onSurfaceVariant)
+                return@Column
+            }
             if (note.title.isNotBlank()) {
                 Text(note.title.trim(), style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }

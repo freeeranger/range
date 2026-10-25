@@ -17,6 +17,7 @@ import dev.freeranger.range.notes.data.ChecklistItem
 import dev.freeranger.range.notes.data.Note
 import dev.freeranger.range.notes.ui.list.NoteListScreen
 import dev.freeranger.range.notes.ui.list.NoteListState
+import dev.freeranger.range.notes.ui.note.LockedNoteScreen
 import dev.freeranger.range.notes.ui.note.NoteActions
 import dev.freeranger.range.notes.ui.note.NoteScreen
 import dev.freeranger.range.ui.settings.RangeAboutScreen
@@ -81,7 +82,10 @@ class ScreenshotTest {
         edited = at(friday.minusDays(400), 10),
     )
 
-    private val state = NoteListState(listOf(trip, wifi, ideas, groceries, plumber, books), loaded = true)
+    private val bank = note(7, "Bank", pinned = true).copy(locked = true, secret = "sealed")
+    private val diary = note(8, "Diary", body = "Slept well. Long walk by the sea.", edited = at(friday.minusDays(2), 21)).copy(locked = true)
+
+    private val state = NoteListState(listOf(trip, wifi, bank, ideas, groceries, plumber, books), loaded = true)
 
     @Composable
     private fun List(listState: NoteListState = state, query: String = "") =
@@ -143,6 +147,16 @@ class ScreenshotTest {
     @Test
     @Config(qualifiers = "sv-rSE-$PHONE")
     fun checklistSwedish() = capture { NoteScreen(groceries, friday, NoteActions()) }
+
+    @Test
+    fun noteLocked() = capture { LockedNoteScreen(bank, onBack = {}, onUnlock = {}) }
+
+    @Test
+    @Config(qualifiers = "sv-rSE-$PHONE")
+    fun noteLockedSwedish() = capture { LockedNoteScreen(bank, onBack = {}, onUnlock = {}) }
+
+    @Test
+    fun noteUnlockedMenu() = capture { NoteScreen(diary, friday, NoteActions(), initiallyShowingMenu = true) }
 
     @Test
     fun icon() = capture {

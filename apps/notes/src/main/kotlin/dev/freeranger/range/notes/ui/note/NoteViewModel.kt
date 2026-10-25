@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.freeranger.range.notes.data.ChecklistItem
 import dev.freeranger.range.notes.data.Note
+import dev.freeranger.range.notes.data.NoteLock
 import dev.freeranger.range.notes.data.NoteRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -19,20 +20,56 @@ import java.time.Instant
 /**
  * The note being edited. Edits land in [note] straight away, for the text fields, and are saved
  * shortly after typing stops; leaving the note saves what's left, and discards it if it's blank.
+ * A locked note only has its text and items here while notes are unlocked, and is saved before they lock.
  */
 class NoteViewModel(
     private val id: Long,
     private val repository: NoteRepository,
+    private val lock: NoteLock,
     /** Outlives this screen, for saving as it's left. */
     private val appScope: CoroutineScope,
 ) : ViewModel() {
     var note by mutableStateOf<Note?>(null)
         private set
 
+    /** Whether a locked note's text and items are here. */
+    private var revealed by mutableStateOf(false)
+
+    /** A locked note while notes are locked: only its title is known, and nothing can be changed. */
+    val hidden: Boolean get() = note?.let { it.locked && !revealed } ?: false
+
     private var pendingSave: Job? = null
+    private val stopSavingBeforeLock = lock.beforeLocking { flush() }
 
     init {
-        viewModelScope.launch { note = repository.get(id) }
+        viewModelScope.launch {
+            lock.unlocked.collect { unlocked ->
+                val stored = repository.get(id) ?: return@collect
+                when {
+                    stored.locked && unlocked -> {
+                        note = repository.reveal(stored)
+                        revealed = true
+                    }
+                    stored.locked -> {
+                        note = stored
+                        revealed = false
+                    }
+                    note == null -> note = stored
+                }
+            }
+        }
+    }
+
+    /** Locks the note or takes its lock off. Notes must be unlocked to lock one. */
+    fun setLocked(locked: Boolean) {
+        val current = note ?: return
+        pendingSave?.cancel()
+        note = current.copy(locked = locked)
+        revealed = locked
+        appScope.launch {
+            repository.save(current)
+            repository.setLocked(id, locked)
+        }
     }
 
     fun setTitle(title: String) = edit { copy(title = title) }
@@ -71,27 +108,32 @@ class NoteViewModel(
 
     /** Saves first, then runs [then], so the note is deleted as it was last seen. */
     fun delete(then: () -> Unit) {
-        pendingSave?.cancel()
-        val latest = note
         appScope.launch {
-            latest?.let { repository.save(it) }
+            flush()
             withContext(Dispatchers.Main) { then() }
         }
     }
 
     override fun onCleared() {
+        stopSavingBeforeLock()
         pendingSave?.cancel()
-        val latest = note
+        val latest = note?.takeUnless { hidden }
         appScope.launch {
             latest?.let { repository.save(it) }
             repository.discardIfBlank(id)
         }
     }
 
+    /** Saves what's waiting to be saved, now. */
+    private suspend fun flush() {
+        pendingSave?.cancel()
+        note?.takeUnless { hidden }?.let { repository.save(it) }
+    }
+
     private fun editItems(transform: (List<ChecklistItem>) -> List<ChecklistItem>) = edit { copy(items = items?.let(transform)) }
 
     private fun edit(transform: Note.() -> Note) {
-        val current = note ?: return
+        val current = note?.takeUnless { hidden } ?: return
         val edited = current.transform()
         if (edited == current) return
         // Shown as "Edited just now" straight away; the stored time is set when it's saved.
@@ -105,7 +147,7 @@ class NoteViewModel(
 
     private fun saveNow() {
         pendingSave?.cancel()
-        val latest = note ?: return
+        val latest = note?.takeUnless { hidden } ?: return
         appScope.launch { repository.save(latest) }
     }
 

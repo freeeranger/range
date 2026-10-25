@@ -1,6 +1,7 @@
 package dev.freeranger.range.notes.data
 
 import android.content.Context
+import androidx.room3.AutoMigration
 import androidx.room3.ColumnTypeConverter
 import androidx.room3.ColumnTypeConverters
 import androidx.room3.Dao
@@ -47,6 +48,9 @@ abstract class NoteDao {
     @Query("DELETE FROM notes")
     abstract suspend fun clear()
 
+    @Query("SELECT EXISTS(SELECT 1 FROM notes WHERE locked)")
+    abstract suspend fun anyLocked(): Boolean
+
     /** Replaces everything with [notes], all or nothing. */
     @Transaction
     open suspend fun replaceAll(notes: List<Note>) {
@@ -55,7 +59,8 @@ abstract class NoteDao {
     }
 }
 
-@Database(entities = [Note::class], version = 1, exportSchema = true)
+/** v2: notes can be locked, their content encrypted. */
+@Database(entities = [Note::class], version = 2, exportSchema = true, autoMigrations = [AutoMigration(from = 1, to = 2)])
 @ColumnTypeConverters(Converters::class)
 abstract class NotesDatabase : RoomDatabase() {
     abstract fun notes(): NoteDao

@@ -1,5 +1,6 @@
 package dev.freeranger.range.notes.data
 
+import androidx.room3.ColumnInfo
 import androidx.room3.Entity
 import androidx.room3.PrimaryKey
 import kotlinx.serialization.Serializable
@@ -8,6 +9,9 @@ import java.time.Instant
 /**
  * A note: a title with either text or a checklist. Text is written with light Markdown ("# "
  * headings, **bold**, _italic_, "- " bullets), stored as typed and only styled when shown.
+ *
+ * A [locked] note keeps only its title in the clear: [NoteRepository] stores its text and items
+ * encrypted in [secret], and hands them back in [body] and [items] only while notes are unlocked.
  */
 @Entity(tableName = "notes")
 data class Note(
@@ -19,18 +23,22 @@ data class Note(
     val items: List<ChecklistItem>? = null,
     val pinned: Boolean = false,
     val createdAt: Instant,
-    /** When the title, text or items last changed. Pinning doesn't count. */
+    /** When the title, text or items last changed. Pinning and locking don't count. */
     val editedAt: Instant,
+    @ColumnInfo(defaultValue = "0") val locked: Boolean = false,
+    /** A locked note's text and items, encrypted. Null for other notes. */
+    val secret: String? = null,
 ) {
     val isChecklist: Boolean get() = items != null
 
-    /** Nothing written yet: left like this, a note is discarded rather than kept. */
-    val isBlank: Boolean get() = title.isBlank() && body.isBlank() && items.orEmpty().all { it.text.isBlank() }
+    /** Nothing written yet: left like this, a note is discarded rather than kept. A locked note never is. */
+    val isBlank: Boolean get() = !locked && title.isBlank() && body.isBlank() && items.orEmpty().all { it.text.isBlank() }
 
-    /** Whether [query] appears in the title, text or any item, ignoring case. */
+    /** Whether [query] appears in the title, text or any item, ignoring case. Only the title, for a locked note. */
     fun matches(query: String): Boolean {
         val q = query.trim()
         if (q.isEmpty()) return true
+        if (locked) return title.contains(q, ignoreCase = true)
         return title.contains(q, ignoreCase = true) ||
             body.contains(q, ignoreCase = true) ||
             items.orEmpty().any { it.text.contains(q, ignoreCase = true) }
