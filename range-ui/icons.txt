@@ -41,3 +41,12 @@ sticky_note_2
 swap_horiz
 timer
 translate
+keep
+format_bold
+format_italic
+format_h1
+format_list_bulleted
+checklist
+share
+check_box
+check_box_outline_blank
