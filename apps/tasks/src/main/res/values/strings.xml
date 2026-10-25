@@ -17,8 +17,8 @@
 
     <!-- List -->
     <string name="tasks_add">New task</string>
-    <string name="tasks_empty">Nothing to do yet. Tap + to add a task.</string>
-    <string name="tasks_all_done">All done.</string>
+    <string name="tasks_empty">Nothing to do yet.</string>
+    <string name="tasks_all_done">All done for today.</string>
     <string name="tasks_completed_section">Completed (%1$d)</string>
     <string name="tasks_complete">Mark “%1$s” done</string>
     <string name="tasks_reopen">Mark “%1$s” not done</string>
@@ -41,9 +41,6 @@
     <string name="detail_details_label">Details</string>
     <string name="detail_no_date">Anytime</string>
     <string name="detail_anytime_hint">Shows every day until it’s done</string>
-    <string name="detail_delete_title">Delete task?</string>
-    <string name="detail_delete_text">“%1$s” will be deleted for good.</string>
-    <string name="detail_delete_confirm">Delete</string>
     <string name="detail_discard_title">Discard your changes?</string>
     <string name="detail_discard">Discard</string>
     <string name="detail_keep_editing">Keep editing</string>
@@ -138,4 +135,9 @@
     <string name="section_completed">Completed</string>
     <string name="day_empty_past">Nothing ticked off this day.</string>
     <string name="action_go_to_date">Go to date</string>
+
+    <!-- Settings -->
+    <string name="settings_reminders">Reminders</string>
+    <string name="settings_all_day_reminder">Tasks without a time</string>
+    <string name="snackbar_deleted">“%1$s” deleted</string>
 </resources>

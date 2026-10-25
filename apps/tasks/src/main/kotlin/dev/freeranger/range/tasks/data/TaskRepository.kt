@@ -8,7 +8,7 @@ import java.time.LocalDateTime
 /** Keeps reminders in step with the database. Implemented with AlarmManager; faked in tests. */
 interface Reminders {
     /** Schedules, moves or cancels the task's next reminder to match its current state. */
-    fun sync(task: Task)
+    suspend fun sync(task: Task)
 
     /** Cancels the reminder and removes any notification already showing. */
     fun cancel(taskId: Long)
@@ -82,17 +82,40 @@ class TaskRepository(
 
     /** Re-registers the task's next reminder, after one has fired. */
     suspend fun syncReminder(id: Long) {
-        dao.get(id)?.let(reminders::sync)
+        dao.get(id)?.let { reminders.sync(it) }
     }
 
-    suspend fun delete(id: Long) {
+    /** Deletes the task and its history, and returns both so Undo can put them back. */
+    suspend fun delete(id: Long): Deleted? {
+        val task = dao.get(id) ?: return null
+        val history = dao.completionsOf(id)
         dao.delete(id)
         reminders.cancel(id)
+        return Deleted(task, history)
+    }
+
+    /** Undoes [delete]: the task comes back with its id, its history and its reminder. */
+    suspend fun restore(deleted: Deleted) {
+        dao.insert(deleted.task, deleted.history)
+        reminders.sync(deleted.task)
     }
 
     /** Re-registers every reminder. Alarms don't survive reboots, and time changes can move them. */
     suspend fun syncAllReminders() {
-        dao.openWithDueDate().forEach(reminders::sync)
+        dao.openWithDueDate().forEach { reminders.sync(it) }
+    }
+
+    /** Everything, as a backup file's text. */
+    suspend fun exportBackup(): String = Backup(dao.allTasks(), dao.allCompletions()).encode()
+
+    /** Replaces everything with a backup file's contents. False, and nothing changed, if it isn't a Tasks backup. */
+    suspend fun importBackup(text: String): Boolean {
+        val backup = Backup.decode(text) ?: return false
+        val replaced = dao.allTasks().map { it.id }
+        if (runCatching { dao.replaceAll(backup) }.isFailure) return false
+        replaced.forEach(reminders::cancel)
+        syncAllReminders()
+        return true
     }
 
     private suspend fun change(id: Long, history: Boolean = true, transform: Task.() -> Task) {
@@ -120,3 +143,6 @@ class TaskRepository(
 
     private fun today() = LocalDate.now(clock())
 }
+
+/** A deleted task and its history of finished days, kept for Undo. */
+data class Deleted(val task: Task, val history: List<Completion>)

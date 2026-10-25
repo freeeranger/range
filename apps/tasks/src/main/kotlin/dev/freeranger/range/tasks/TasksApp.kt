@@ -1,9 +1,13 @@
 package dev.freeranger.range.tasks
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -13,19 +17,21 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
+import dev.freeranger.range.tasks.data.Task
 import dev.freeranger.range.tasks.ui.detail.TaskDetailRoute
 import dev.freeranger.range.tasks.ui.list.TaskListRoute
+import dev.freeranger.range.tasks.ui.settings.TasksSettingsRoute
 import dev.freeranger.range.ui.settings.RangeAboutScreen
-import dev.freeranger.range.ui.settings.RangeAppearance
 import dev.freeranger.range.ui.settings.RangeComponentsScreen
 import dev.freeranger.range.ui.settings.RangeLicense
 import dev.freeranger.range.ui.settings.RangeLicenseScreen
-import dev.freeranger.range.ui.settings.RangeSettingsScreen
 import dev.freeranger.range.ui.theme.RangeTransitions
-import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 
 val LocalAppContainer = staticCompositionLocalOf<AppContainer> { error("No AppContainer provided") }
+
+/** When tasks without a time remind, from Settings. */
+val LocalAllDayReminder = compositionLocalOf { Task.ALL_DAY_REMINDER }
 
 @Serializable
 data object TaskListKey : NavKey
@@ -49,6 +55,10 @@ data class LicenseKey(val license: String) : NavKey
 @Composable
 fun TasksApp(taskToOpen: Long?, onTaskOpened: () -> Unit) {
     val backStack = rememberNavBackStack(TaskListKey)
+    val container = LocalAppContainer.current
+    val allDayReminder by container.preferences.allDayReminder.collectAsStateWithLifecycle(Task.ALL_DAY_REMINDER)
+    // A task deleted from its page, handed to the list so it can offer Undo.
+    var deleting by rememberSaveable { mutableStateOf<Long?>(null) }
 
     LaunchedEffect(taskToOpen) {
         if (taskToOpen == null) return@LaunchedEffect
@@ -58,56 +68,59 @@ fun TasksApp(taskToOpen: Long?, onTaskOpened: () -> Unit) {
         onTaskOpened()
     }
 
-    NavDisplay(
-        backStack = backStack,
-        onBack = { backStack.removeLastOrNull() },
-        entryDecorators = listOf(
-            rememberSaveableStateHolderNavEntryDecorator(),
-            rememberViewModelStoreNavEntryDecorator(),
-        ),
-        transitionSpec = { RangeTransitions.forward() },
-        popTransitionSpec = { RangeTransitions.back() },
-        predictivePopTransitionSpec = { RangeTransitions.predictiveBack() },
-        entryProvider = entryProvider {
-            val back: () -> Unit = { backStack.removeLastOrNull() }
-            val openLicense: (RangeLicense) -> Unit = { backStack.add(LicenseKey(it.name)) }
+    CompositionLocalProvider(LocalAllDayReminder provides allDayReminder) {
+        NavDisplay(
+            backStack = backStack,
+            onBack = { backStack.removeLastOrNull() },
+            entryDecorators = listOf(
+                rememberSaveableStateHolderNavEntryDecorator(),
+                rememberViewModelStoreNavEntryDecorator(),
+            ),
+            transitionSpec = { RangeTransitions.forward() },
+            popTransitionSpec = { RangeTransitions.back() },
+            predictivePopTransitionSpec = { RangeTransitions.predictiveBack() },
+            entryProvider = entryProvider {
+                val back: () -> Unit = { backStack.removeLastOrNull() }
+                val openLicense: (RangeLicense) -> Unit = { backStack.add(LicenseKey(it.name)) }
 
-            entry<TaskListKey> {
-                TaskListRoute(
-                    onOpenTask = { backStack.add(TaskDetailKey(it)) },
-                    onOpenSettings = { backStack.add(SettingsKey) },
-                )
-            }
-            entry<TaskDetailKey> { key ->
-                TaskDetailRoute(id = key.id, onBack = back)
-            }
-            entry<SettingsKey> {
-                val store = LocalAppContainer.current.appearance
-                val appearance by store.appearance.collectAsStateWithLifecycle(RangeAppearance())
-                val scope = rememberCoroutineScope()
-                RangeSettingsScreen(
-                    appearance = appearance,
-                    onAppearanceChange = { scope.launch { store.set(it) } },
-                    onBack = back,
-                    onOpenAbout = { backStack.add(AboutKey) },
-                )
-            }
-            entry<AboutKey> {
-                RangeAboutScreen(
-                    appName = stringResource(R.string.app_name),
-                    iconBackground = R.drawable.ic_launcher_background,
-                    iconForeground = R.drawable.ic_launcher_foreground,
-                    onBack = back,
-                    onOpenLicense = openLicense,
-                    onOpenComponents = { backStack.add(ComponentsKey) },
-                )
-            }
-            entry<ComponentsKey> {
-                RangeComponentsScreen(onBack = back, onOpenLicense = openLicense)
-            }
-            entry<LicenseKey> { key ->
-                RangeLicenseScreen(license = RangeLicense.valueOf(key.license), onBack = back)
-            }
-        },
-    )
+                entry<TaskListKey> {
+                    TaskListRoute(
+                        onOpenTask = { backStack.add(TaskDetailKey(it)) },
+                        onOpenSettings = { backStack.add(SettingsKey) },
+                        deleting = deleting,
+                        onDeleted = { deleting = null },
+                    )
+                }
+                entry<TaskDetailKey> { key ->
+                    TaskDetailRoute(
+                        id = key.id,
+                        onBack = back,
+                        onDelete = {
+                            deleting = key.id
+                            back()
+                        },
+                    )
+                }
+                entry<SettingsKey> {
+                    TasksSettingsRoute(onBack = back, onOpenAbout = { backStack.add(AboutKey) })
+                }
+                entry<AboutKey> {
+                    RangeAboutScreen(
+                        appName = stringResource(R.string.app_name),
+                        iconBackground = R.drawable.ic_launcher_background,
+                        iconForeground = R.drawable.ic_launcher_foreground,
+                        onBack = back,
+                        onOpenLicense = openLicense,
+                        onOpenComponents = { backStack.add(ComponentsKey) },
+                    )
+                }
+                entry<ComponentsKey> {
+                    RangeComponentsScreen(onBack = back, onOpenLicense = openLicense)
+                }
+                entry<LicenseKey> { key ->
+                    RangeLicenseScreen(license = RangeLicense.valueOf(key.license), onBack = back)
+                }
+            },
+        )
+    }
 }

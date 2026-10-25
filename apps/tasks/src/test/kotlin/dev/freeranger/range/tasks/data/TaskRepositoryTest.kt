@@ -7,7 +7,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -155,8 +157,59 @@ class TaskRepositoryTest {
         assertEquals(repeat, task.repeat)
     }
 
+    @Test
+    fun `undoing a delete brings the task back with its history and reminder`() = runTest {
+        val id = repository.add("Take vitamins", schedule = vitamins)
+        now = friday.atTime(20, 5)
+        repository.check(id)
+        repository.check(id)
+        val task = repository.get(id)!!
+        val history = repository.completions.first()
+
+        val deleted = repository.delete(id)!!
+        assertEquals(emptyList<Task>(), repository.tasks.first())
+        assertEquals(id, reminders.cancelled.last())
+
+        repository.restore(deleted)
+        assertEquals(task, repository.get(id))
+        assertEquals(history, repository.completions.first())
+        assertEquals(task, reminders.synced.last())
+    }
+
+    @Test
+    fun `a backup restores everything exactly, and anything else is turned away untouched`() = runTest {
+        val rent = repository.add("Pay rent", "before Friday", Schedule(friday))
+        val vitaminsId = repository.add("Take vitamins", schedule = Schedule(friday, vitamins.times, vitamins.repeat!!.copy(end = RepeatEnd.After(10))))
+        repository.add("Buy oat milk")
+        now = friday.atTime(8, 5)
+        repository.check(rent)
+        repository.check(vitaminsId)
+        val tasks = repository.tasks.first().sortedBy { it.id }
+        val completions = repository.completions.first()
+        val backup = repository.exportBackup()
+
+        repository.delete(rent)
+        repository.add("Something new")
+        assertFalse(repository.importBackup("""{"format":2,"exercises":[],"workouts":[],"entries":[],"sets":[]}"""))
+        assertFalse(repository.importBackup("not json"))
+        assertEquals(3, repository.tasks.first().size)
+
+        reminders.cancelled.clear()
+        assertTrue(repository.importBackup(backup))
+        assertEquals(tasks, repository.tasks.first().sortedBy { it.id })
+        assertEquals(completions, repository.completions.first())
+        // The task only in the replaced data has its reminder cleared.
+        assertTrue(4L in reminders.cancelled)
+    }
+
     private class RecordingReminders : Reminders {
-        override fun sync(task: Task) = Unit
-        override fun cancel(taskId: Long) = Unit
+        val synced = mutableListOf<Task>()
+        val cancelled = mutableListOf<Long>()
+        override suspend fun sync(task: Task) {
+            synced += task
+        }
+        override fun cancel(taskId: Long) {
+            cancelled += taskId
+        }
     }
 }

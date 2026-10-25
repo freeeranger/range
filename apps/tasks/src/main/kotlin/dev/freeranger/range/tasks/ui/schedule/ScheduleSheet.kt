@@ -46,6 +46,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import dev.freeranger.range.tasks.LocalAllDayReminder
 import dev.freeranger.range.tasks.R
 import dev.freeranger.range.tasks.data.Repeat
 import dev.freeranger.range.tasks.data.RepeatEnd
@@ -157,7 +158,7 @@ fun ScheduleSheet(
                 )
             }
             val hint = when {
-                times.isEmpty() -> stringResource(R.string.schedule_all_day_hint, format.time(Task.ALL_DAY_REMINDER))
+                times.isEmpty() -> stringResource(R.string.schedule_all_day_hint, format.time(LocalAllDayReminder.current))
                 times.size > 1 -> stringResource(R.string.schedule_several_hint, times.size)
                 else -> null
             }

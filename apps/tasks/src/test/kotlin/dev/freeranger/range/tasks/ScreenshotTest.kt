@@ -3,7 +3,11 @@ package dev.freeranger.range.tasks
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.geometry.Offset
@@ -27,16 +31,19 @@ import dev.freeranger.range.tasks.ui.list.TaskListActions
 import dev.freeranger.range.tasks.ui.list.TaskListScreen
 import dev.freeranger.range.tasks.ui.list.TaskListState
 import dev.freeranger.range.tasks.ui.schedule.ScheduleSheet
+import dev.freeranger.range.tasks.ui.settings.TasksSettingsScreen
 import dev.freeranger.range.ui.components.RangeTimePickerDialog
 import dev.freeranger.range.ui.settings.RangeAboutScreen
 import dev.freeranger.range.ui.settings.RangeAppIcon
 import dev.freeranger.range.ui.settings.RangeAppearance
+import dev.freeranger.range.ui.settings.RangeBackup
 import dev.freeranger.range.ui.settings.RangeLicense
 import dev.freeranger.range.ui.settings.RangeLicenseScreen
-import dev.freeranger.range.ui.settings.RangeSettingsScreen
 import dev.freeranger.range.ui.settings.ThemeMode
 import dev.freeranger.range.ui.theme.RangeAccents
 import dev.freeranger.range.ui.theme.RangeTheme
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -161,6 +168,18 @@ class ScreenshotTest {
     fun listEmpty() = capture { List(listState = TaskListState(loaded = true)) }
 
     @Test
+    fun listAllDone() = capture {
+        List(listState = state.copy(tasks = state.tasks.filter { it.id in setOf(6L, 7L) }, completions = state.completions.filter { it.taskId in setOf(6L, 7L) }))
+    }
+
+    @Test
+    fun listDeleted() = capture {
+        val snackbar = remember { SnackbarHostState() }
+        LaunchedEffect(Unit) { snackbar.showSnackbar("“Book a dentist appointment” deleted", actionLabel = "Undo", duration = SnackbarDuration.Indefinite) }
+        TaskListScreen(state = state, now = now, actions = TaskListActions(), snackbar = snackbar)
+    }
+
+    @Test
     fun newTask() = capture { List(initiallyAdding = true) }
 
     @Test
@@ -213,7 +232,26 @@ class ScreenshotTest {
     fun detailAnytime() = capture { TaskDetailScreen(state.tasks.first { it.id == 5L }, now, TaskDetailActions()) }
 
     @Test
-    fun settings() = capture { RangeSettingsScreen(RangeAppearance(), onAppearanceChange = {}, onBack = {}, onOpenAbout = {}) }
+    fun settings() = capture { Settings() }
+
+    @Test
+    fun settingsPickingTime() = capture { Settings(initiallyPickingTime = true) }
+
+    @Test
+    @Config(qualifiers = "sv-rSE-$PHONE")
+    fun settingsSwedish() = capture { Settings() }
+
+    @Composable
+    private fun Settings(initiallyPickingTime: Boolean = false) = TasksSettingsScreen(
+        appearance = RangeAppearance(),
+        onAppearanceChange = {},
+        allDayReminder = LocalTime.of(8, 30),
+        onAllDayReminderChange = {},
+        onBack = {},
+        onOpenAbout = {},
+        backup = RangeBackup("Tasks", "tasks", CoroutineScope(Dispatchers.Unconfined), { "" }, { true }, { true }),
+        initiallyPickingTime = initiallyPickingTime,
+    )
 
     @Test
     fun about() = capture {

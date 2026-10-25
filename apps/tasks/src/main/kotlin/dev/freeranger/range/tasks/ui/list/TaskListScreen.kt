@@ -70,8 +70,9 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.temporal.TemporalAdjusters
 
+/** [deleting] is a task just deleted from its page, to delete here so the snackbar can offer Undo; [onDeleted] says it's done. */
 @Composable
-fun TaskListRoute(onOpenTask: (Long) -> Unit, onOpenSettings: () -> Unit) {
+fun TaskListRoute(onOpenTask: (Long) -> Unit, onOpenSettings: () -> Unit, deleting: Long? = null, onDeleted: () -> Unit = {}) {
     val container = LocalAppContainer.current
     val viewModel = viewModel { TaskListViewModel(container.repository) }
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -90,6 +91,19 @@ fun TaskListRoute(onOpenTask: (Long) -> Unit, onOpenSettings: () -> Unit) {
             val result = snackbar.showSnackbar(message, actionLabel = resources.getString(R.string.snackbar_undo), duration = SnackbarDuration.Short)
             if (result == SnackbarResult.ActionPerformed) viewModel.undo(before)
         }
+    }
+    LaunchedEffect(viewModel) {
+        viewModel.deleted.collect { deleted ->
+            snackbar.currentSnackbarData?.dismiss()
+            val message = resources.getString(R.string.snackbar_deleted, deleted.task.title)
+            val result = snackbar.showSnackbar(message, actionLabel = resources.getString(R.string.snackbar_undo), duration = SnackbarDuration.Short)
+            if (result == SnackbarResult.ActionPerformed) viewModel.undoDelete(deleted)
+        }
+    }
+    LaunchedEffect(deleting) {
+        if (deleting == null) return@LaunchedEffect
+        viewModel.delete(deleting)
+        onDeleted()
     }
 
     TaskListScreen(
@@ -257,6 +271,7 @@ private fun DayList(
                     day < today -> R.string.day_empty_past
                     day != today -> R.string.day_empty
                     state.tasks.isEmpty() -> R.string.tasks_empty
+                    view.completed.isNotEmpty() -> R.string.tasks_all_done
                     else -> R.string.day_empty_today
                 }
                 Text(

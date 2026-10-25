@@ -50,6 +50,43 @@ abstract class TaskDao {
     @Query("SELECT * FROM completions")
     abstract fun observeCompletions(): Flow<List<Completion>>
 
+    @Query("SELECT * FROM tasks")
+    abstract suspend fun allTasks(): List<Task>
+
+    @Query("SELECT * FROM completions")
+    abstract suspend fun allCompletions(): List<Completion>
+
+    @Query("SELECT * FROM completions WHERE taskId = :taskId")
+    abstract suspend fun completionsOf(taskId: Long): List<Completion>
+
+    @Insert
+    abstract suspend fun insertTasks(tasks: List<Task>)
+
+    @Insert
+    abstract suspend fun insertCompletions(completions: List<Completion>)
+
+    @Query("DELETE FROM tasks")
+    abstract suspend fun clearTasks()
+
+    @Query("DELETE FROM completions")
+    abstract suspend fun clearCompletions()
+
+    /** Puts a deleted task back with its history, ids and all. */
+    @Transaction
+    open suspend fun insert(task: Task, history: List<Completion>) {
+        insert(task)
+        insertCompletions(history)
+    }
+
+    /** Replaces everything with [backup], all or nothing. */
+    @Transaction
+    open suspend fun replaceAll(backup: Backup) {
+        clearCompletions()
+        clearTasks()
+        insertTasks(backup.tasks)
+        insertCompletions(backup.completions)
+    }
+
     @Insert
     abstract suspend fun insertCompletion(completion: Completion): Long
 

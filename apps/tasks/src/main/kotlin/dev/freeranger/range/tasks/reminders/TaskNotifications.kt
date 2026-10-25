@@ -65,7 +65,8 @@ object TaskNotifications {
             .setAutoCancel(true)
             .setContentIntent(open)
             .addAction(R.drawable.ic_check, context.getString(R.string.notification_complete), complete)
-            .setWhen(moment.date.atTime(moment.time ?: Task.ALL_DAY_REMINDER).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli())
+            // An all-day reminder is for the whole day, so it shows when it came.
+            .setWhen(moment.time?.let { moment.date.atTime(it).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli() } ?: System.currentTimeMillis())
             .setShowWhen(true)
             .build()
 

@@ -8,6 +8,7 @@ import dev.freeranger.range.tasks.data.Reminders
 import dev.freeranger.range.tasks.data.Task
 import java.time.Clock
 import java.time.LocalDateTime
+import java.time.LocalTime
 
 /**
  * One exact alarm per task, keyed by task id, so rescheduling replaces it. Each alarm is for
@@ -15,13 +16,15 @@ import java.time.LocalDateTime
  */
 class AlarmReminders(
     private val context: Context,
+    /** When all-day tasks remind, from Settings. */
+    private val allDayAt: suspend () -> LocalTime,
     private val clock: () -> Clock = { Clock.systemDefaultZone() },
 ) : Reminders {
     private val alarms = context.getSystemService(AlarmManager::class.java)
 
-    override fun sync(task: Task) {
+    override suspend fun sync(task: Task) {
         val clock = clock()
-        val (at, time) = task.nextReminder(LocalDateTime.now(clock)) ?: run {
+        val (at, time) = task.nextReminder(LocalDateTime.now(clock), allDayAt()) ?: run {
             alarms.cancel(alarmIntent(task.id, null))
             return
         }

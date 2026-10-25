@@ -14,8 +14,8 @@
 
     <!-- List -->
     <string name="tasks_add">Ny uppgift</string>
-    <string name="tasks_empty">Inget att göra än. Tryck på + för att lägga till en uppgift.</string>
-    <string name="tasks_all_done">Allt klart.</string>
+    <string name="tasks_empty">Inget att göra än.</string>
+    <string name="tasks_all_done">Allt klart för idag.</string>
     <string name="tasks_completed_section">Klara (%1$d)</string>
     <string name="tasks_complete">Markera ”%1$s” som klar</string>
     <string name="tasks_reopen">Markera ”%1$s” som inte klar</string>
@@ -38,9 +38,6 @@
     <string name="detail_details_label">Detaljer</string>
     <string name="detail_no_date">När som helst</string>
     <string name="detail_anytime_hint">Visas varje dag tills den är klar</string>
-    <string name="detail_delete_title">Ta bort uppgiften?</string>
-    <string name="detail_delete_text">”%1$s” tas bort för gott.</string>
-    <string name="detail_delete_confirm">Ta bort</string>
     <string name="detail_discard_title">Släng dina ändringar?</string>
     <string name="detail_discard">Släng</string>
     <string name="detail_keep_editing">Fortsätt redigera</string>
@@ -135,4 +132,8 @@
     <string name="section_completed">Klara</string>
     <string name="day_empty_past">Inget avbockat den här dagen.</string>
     <string name="action_go_to_date">Gå till datum</string>
+
+    <string name="settings_reminders">Påminnelser</string>
+    <string name="settings_all_day_reminder">Uppgifter utan tid</string>
+    <string name="snackbar_deleted">”%1$s” borttagen</string>
 </resources>

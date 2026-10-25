@@ -3,6 +3,7 @@ package dev.freeranger.range.tasks.ui.list
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.freeranger.range.tasks.data.Completion
+import dev.freeranger.range.tasks.data.Deleted
 import dev.freeranger.range.tasks.data.Schedule
 import dev.freeranger.range.tasks.data.Task
 import dev.freeranger.range.tasks.data.TaskRepository
@@ -55,5 +56,18 @@ class TaskListViewModel(private val repository: TaskRepository) : ViewModel() {
 
     fun reopen(id: Long) {
         viewModelScope.launch { repository.reopen(id) }
+    }
+
+    private val deletions = Channel<Deleted>(Channel.CONFLATED)
+
+    /** Each deleted task, for the Undo snackbar. */
+    val deleted: Flow<Deleted> = deletions.receiveAsFlow()
+
+    fun delete(id: Long) {
+        viewModelScope.launch { repository.delete(id)?.let { deletions.send(it) } }
+    }
+
+    fun undoDelete(deleted: Deleted) {
+        viewModelScope.launch { repository.restore(deleted) }
     }
 }

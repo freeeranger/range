@@ -61,7 +61,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 
 @Composable
-fun TaskDetailRoute(id: Long, onBack: () -> Unit) {
+fun TaskDetailRoute(id: Long, onBack: () -> Unit, onDelete: () -> Unit) {
     val container = LocalAppContainer.current
     val viewModel = viewModel(key = "task-$id") { TaskDetailViewModel(id, container.repository, container.scope) }
     val task by viewModel.task.collectAsStateWithLifecycle()
@@ -75,10 +75,8 @@ fun TaskDetailRoute(id: Long, onBack: () -> Unit) {
             check = { viewModel.check(onDayDone = onBack) },
             uncheck = viewModel::uncheck,
             reopen = viewModel::reopen,
-            delete = {
-                viewModel.delete()
-                onBack()
-            },
+            // The list behind deletes it, so its snackbar can offer Undo.
+            delete = onDelete,
         ),
     )
 }
@@ -127,7 +125,6 @@ private fun TaskView(task: Task, now: LocalDateTime, actions: TaskDetailActions,
     val today = now.toLocalDate()
     val done = task.isDone(today)
     val canCheck = task.canCheck(today)
-    var confirmingDelete by remember { mutableStateOf(false) }
     val colors = MaterialTheme.colorScheme
 
     Scaffold(
@@ -139,7 +136,7 @@ private fun TaskView(task: Task, now: LocalDateTime, actions: TaskDetailActions,
                 },
                 actions = {
                     IconButton(onClick = onEdit) { Icon(RangeIcons.Edit, contentDescription = stringResource(R.string.detail_edit)) }
-                    IconButton(onClick = { confirmingDelete = true }) {
+                    IconButton(onClick = actions.delete) {
                         Icon(RangeIcons.Delete, contentDescription = stringResource(R.string.detail_delete))
                     }
                 },
@@ -237,24 +234,6 @@ private fun TaskView(task: Task, now: LocalDateTime, actions: TaskDetailActions,
                 )
             }
         }
-    }
-
-    if (confirmingDelete) {
-        AlertDialog(
-            onDismissRequest = { confirmingDelete = false },
-            icon = { Icon(RangeIcons.Delete, contentDescription = null) },
-            title = { Text(stringResource(R.string.detail_delete_title)) },
-            text = { Text(stringResource(R.string.detail_delete_text, task.title)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        confirmingDelete = false
-                        actions.delete()
-                    },
-                ) { Text(stringResource(R.string.detail_delete_confirm)) }
-            },
-            dismissButton = { TextButton(onClick = { confirmingDelete = false }) { Text(stringResource(R.string.dialog_cancel)) } },
-        )
     }
 }
 

@@ -45,8 +45,4 @@ class TaskDetailViewModel(
     fun reopen() {
         viewModelScope.launch { repository.reopen(id) }
     }
-
-    fun delete() {
-        appScope.launch { repository.delete(id) }
-    }
 }

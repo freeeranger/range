@@ -90,6 +90,14 @@ class OccurrencesTest {
     }
 
     @Test
+    fun `an all-day task reminds once, at the time picked in Settings`() {
+        val task = task(Schedule(friday), friday.atTime(7, 0))
+        assertEquals(friday.atTime(9, 0) to null, task.nextReminder(friday.atTime(7, 0)))
+        assertEquals(friday.atTime(7, 30) to null, task.nextReminder(friday.atTime(7, 0), allDayAt = LocalTime.of(7, 30)))
+        assertEquals(null, task.nextReminder(friday.atTime(8, 0), allDayAt = LocalTime.of(7, 30)))
+    }
+
+    @Test
     fun `a task with several times is only overdue after its last time`() {
         val first = task(daily(morning, evening), friday.atTime(7, 0))
         assertFalse(first.isOverdue(friday.atTime(12, 0)))

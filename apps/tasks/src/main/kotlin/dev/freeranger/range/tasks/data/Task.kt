@@ -85,11 +85,14 @@ data class Task(
         return index >= 0 && doneCount <= index
     }
 
-    /** The next moment to remind about, with the time it is for (null for all-day tasks), or null if none is left. */
-    fun nextReminder(now: LocalDateTime): Pair<LocalDateTime, LocalTime?>? {
+    /**
+     * The next moment to remind about, with the time it is for (null for all-day tasks), or null if
+     * none is left. All-day tasks remind at [allDayAt].
+     */
+    fun nextReminder(now: LocalDateTime, allDayAt: LocalTime = ALL_DAY_REMINDER): Pair<LocalDateTime, LocalTime?>? {
         val day = dueDate ?: return null
         if (times.isEmpty()) {
-            val at = day.atTime(ALL_DAY_REMINDER)
+            val at = day.atTime(allDayAt)
             return if (wantsReminder(null) && at > now) at to null else null
         }
         val time = times.firstOrNull { wantsReminder(it) && day.atTime(it) > now } ?: return null
@@ -97,7 +100,7 @@ data class Task(
     }
 
     companion object {
-        /** All-day tasks remind in the morning, as Google Tasks does. */
+        /** All-day tasks remind in the morning, as Google Tasks does, unless another time is picked in Settings. */
         val ALL_DAY_REMINDER: LocalTime = LocalTime.of(9, 0)
     }
 }
