@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
@@ -23,6 +24,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -93,6 +95,17 @@ fun TemplatesScreen(
             Modifier.fillMaxSize(),
             contentPadding = PaddingValues(top = padding.calculateTopPadding() + RangeSpace.s2, bottom = padding.calculateBottomPadding() + 96.dp),
         ) {
+            if (state.loaded && state.templates.isEmpty()) {
+                item(key = "empty") {
+                    Text(
+                        stringResource(R.string.templates_empty),
+                        modifier = Modifier.fillParentMaxSize().wrapContentSize().padding(RangeSpace.s8),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
             items(state.templates, key = { it.template.id }) { template ->
                 TemplateCard(template, state.lastDone[template.template.id], today, format, onClick = { onOpen(template.template.id) })
             }

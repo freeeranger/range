@@ -417,7 +417,7 @@ fun WorkoutScreen(
             autoFocus = initialDialog != WorkoutDialog.SaveTemplate,
         )
         WorkoutDialog.Notes -> NameSheet(
-            placeholder = stringResource(R.string.workout_notes),
+            placeholder = stringResource(R.string.workout_notes_placeholder),
             saveLabel = stringResource(R.string.workout_save),
             onSave = actions.setNotes,
             onDismiss = { dialog = null },
@@ -441,7 +441,9 @@ fun WorkoutScreen(
         )
         WorkoutDialog.Delete -> AlertDialog(
             onDismissRequest = { dialog = null },
+            icon = { Icon(RangeIcons.Delete, contentDescription = null) },
             title = { Text(stringResource(if (workout.isFinished) R.string.workout_delete_title else R.string.workout_discard_title)) },
+            text = if (workout.isFinished) ({ Text(stringResource(R.string.workout_delete_text)) }) else null,
             confirmButton = {
                 TextButton(
                     onClick = {

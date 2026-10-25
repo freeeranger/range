@@ -223,4 +223,15 @@
     <string name="notification_tick">Bocka av set</string>
     <string name="rep_max_title">Repmaxräknare</string>
     <string name="tools_title">Verktyg</string>
+
+    <string name="exercises_empty">Inga övningar än.</string>
+    <string name="exercise_no_sets">Inga set loggade än.</string>
+    <string name="exercise_each_side_hint">En sida i taget, som utfall eller enarmsrodd</string>
+    <string name="load_bodyweight_hint">Logga + för extra vikt och − för hjälp från gummiband eller maskin.</string>
+    <string name="progress_one_rep_max_hint">Det mesta du skulle orka lyfta en gång, utifrån varje pass bästa set</string>
+    <string name="exercise_remove_text">Den föreslås inte för nya pass. Tidigare pass behåller sina set.</string>
+    <string name="template_delete_text">Pass som startats från den blir kvar som de är.</string>
+    <string name="workout_delete_text">Dess set försvinner också, och alla rekord de satte.</string>
+    <string name="templates_empty">Inga mallar än. Du kan också spara ett pass som mall när du avslutar det.</string>
+    <string name="workout_notes_placeholder">Hur gick det? Något att komma ihåg till nästa gång?</string>
 </resources>

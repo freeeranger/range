@@ -226,4 +226,16 @@
     <string name="notification_tick">Tick off set</string>
     <string name="rep_max_title">Rep max calculator</string>
     <string name="tools_title">Tools</string>
+
+    <!-- Lines that say what the screen can't -->
+    <string name="exercises_empty">No exercises yet.</string>
+    <string name="exercise_no_sets">No sets logged yet.</string>
+    <string name="exercise_each_side_hint">One side at a time, like lunges or one-arm rows</string>
+    <string name="load_bodyweight_hint">Log + for added weight and − for help from a band or machine.</string>
+    <string name="progress_one_rep_max_hint">The most you could lift once, going by each workout’s best set</string>
+    <string name="exercise_remove_text">It won’t be offered for new workouts. Past workouts keep their sets.</string>
+    <string name="template_delete_text">Workouts started from it stay as they are.</string>
+    <string name="workout_delete_text">Its sets go with it, and any records they set.</string>
+    <string name="templates_empty">No templates yet. You can also save a workout as one when you finish it.</string>
+    <string name="workout_notes_placeholder">How did it go? Anything to remember for next time?</string>
 </resources>

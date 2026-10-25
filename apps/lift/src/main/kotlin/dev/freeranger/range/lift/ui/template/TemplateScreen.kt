@@ -274,6 +274,7 @@ fun TemplateScreen(
             onDismissRequest = { dialog = null },
             icon = { Icon(RangeIcons.Delete, contentDescription = null) },
             title = { Text(stringResource(R.string.template_delete_title, template.name)) },
+            text = { Text(stringResource(R.string.template_delete_text)) },
             confirmButton = {
                 TextButton(
                     onClick = {

@@ -277,6 +277,9 @@ class ScreenshotTest {
     }
 
     @Test
+    fun templatesEmpty() = capture { TemplatesScreen(TemplatesState(loaded = true), now, onBack = {}, onOpen = {}, onCreate = {}) }
+
+    @Test
     fun template() = capture { TemplateScreen(templateState(templates[0]), now, TemplateActions()) }
 
     @Test
@@ -369,6 +372,9 @@ class ScreenshotTest {
 
     @Test
     fun workoutFinished() = capture { WorkoutScreen(finishedState, now, WorkoutActions()) }
+
+    @Test
+    fun workoutDeleting() = capture { WorkoutScreen(finishedState, now, WorkoutActions(), initialDialog = WorkoutDialog.Delete) }
 
     @Test
     fun exercisePicker() = capture { ExercisePickerScreen(PickerState(exercises, bestSets(logs), recentExercises(logs)), swapping = false, onPick = {}, onCreate = {}, onBack = {}, initialSelection = listOf(id("bench_press"), id("dip"))) }

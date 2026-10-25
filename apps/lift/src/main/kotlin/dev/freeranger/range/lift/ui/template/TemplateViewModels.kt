@@ -20,6 +20,7 @@ data class TemplatesState(
     val templates: List<WorkoutTemplate> = emptyList(),
     /** When each template was last done, by template id, from the workouts started from it. */
     val lastDone: Map<Long, Instant> = emptyMap(),
+    val loaded: Boolean = false,
 )
 
 /** When each template was last done, from the finished workouts started from it. */
@@ -30,7 +31,7 @@ fun lastDone(logs: List<WorkoutLog>): Map<Long, Instant> =
 
 class TemplatesViewModel(private val repository: LiftRepository) : ViewModel() {
     val state: StateFlow<TemplatesState> = combine(repository.templates, repository.logs) { templates, logs ->
-        TemplatesState(templates, lastDone(logs))
+        TemplatesState(templates, lastDone(logs), loaded = true)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TemplatesState())
 
     /** Makes an empty template and hands over its id to open it. */

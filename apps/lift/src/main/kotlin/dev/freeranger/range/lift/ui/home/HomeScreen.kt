@@ -228,6 +228,7 @@ fun HomeScreen(
                 bests = state.bests,
                 onClick = { actions.openExercise(it.id) },
                 contentPadding = contentPadding,
+                showEmpty = state.loaded,
             )
         }
     }

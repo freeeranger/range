@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
@@ -36,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -204,6 +206,17 @@ fun ExerciseDetailScreen(
         },
     ) { padding ->
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = padding.calculateTopPadding(), bottom = padding.calculateBottomPadding() + RangeSpace.s4)) {
+            if (state.sessions.isEmpty() && exercise != null) {
+                item(key = "empty") {
+                    Text(
+                        stringResource(R.string.exercise_no_sets),
+                        modifier = Modifier.fillParentMaxSize().wrapContentSize().padding(RangeSpace.s8),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
             if (state.records.isNotEmpty()) {
                 item(key = "records") { RecordsCard(state.records, today, format) }
             }
@@ -241,6 +254,7 @@ fun ExerciseDetailScreen(
             onDismissRequest = { removing = false },
             icon = { Icon(RangeIcons.Delete, contentDescription = null) },
             title = { Text(stringResource(R.string.exercise_remove_title, format.name(exercise))) },
+            text = { Text(stringResource(R.string.exercise_remove_text)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -270,7 +284,16 @@ private fun ProgressCard(progression: Progression, today: LocalDate, format: Lif
     val value = { v: Double -> format.metric(metric, v) }
     Card(Modifier.fillMaxWidth().padding(horizontal = RangeSpace.gutter, vertical = RangeSpace.s2)) {
         Column(Modifier.padding(RangeSpace.s4), verticalArrangement = Arrangement.spacedBy(RangeSpace.s3)) {
-            Text(stringResource(metric.title), style = MaterialTheme.typography.titleMedium)
+            Column {
+                Text(stringResource(metric.title), style = MaterialTheme.typography.titleMedium)
+                if (metric == ProgressMetric.OneRepMax) {
+                    Text(
+                        stringResource(R.string.progress_one_rep_max_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
             if (ranges.size > 1) {
                 Row(horizontalArrangement = Arrangement.spacedBy(RangeSpace.s2)) {
                     ranges.forEach {

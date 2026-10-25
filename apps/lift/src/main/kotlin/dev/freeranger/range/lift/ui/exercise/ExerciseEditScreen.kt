@@ -21,6 +21,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
@@ -177,10 +178,12 @@ fun ExerciseEditScreen(
                     )
                 }
             }
+            if (load == Load.Bodyweight) Hint(stringResource(R.string.load_bodyweight_hint))
 
             RangeSectionHeader(stringResource(R.string.exercise_more))
             ListItem(
                 headlineContent = { Text(stringResource(R.string.exercise_each_side)) },
+                supportingContent = { Text(stringResource(R.string.exercise_each_side_hint)) },
                 trailingContent = { Switch(checked = perSide, onCheckedChange = null) },
                 colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                 modifier = Modifier.toggleable(value = perSide, role = Role.Switch) { perSide = it },
@@ -189,4 +192,15 @@ fun ExerciseEditScreen(
     }
 
     if (autoFocus) LaunchedEffect(Unit) { focus.requestFocus() }
+}
+
+/** A line under a choice that says what the choice can't. */
+@Composable
+private fun Hint(text: String) {
+    Text(
+        text,
+        modifier = Modifier.padding(horizontal = RangeSpace.gutter, vertical = RangeSpace.s2),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }

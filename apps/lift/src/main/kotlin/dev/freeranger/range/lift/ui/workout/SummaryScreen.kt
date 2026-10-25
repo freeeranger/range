@@ -222,6 +222,7 @@ fun SummaryScreen(
                 OutlinedTextField(
                     state = notes,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = RangeSpace.gutter),
+                    placeholder = { Text(stringResource(R.string.workout_notes_placeholder)) },
                     lineLimits = TextFieldLineLimits.MultiLine(minHeightInLines = 3),
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                 )
