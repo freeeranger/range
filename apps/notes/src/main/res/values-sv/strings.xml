@@ -15,7 +15,6 @@
     <string name="notes_pinned">Fästa</string>
     <string name="notes_others">Övriga</string>
     <string name="note_new">Ny anteckning</string>
-    <string name="checklist_new">Ny lista</string>
     <string name="note_deleted">Anteckningen raderad</string>
     <plurals name="checklist_more_ticked">
         <item quantity="one">+ %1$d avbockat objekt</item>
@@ -24,6 +23,8 @@
 
     <string name="note_title">Rubrik</string>
     <string name="note_body">Anteckning</string>
+    <string name="note_edit">Redigera</string>
+    <string name="note_done">Klar</string>
     <string name="note_pin">Fäst</string>
     <string name="note_unpin">Lossa</string>
     <string name="note_share">Dela</string>

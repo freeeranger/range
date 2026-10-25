@@ -123,13 +123,19 @@ class ScreenshotTest {
     fun noteLight() = capture(RangeAppearance(theme = ThemeMode.Light, dynamicColor = false)) { NoteScreen(ideas, friday, NoteActions()) }
 
     @Test
-    fun noteNew() = capture { NoteScreen(note(9, edited = at(friday, 10)), friday, NoteActions()) }
+    fun noteEditing() = capture { NoteScreen(ideas, friday, NoteActions(), initiallyEditing = true) }
+
+    @Test
+    fun noteNew() = capture { NoteScreen(note(9, edited = at(friday, 10)), friday, NoteActions(), initiallyEditing = true) }
 
     @Test
     fun noteMenu() = capture { NoteScreen(ideas, friday, NoteActions(), initiallyShowingMenu = true) }
 
     @Test
     fun checklist() = capture { NoteScreen(trip, friday, NoteActions()) }
+
+    @Test
+    fun checklistEditing() = capture { NoteScreen(trip, friday, NoteActions(), initiallyEditing = true) }
 
     @Test
     fun checklistMenu() = capture { NoteScreen(trip, friday, NoteActions(), initiallyShowingMenu = true) }

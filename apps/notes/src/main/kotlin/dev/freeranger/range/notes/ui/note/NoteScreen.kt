@@ -1,6 +1,7 @@
 package dev.freeranger.range.notes.ui.note
 
 import android.content.Intent
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -20,8 +21,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
@@ -53,6 +56,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
@@ -124,8 +128,9 @@ data class NoteActions(
 )
 
 /**
- * A note open for writing: there's no separate view mode, as in Keep. Text notes have a
- * formatting bar over the keyboard; checklists keep ticked items below the rest.
+ * A note, shown with its formatting and ready to tick off, until Edit opens it for writing. New
+ * notes start out being written. While writing, text notes have a formatting bar over the keyboard.
+ * Checklists keep ticked items below the rest either way.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -135,11 +140,15 @@ fun NoteScreen(
     actions: NoteActions,
     modifier: Modifier = Modifier,
     isNew: Boolean = false,
+    initiallyEditing: Boolean = isNew,
     initiallyShowingMenu: Boolean = false,
 ) {
     val format = rememberNoteFormat()
     val styles = rememberMarkdownStyles()
+    var editing by rememberSaveable { mutableStateOf(initiallyEditing) }
     var menu by remember { mutableStateOf(initiallyShowingMenu) }
+    // Back while writing goes back to reading, unless the note was just started.
+    BackHandler(enabled = editing && !isNew) { editing = false }
     // The text with its cursor and selection, which formatting works on. Starts over when a checklist becomes text.
     var body by rememberSaveable(note.isChecklist, stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue(note.body)) }
     val setBody = { value: TextFieldValue ->
@@ -156,6 +165,11 @@ fun NoteScreen(
                     IconButton(onClick = actions.back) { Icon(RangeIcons.ArrowBack, contentDescription = stringResource(R.string.action_back)) }
                 },
                 actions = {
+                    if (editing) {
+                        IconButton(onClick = { editing = false }) { Icon(RangeIcons.Check, contentDescription = stringResource(R.string.note_done)) }
+                    } else {
+                        IconButton(onClick = { editing = true }) { Icon(RangeIcons.Edit, contentDescription = stringResource(R.string.note_edit)) }
+                    }
                     IconButton(onClick = actions.togglePinned) {
                         Icon(
                             RangeIcons.Keep,
@@ -196,11 +210,12 @@ fun NoteScreen(
                     .padding(horizontal = RangeSpace.s1),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (!note.isChecklist) {
+                if (editing && !note.isChecklist) {
                     FormatButton(RangeIcons.FormatH1, R.string.format_heading) { setBody(Markdown.togglePrefix(body, Markdown.HEADING)) }
                     FormatButton(RangeIcons.FormatBold, R.string.format_bold) { setBody(Markdown.toggleWrap(body, Markdown.BOLD)) }
                     FormatButton(RangeIcons.FormatItalic, R.string.format_italic) { setBody(Markdown.toggleWrap(body, Markdown.ITALIC)) }
                     FormatButton(RangeIcons.FormatListBulleted, R.string.format_bullets) { setBody(Markdown.togglePrefix(body, Markdown.BULLET)) }
+                    FormatButton(RangeIcons.Checklist, R.string.note_show_checkboxes, actions.toggleChecklist)
                 }
                 Spacer(Modifier.weight(1f))
                 if (!note.isBlank) {
@@ -215,7 +230,22 @@ fun NoteScreen(
         },
     ) { padding ->
         val items = note.items
-        if (items == null) {
+        if (items == null && !editing) {
+            SelectionContainer(
+                Modifier
+                    .padding(padding)
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = RangeSpace.gutter),
+            ) {
+                Column {
+                    if (note.title.isNotBlank()) {
+                        Text(note.title.trim(), modifier = Modifier.padding(vertical = RangeSpace.s3), style = MaterialTheme.typography.headlineSmall)
+                    }
+                    Text(Markdown.preview(note.body.trimEnd(), styles), style = MaterialTheme.typography.bodyLarge)
+                }
+            }
+        } else if (items == null) {
             val focus = remember { FocusRequester() }
             Column(
                 Modifier
@@ -237,13 +267,13 @@ fun NoteScreen(
             }
             if (isNew) LaunchedEffect(Unit) { focus.requestFocus() }
         } else {
-            Checklist(note, items, actions, padding, focusFirst = isNew)
+            Checklist(note, items, editing, actions, padding, focusFirst = isNew)
         }
     }
 }
 
 @Composable
-private fun Checklist(note: Note, items: List<ChecklistItem>, actions: NoteActions, padding: PaddingValues, focusFirst: Boolean) {
+private fun Checklist(note: Note, items: List<ChecklistItem>, editing: Boolean, actions: NoteActions, padding: PaddingValues, focusFirst: Boolean) {
     val requesters = remember { mutableStateMapOf<Long, FocusRequester>() }
     // An item to put the cursor in once it's on screen: one just added, or the first of a new checklist.
     var focusing by remember { mutableStateOf(if (focusFirst) items.firstOrNull()?.id else null) }
@@ -261,11 +291,25 @@ private fun Checklist(note: Note, items: List<ChecklistItem>, actions: NoteActio
     }
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
-        item(key = "title") { TitleField(note.title, actions.setTitle, Modifier.padding(horizontal = RangeSpace.gutter)) }
-        items(open, key = { it.id }) { item ->
-            ItemRow(item, requesters.getOrPut(item.id) { FocusRequester() }, actions, add, Modifier.animateItem())
+        item(key = "title") {
+            if (editing) {
+                TitleField(note.title, actions.setTitle, Modifier.padding(horizontal = RangeSpace.gutter))
+            } else if (note.title.isNotBlank()) {
+                Text(
+                    note.title.trim(),
+                    modifier = Modifier.padding(horizontal = RangeSpace.gutter, vertical = RangeSpace.s3),
+                    style = MaterialTheme.typography.headlineSmall,
+                )
+            }
         }
-        item(key = "add") {
+        items(open, key = { it.id }) { item ->
+            if (editing) {
+                ItemRow(item, requesters.getOrPut(item.id) { FocusRequester() }, actions, add, Modifier.animateItem())
+            } else {
+                ReadItemRow(item, actions, Modifier.animateItem())
+            }
+        }
+        if (editing) item(key = "add") {
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -297,10 +341,36 @@ private fun Checklist(note: Note, items: List<ChecklistItem>, actions: NoteActio
             }
             if (showTicked) {
                 items(ticked, key = { it.id }) { item ->
-                    ItemRow(item, requesters.getOrPut(item.id) { FocusRequester() }, actions, add, Modifier.animateItem())
+                    if (editing) {
+                        ItemRow(item, requesters.getOrPut(item.id) { FocusRequester() }, actions, add, Modifier.animateItem())
+                    } else {
+                        ReadItemRow(item, actions, Modifier.animateItem())
+                    }
                 }
             }
         }
+    }
+}
+
+/** A checklist item to tick off while reading: the whole row ticks it. */
+@Composable
+private fun ReadItemRow(item: ChecklistItem, actions: NoteActions, modifier: Modifier = Modifier) {
+    val colors = MaterialTheme.colorScheme
+    Row(
+        modifier
+            .fillMaxWidth()
+            .toggleable(value = item.checked, role = Role.Checkbox) { actions.setChecked(item.id, it) }
+            .padding(horizontal = RangeSpace.s1),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(checked = item.checked, onCheckedChange = null, modifier = Modifier.size(48.dp))
+        Text(
+            item.text,
+            modifier = Modifier.padding(vertical = RangeSpace.s3).padding(end = RangeSpace.s4),
+            style = MaterialTheme.typography.bodyLarge,
+            color = if (item.checked) colors.onSurfaceVariant else colors.onSurface,
+            textDecoration = if (item.checked) TextDecoration.LineThrough else null,
+        )
     }
 }
 

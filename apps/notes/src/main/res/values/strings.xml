@@ -19,7 +19,6 @@
     <string name="notes_pinned">Pinned</string>
     <string name="notes_others">Others</string>
     <string name="note_new">New note</string>
-    <string name="checklist_new">New checklist</string>
     <string name="note_deleted">Note deleted</string>
     <plurals name="checklist_more_ticked">
         <item quantity="one">+ %1$d ticked item</item>
@@ -29,6 +28,8 @@
     <!-- Note -->
     <string name="note_title">Title</string>
     <string name="note_body">Note</string>
+    <string name="note_edit">Edit</string>
+    <string name="note_done">Done</string>
     <string name="note_pin">Pin</string>
     <string name="note_unpin">Unpin</string>
     <string name="note_share">Share</string>

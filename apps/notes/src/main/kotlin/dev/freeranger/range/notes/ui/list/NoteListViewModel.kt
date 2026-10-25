@@ -31,9 +31,9 @@ class NoteListViewModel(private val repository: NoteRepository) : ViewModel() {
     /** Each deleted note, for the Undo snackbar. */
     val deleted: Flow<Note> = deletions.receiveAsFlow()
 
-    /** Starts a note, or a checklist, and hands its id to [open]. */
-    fun create(checklist: Boolean, open: (Long) -> Unit) {
-        viewModelScope.launch { open(repository.create(checklist)) }
+    /** Starts a note and hands its id to [open]. */
+    fun create(open: (Long) -> Unit) {
+        viewModelScope.launch { open(repository.create(checklist = false)) }
     }
 
     fun delete(id: Long) {

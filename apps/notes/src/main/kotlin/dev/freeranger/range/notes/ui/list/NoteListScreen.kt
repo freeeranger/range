@@ -15,11 +15,9 @@ import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
 import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -88,7 +86,7 @@ fun NoteListRoute(onOpen: (id: Long, isNew: Boolean) -> Unit, onOpenSettings: ()
         state = state,
         snackbar = snackbar,
         onOpen = { onOpen(it, false) },
-        onCreate = { checklist -> viewModel.create(checklist) { onOpen(it, true) } },
+        onCreate = { viewModel.create { onOpen(it, true) } },
         onOpenSettings = onOpenSettings,
     )
 }
@@ -99,7 +97,8 @@ fun NoteListRoute(onOpen: (id: Long, isNew: Boolean) -> Unit, onOpenSettings: ()
 fun NoteListScreen(
     state: NoteListState,
     onOpen: (Long) -> Unit,
-    onCreate: (checklist: Boolean) -> Unit,
+    /** Starts a text note; it turns into a checklist from inside. */
+    onCreate: () -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
     snackbar: SnackbarHostState = remember { SnackbarHostState() },
@@ -120,24 +119,15 @@ fun NoteListScreen(
                 },
             )
         },
-        bottomBar = {
-            BottomAppBar(
-                actions = {
-                    IconButton(onClick = { onCreate(true) }) {
-                        Icon(RangeIcons.Checklist, contentDescription = stringResource(R.string.checklist_new))
-                    }
-                },
-                floatingActionButton = {
-                    FloatingActionButton(
-                        onClick = { onCreate(false) },
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                        elevation = FloatingActionButtonDefaults.bottomAppBarFabElevation(),
-                    ) {
-                        Icon(RangeIcons.Add, contentDescription = stringResource(R.string.note_new))
-                    }
-                },
-            )
+        floatingActionButton = {
+            // The theme's main accent (wallpaper-based with Material You), not Material's paler default.
+            FloatingActionButton(
+                onClick = onCreate,
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+            ) {
+                Icon(RangeIcons.Add, contentDescription = stringResource(R.string.note_new))
+            }
         },
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
@@ -159,7 +149,8 @@ fun NoteListScreen(
                 start = RangeSpace.gutter,
                 end = RangeSpace.gutter,
                 top = padding.calculateTopPadding(),
-                bottom = padding.calculateBottomPadding() + RangeSpace.s4,
+                // Leaves room for the + button over the end of the grid.
+                bottom = padding.calculateBottomPadding() + 96.dp,
             ),
             horizontalArrangement = Arrangement.spacedBy(RangeSpace.s2),
             verticalItemSpacing = RangeSpace.s2,
