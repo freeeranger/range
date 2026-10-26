@@ -1,0 +1,37 @@
+<resources>
+    <string name="app_name">Range Calculator</string>
+    <string name="format_language" translatable="false">sv</string>
+
+    <string name="action_back">Tillbaka</string>
+    <string name="action_more">Fler alternativ</string>
+    <string name="action_undo">Ångra</string>
+    <string name="settings_title">Inställningar</string>
+
+    <string name="menu_clear">Rensa bladet</string>
+    <string name="sheet_cleared">Bladet rensat</string>
+    <string name="keypad">Knappsats</string>
+    <string name="key_delete">Radera</string>
+    <string name="key_more">Fler funktioner</string>
+    <string name="key_fewer">Färre funktioner</string>
+
+    <string name="settings_currencies">Valutor</string>
+    <string name="settings_rates">Kurser</string>
+    <string name="settings_rates_value">Europeiska centralbanken, %1$s</string>
+
+    <plurals name="unit_days">
+        <item quantity="one">dag</item>
+        <item quantity="other">dagar</item>
+    </plurals>
+    <plurals name="unit_weeks">
+        <item quantity="one">vecka</item>
+        <item quantity="other">veckor</item>
+    </plurals>
+    <plurals name="unit_months">
+        <item quantity="one">månad</item>
+        <item quantity="other">månader</item>
+    </plurals>
+    <plurals name="unit_years">
+        <item quantity="one">år</item>
+        <item quantity="other">år</item>
+    </plurals>
+</resources>

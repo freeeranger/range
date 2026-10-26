@@ -1,0 +1,38 @@
+<resources>
+    <string name="app_name">Range Calculator</string>
+    <!-- Answers are formatted in this language, with the phone's region deciding numbers and dates. -->
+    <string name="format_language" translatable="false">en</string>
+
+    <string name="action_back">Back</string>
+    <string name="action_more">More options</string>
+    <string name="action_undo">Undo</string>
+    <string name="settings_title">Settings</string>
+
+    <string name="menu_clear">Clear sheet</string>
+    <string name="sheet_cleared">Sheet cleared</string>
+    <string name="keypad">Keypad</string>
+    <string name="key_delete">Delete</string>
+    <string name="key_more">More functions</string>
+    <string name="key_fewer">Fewer functions</string>
+
+    <string name="settings_currencies">Currencies</string>
+    <string name="settings_rates">Rates</string>
+    <string name="settings_rates_value">European Central Bank, %1$s</string>
+
+    <plurals name="unit_days">
+        <item quantity="one">day</item>
+        <item quantity="other">days</item>
+    </plurals>
+    <plurals name="unit_weeks">
+        <item quantity="one">week</item>
+        <item quantity="other">weeks</item>
+    </plurals>
+    <plurals name="unit_months">
+        <item quantity="one">month</item>
+        <item quantity="other">months</item>
+    </plurals>
+    <plurals name="unit_years">
+        <item quantity="one">year</item>
+        <item quantity="other">years</item>
+    </plurals>
+</resources>
