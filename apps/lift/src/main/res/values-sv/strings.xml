@@ -42,7 +42,6 @@
     <string name="workout_set_weight">Vikt för set %1$d</string>
     <string name="workout_set_reps">Reps för set %1$d</string>
     <string name="workout_set_time">Tid för set %1$d</string>
-    <string name="workout_drag">Dra för att flytta</string>
     <string name="workout_delete_set">Radera set</string>
     <string name="workout_edit_notes">Redigera anteckningar</string>
     <string name="workout_edit">Redigera set</string>

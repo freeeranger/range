@@ -109,7 +109,6 @@ import dev.freeranger.range.lift.data.WorkoutSet
 import dev.freeranger.range.lift.data.filledFrom
 import dev.freeranger.range.lift.data.isComplete
 import dev.freeranger.range.lift.data.placeholders
-import dev.freeranger.range.lift.ui.common.DragHandle
 import dev.freeranger.range.lift.ui.common.LiftFormat
 import dev.freeranger.range.lift.ui.common.NameSheet
 import dev.freeranger.range.lift.ui.common.Stat
@@ -118,6 +117,7 @@ import dev.freeranger.range.lift.ui.common.rememberLiftFormat
 import dev.freeranger.range.lift.ui.common.rememberNotificationPermissionRequest
 import dev.freeranger.range.lift.ui.common.rememberNow
 import dev.freeranger.range.lift.ui.common.title
+import dev.freeranger.range.ui.components.RangeDragHandle
 import dev.freeranger.range.ui.components.RangeNumberCheck
 import dev.freeranger.range.ui.icons.RangeIcons
 import dev.freeranger.range.ui.theme.RangeSpace
@@ -499,7 +499,7 @@ private fun WorkoutInProgress(
                     onDragStopped = { actions.reorder(order) },
                 )
                 ExerciseCard(elevation) {
-                    ExerciseHeader(logged, format, actions) { DragHandle(handle) }
+                    ExerciseHeader(logged, format, actions) { RangeDragHandle(handle) }
                     ColumnHeaders(logged.exercise, format)
                     val shown = placeholders(logged.sets, previous[logged.entry.id].orEmpty())
                     logged.sets.forEachIndexed { index, set ->

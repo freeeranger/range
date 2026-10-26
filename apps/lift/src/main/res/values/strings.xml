@@ -45,7 +45,6 @@
     <string name="workout_set_weight">Set %1$d weight</string>
     <string name="workout_set_reps">Set %1$d reps</string>
     <string name="workout_set_time">Set %1$d time</string>
-    <string name="workout_drag">Drag to reorder</string>
     <string name="workout_delete_set">Delete set</string>
     <string name="workout_edit_notes">Edit notes</string>
     <string name="workout_edit">Edit sets</string>

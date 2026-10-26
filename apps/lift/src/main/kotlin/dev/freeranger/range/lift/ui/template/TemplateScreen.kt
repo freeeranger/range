@@ -62,11 +62,11 @@ import dev.freeranger.range.lift.R
 import dev.freeranger.range.lift.data.LiftRepository
 import dev.freeranger.range.lift.data.PlannedExercise
 import dev.freeranger.range.lift.data.TemplateExercise
-import dev.freeranger.range.lift.ui.common.DragHandle
 import dev.freeranger.range.lift.ui.common.LiftFormat
 import dev.freeranger.range.lift.ui.common.NameSheet
 import dev.freeranger.range.lift.ui.common.rememberLiftFormat
 import dev.freeranger.range.lift.ui.common.rememberNow
+import dev.freeranger.range.ui.components.RangeDragHandle
 import dev.freeranger.range.ui.components.RangeStepper
 import dev.freeranger.range.ui.icons.RangeIcons
 import dev.freeranger.range.ui.theme.RangeSpace
@@ -353,7 +353,7 @@ private fun PlannedExercises(
                     onDragStopped = { actions.reorder(order) },
                 )
                 Surface(shadowElevation = elevation, tonalElevation = elevation) {
-                    PlannedRow(planned, format, actions) { DragHandle(handle) }
+                    PlannedRow(planned, format, actions) { RangeDragHandle(handle) }
                 }
             }
         }
