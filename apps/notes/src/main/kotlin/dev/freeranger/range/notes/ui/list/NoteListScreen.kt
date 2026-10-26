@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridScope
@@ -38,8 +39,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -52,6 +56,7 @@ import dev.freeranger.range.notes.R
 import dev.freeranger.range.notes.data.Note
 import dev.freeranger.range.notes.ui.common.Markdown
 import dev.freeranger.range.notes.ui.common.rememberMarkdownStyles
+import dev.freeranger.range.notes.ui.note.NoteImage
 import dev.freeranger.range.ui.components.RangeSectionHeader
 import dev.freeranger.range.ui.icons.RangeIcons
 import dev.freeranger.range.ui.theme.RangeSpace
@@ -221,7 +226,14 @@ private fun LazyStaggeredGridScope.cards(notes: List<Note>, styles: Markdown.Sty
 private fun NoteCard(note: Note, styles: Markdown.Styles, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val colors = MaterialTheme.colorScheme
     Card(onClick = onClick, modifier = modifier.fillMaxWidth()) {
-        Column(Modifier.padding(RangeSpace.s4), verticalArrangement = Arrangement.spacedBy(RangeSpace.s2)) {
+        // The first picture across the top, as Keep shows them; a locked note's stays hidden.
+        val picture = note.images.firstOrNull()?.takeUnless { note.locked }
+        if (picture != null) {
+            val width = with(LocalDensity.current) { (LocalConfiguration.current.screenWidthDp.dp / 2).roundToPx() }
+            NoteImage(picture, width, Modifier.fillMaxWidth().heightIn(max = 220.dp), contentScale = ContentScale.Crop)
+        }
+        val hasText = note.locked || note.title.isNotBlank() || note.body.isNotBlank() || note.items.orEmpty().any { it.text.isNotBlank() }
+        if (hasText) Column(Modifier.padding(RangeSpace.s4), verticalArrangement = Arrangement.spacedBy(RangeSpace.s2)) {
             if (note.locked) {
                 Text(
                     note.title.trim().ifEmpty { stringResource(R.string.note_locked_untitled) },

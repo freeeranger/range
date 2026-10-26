@@ -28,11 +28,13 @@ data class Note(
     @ColumnInfo(defaultValue = "0") val locked: Boolean = false,
     /** A locked note's text and items, encrypted. Null for other notes. */
     val secret: String? = null,
+    /** Pictures shown above the note, in order: file names in [NoteImages], encrypted ones for a locked note. */
+    @ColumnInfo(defaultValue = "[]") val images: List<String> = emptyList(),
 ) {
     val isChecklist: Boolean get() = items != null
 
     /** Nothing written yet: left like this, a note is discarded rather than kept. A locked note never is. */
-    val isBlank: Boolean get() = !locked && title.isBlank() && body.isBlank() && items.orEmpty().all { it.text.isBlank() }
+    val isBlank: Boolean get() = !locked && images.isEmpty() && title.isBlank() && body.isBlank() && items.orEmpty().all { it.text.isBlank() }
 
     /** Whether [query] appears in the title, text or any item, ignoring case. Only the title, for a locked note. */
     fun matches(query: String): Boolean {

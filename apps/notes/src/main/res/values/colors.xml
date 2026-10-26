@@ -1,4 +1,7 @@
 <resources>
     <color name="splash_background">#FFFAFAFA</color>
     <color name="splash_icon_background">#FFD97706</color>
+    <!-- Launcher shortcuts: the app's amber on white, as Android's own shortcuts look. -->
+    <color name="shortcut_background">#FFFFFFFF</color>
+    <color name="shortcut_foreground">#FFD97706</color>
 </resources>

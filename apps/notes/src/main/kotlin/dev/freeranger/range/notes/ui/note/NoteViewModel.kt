@@ -1,5 +1,7 @@
 package dev.freeranger.range.notes.ui.note
 
+import android.content.ContentResolver
+import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -7,6 +9,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.freeranger.range.notes.data.ChecklistItem
 import dev.freeranger.range.notes.data.Note
+import dev.freeranger.range.notes.data.NoteImages
 import dev.freeranger.range.notes.data.NoteLock
 import dev.freeranger.range.notes.data.NoteRepository
 import kotlinx.coroutines.CoroutineScope
@@ -26,6 +29,7 @@ class NoteViewModel(
     private val id: Long,
     private val repository: NoteRepository,
     private val lock: NoteLock,
+    private val images: NoteImages,
     /** Outlives this screen, for saving as it's left. */
     private val appScope: CoroutineScope,
 ) : ViewModel() {
@@ -81,6 +85,43 @@ class NoteViewModel(
     fun setChecked(itemId: Long, checked: Boolean) = editItems { items -> items.map { if (it.id == itemId) it.copy(checked = checked) else it } }
 
     fun removeItem(itemId: Long) = editItems { items -> items.filterNot { it.id == itemId } }
+
+    fun untickAll() = editItems { items -> items.map { it.copy(checked = false) } }
+
+    /** Removes ticked items and returns the list as it was, for Undo. */
+    fun removeTicked(): List<ChecklistItem>? {
+        val before = note?.items ?: return null
+        editItems { items -> items.filterNot { it.checked } }
+        return before
+    }
+
+    fun restoreItems(items: List<ChecklistItem>) = editItems { items }
+
+    /** Puts the unticked items in [order], by id; ticked ones follow as they were. */
+    fun reorder(order: List<Long>) = editItems { items ->
+        val byId = items.associateBy { it.id }
+        order.mapNotNull(byId::get) + items.filter { it.id !in order }
+    }
+
+    /** Copies pictures in and adds them after the note's others; encrypted ones for a locked note. */
+    fun addImages(resolver: ContentResolver, uris: List<Uri>) {
+        val sealed = note?.locked == true
+        appScope.launch {
+            val names = withContext(Dispatchers.IO) {
+                uris.mapNotNull { images.add(resolver, it) }.map { if (sealed) images.reseal(it, sealed = true) else it }
+            }
+            withContext(Dispatchers.Main) { edit { copy(images = this.images + names) } }
+        }
+    }
+
+    /** Takes a picture off the note and returns where it was, for Undo; the file goes once nothing has it. */
+    fun removeImage(name: String): Int {
+        val at = note?.images?.indexOf(name) ?: -1
+        edit { copy(images = images - name) }
+        return at
+    }
+
+    fun restoreImage(name: String, at: Int) = edit { copy(images = images.toMutableList().apply { add(at.coerceIn(0, size), name) }) }
 
     /** Adds an item after [afterId], or at the end of the unticked ones, and returns its id to focus. */
     fun addItem(afterId: Long? = null, text: String = ""): Long? {

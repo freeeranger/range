@@ -15,6 +15,7 @@ import androidx.room3.Update
 import androidx.sqlite.driver.AndroidSQLiteDriver
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import java.time.Instant
 
@@ -59,8 +60,13 @@ abstract class NoteDao {
     }
 }
 
-/** v2: notes can be locked, their content encrypted. */
-@Database(entities = [Note::class], version = 2, exportSchema = true, autoMigrations = [AutoMigration(from = 1, to = 2)])
+/** v2: notes can be locked, their content encrypted. v3: notes can have pictures. */
+@Database(
+    entities = [Note::class],
+    version = 3,
+    exportSchema = true,
+    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3)],
+)
 @ColumnTypeConverters(Converters::class)
 abstract class NotesDatabase : RoomDatabase() {
     abstract fun notes(): NoteDao
@@ -82,4 +88,7 @@ internal object Converters {
     /** A checklist's items as JSON, so an item can gain fields without a schema migration. */
     @ColumnTypeConverter fun fromItems(value: List<ChecklistItem>?): String? = value?.let { json.encodeToString(ListSerializer(ChecklistItem.serializer()), it) }
     @ColumnTypeConverter fun toItems(value: String?): List<ChecklistItem>? = value?.let { json.decodeFromString(ListSerializer(ChecklistItem.serializer()), it) }
+
+    @ColumnTypeConverter fun fromNames(value: List<String>): String = json.encodeToString(ListSerializer(String.serializer()), value)
+    @ColumnTypeConverter fun toNames(value: String): List<String> = json.decodeFromString(ListSerializer(String.serializer()), value)
 }

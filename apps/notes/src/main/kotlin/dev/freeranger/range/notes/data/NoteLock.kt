@@ -127,17 +127,16 @@ class NoteLock(context: Context, private val scope: CoroutineScope) : NoteCipher
             )
     }
 
-    override fun encrypt(plain: String): String {
+    override fun encrypt(plain: ByteArray): ByteArray {
         val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(Cipher.ENCRYPT_MODE, checkNotNull(noteKey) { "Notes are locked" })
-        return Base64.encodeToString(cipher.iv + cipher.doFinal(plain.encodeToByteArray()), Base64.NO_WRAP)
+        return cipher.iv + cipher.doFinal(plain)
     }
 
-    override fun decrypt(secret: String): String {
-        val bytes = Base64.decode(secret, Base64.NO_WRAP)
+    override fun decrypt(sealed: ByteArray): ByteArray {
         val cipher = Cipher.getInstance(TRANSFORMATION)
-        cipher.init(Cipher.DECRYPT_MODE, checkNotNull(noteKey) { "Notes are locked" }, GCMParameterSpec(TAG_BITS, bytes, 0, IV_BYTES))
-        return cipher.doFinal(bytes, IV_BYTES, bytes.size - IV_BYTES).decodeToString()
+        cipher.init(Cipher.DECRYPT_MODE, checkNotNull(noteKey) { "Notes are locked" }, GCMParameterSpec(TAG_BITS, sealed, 0, IV_BYTES))
+        return cipher.doFinal(sealed, IV_BYTES, sealed.size - IV_BYTES)
     }
 
     private fun keystoreKey(): SecretKey? =

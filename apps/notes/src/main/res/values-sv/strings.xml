@@ -52,4 +52,16 @@
     <string name="lock_needs_screen_lock">Ställ in ett skärmlås på telefonen först: låsta anteckningar öppnas med fingeravtryck eller telefonens pinkod.</string>
     <string name="lock_lost">Låsta anteckningar kan inte öppnas längre, eftersom telefonens skärmlås togs bort efter att de låstes. En säkerhetskopia tar tillbaka dem.</string>
     <string name="dialog_ok">OK</string>
+
+    <string name="checklist_new">Ny lista</string>
+    <string name="note_add_image">Lägg till bild</string>
+    <string name="note_image">Bild</string>
+    <string name="image_remove">Ta bort bilden</string>
+    <string name="image_removed">Bilden borttagen</string>
+    <string name="checklist_untick_all">Avmarkera alla</string>
+    <string name="checklist_remove_ticked">Ta bort avbockade</string>
+    <plurals name="checklist_removed_ticked">
+        <item quantity="one">%1$d avbockat objekt borttaget</item>
+        <item quantity="other">%1$d avbockade objekt borttagna</item>
+    </plurals>
 </resources>

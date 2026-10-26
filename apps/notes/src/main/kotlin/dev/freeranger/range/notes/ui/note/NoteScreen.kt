@@ -4,7 +4,13 @@ import android.content.Intent
 import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,6 +28,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.BasicTextField
@@ -35,10 +42,16 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -49,10 +62,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -60,7 +75,12 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -84,16 +104,24 @@ import dev.freeranger.range.notes.data.NoteLock
 import dev.freeranger.range.notes.ui.common.Markdown
 import dev.freeranger.range.notes.ui.common.rememberMarkdownStyles
 import dev.freeranger.range.notes.ui.common.rememberNoteFormat
+import dev.freeranger.range.notes.ui.common.rememberNoteImage
+import dev.freeranger.range.ui.components.RangeDragHandle
 import dev.freeranger.range.ui.icons.RangeIcons
 import dev.freeranger.range.ui.theme.RangeSpace
+import kotlinx.coroutines.launch
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 import java.time.LocalDate
 
 @Composable
-fun NoteRoute(id: Long, isNew: Boolean, onBack: () -> Unit, onDelete: () -> Unit) {
+fun NoteRoute(id: Long, isNew: Boolean, onBack: () -> Unit, onDelete: () -> Unit, onOpenImage: (String) -> Unit) {
     val container = LocalAppContainer.current
     val context = LocalContext.current
     val activity = LocalActivity.current
-    val viewModel = viewModel(key = "note-$id") { NoteViewModel(id, container.repository, container.lock, container.scope) }
+    val viewModel = viewModel(key = "note-$id") { NoteViewModel(id, container.repository, container.lock, container.images, container.scope) }
+    val pickImages = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(MAX_PICKED)) { uris ->
+        if (uris.isNotEmpty()) viewModel.addImages(context.contentResolver, uris)
+    }
     val note = viewModel.note ?: return
     var problem by remember { mutableStateOf<NoteLock.Result?>(null) }
     val unlockTitle = stringResource(R.string.unlock_title)
@@ -151,6 +179,18 @@ fun NoteRoute(id: Long, isNew: Boolean, onBack: () -> Unit, onDelete: () -> Unit
                 context.startActivity(Intent.createChooser(send, null))
             },
             delete = { viewModel.delete(then = onDelete) },
+            untickAll = viewModel::untickAll,
+            removeTicked = viewModel::removeTicked,
+            restoreItems = viewModel::restoreItems,
+            reorder = viewModel::reorder,
+            addImages = {
+                // The picker leaves the app for a moment; that shouldn't lock the note it's adding to.
+                if (note.locked) container.lock.keepUnlockedThroughNextLeave()
+                pickImages.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+            },
+            removeImage = viewModel::removeImage,
+            restoreImage = viewModel::restoreImage,
+            openImage = onOpenImage,
             toggleLocked = {
                 when {
                     note.locked -> viewModel.setLocked(false)
@@ -212,7 +252,21 @@ data class NoteActions(
     val share: () -> Unit = {},
     val delete: () -> Unit = {},
     val toggleLocked: () -> Unit = {},
+    val untickAll: () -> Unit = {},
+    /** Removes ticked items and returns the list as it was, for Undo. */
+    val removeTicked: () -> List<ChecklistItem>? = { null },
+    val restoreItems: (List<ChecklistItem>) -> Unit = {},
+    /** Puts the unticked items in this order, by id. */
+    val reorder: (List<Long>) -> Unit = {},
+    val addImages: () -> Unit = {},
+    /** Takes a picture off and returns where it was, for Undo. */
+    val removeImage: (String) -> Int = { -1 },
+    val restoreImage: (name: String, at: Int) -> Unit = { _, _ -> },
+    val openImage: (String) -> Unit = {},
 )
+
+/** Pictures a note can take at once from the picker. */
+private const val MAX_PICKED = 10
 
 /**
  * A note, shown with its formatting and ready to tick off, until Edit opens it for writing. New
@@ -229,9 +283,27 @@ fun NoteScreen(
     isNew: Boolean = false,
     initiallyEditing: Boolean = isNew,
     initiallyShowingMenu: Boolean = false,
+    snackbar: SnackbarHostState = remember { SnackbarHostState() },
 ) {
     val format = rememberNoteFormat()
     val styles = rememberMarkdownStyles()
+    val scope = rememberCoroutineScope()
+    val resources = LocalContext.current.resources
+    val offerUndo = { message: String, undo: () -> Unit ->
+        scope.launch {
+            snackbar.currentSnackbarData?.dismiss()
+            val result = snackbar.showSnackbar(message, actionLabel = resources.getString(R.string.action_undo), duration = SnackbarDuration.Short)
+            if (result == SnackbarResult.ActionPerformed) undo()
+        }
+        Unit
+    }
+    val removeImage = { name: String ->
+        val at = actions.removeImage(name)
+        offerUndo(resources.getString(R.string.image_removed)) { actions.restoreImage(name, at) }
+    }
+    val images = @Composable { editingNow: Boolean ->
+        NoteImagesBlock(note.images, editingNow, onOpen = actions.openImage, onRemove = removeImage)
+    }
     var editing by rememberSaveable { mutableStateOf(initiallyEditing) }
     var menu by remember { mutableStateOf(initiallyShowingMenu) }
     // Back while writing goes back to reading, unless the note was just started.
@@ -270,6 +342,23 @@ fun NoteScreen(
                             MenuItem(RangeIcons.Share, stringResource(R.string.note_share)) {
                                 menu = false
                                 actions.share()
+                            }
+                            MenuItem(RangeIcons.AddPhotoAlternate, stringResource(R.string.note_add_image)) {
+                                menu = false
+                                actions.addImages()
+                            }
+                            if (note.items.orEmpty().any { it.checked }) {
+                                MenuItem(RangeIcons.RemoveDone, stringResource(R.string.checklist_untick_all)) {
+                                    menu = false
+                                    actions.untickAll()
+                                }
+                                MenuItem(RangeIcons.DeleteSweep, stringResource(R.string.checklist_remove_ticked)) {
+                                    menu = false
+                                    val count = note.items.orEmpty().count { it.checked }
+                                    actions.removeTicked()?.let { before ->
+                                        offerUndo(resources.getQuantityString(R.plurals.checklist_removed_ticked, count, count)) { actions.restoreItems(before) }
+                                    }
+                                }
                             }
                             MenuItem(
                                 if (note.isChecklist) RangeIcons.Description else RangeIcons.CheckBox,
@@ -310,6 +399,7 @@ fun NoteScreen(
                     FormatButton(RangeIcons.FormatItalic, R.string.format_italic) { setBody(Markdown.toggleWrap(body, Markdown.ITALIC)) }
                     FormatButton(RangeIcons.FormatListBulleted, R.string.format_bullets) { setBody(Markdown.togglePrefix(body, Markdown.BULLET)) }
                     FormatButton(RangeIcons.Checklist, R.string.note_show_checkboxes, actions.toggleChecklist)
+                    FormatButton(RangeIcons.AddPhotoAlternate, R.string.note_add_image, actions.addImages)
                 }
                 Spacer(Modifier.weight(1f))
                 if (!note.isBlank) {
@@ -322,6 +412,7 @@ fun NoteScreen(
                 }
             }
         },
+        snackbarHost = { SnackbarHost(snackbar, Modifier.imePadding()) },
     ) { padding ->
         val items = note.items
         if (items == null && !editing) {
@@ -333,10 +424,11 @@ fun NoteScreen(
                     .padding(horizontal = RangeSpace.gutter),
             ) {
                 Column {
+                    images(false)
                     if (note.title.isNotBlank()) {
                         Text(note.title.trim(), modifier = Modifier.padding(vertical = RangeSpace.s3), style = MaterialTheme.typography.headlineSmall)
                     }
-                    Text(Markdown.preview(note.body.trimEnd(), styles), style = MaterialTheme.typography.bodyLarge)
+                    Text(Markdown.preview(note.body.trimEnd(), styles, links = true), style = MaterialTheme.typography.bodyLarge)
                 }
             }
         } else if (items == null) {
@@ -348,6 +440,7 @@ fun NoteScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = RangeSpace.gutter),
             ) {
+                images(true)
                 TitleField(note.title, actions.setTitle)
                 PlainField(
                     value = body,
@@ -361,20 +454,44 @@ fun NoteScreen(
             }
             if (isNew) LaunchedEffect(Unit) { focus.requestFocus() }
         } else {
-            Checklist(note, items, editing, actions, padding, focusFirst = isNew)
+            Checklist(note, items, editing, actions, padding, focusFirst = isNew, styles = styles, images = { images(editing) })
         }
     }
 }
 
 @Composable
-private fun Checklist(note: Note, items: List<ChecklistItem>, editing: Boolean, actions: NoteActions, padding: PaddingValues, focusFirst: Boolean) {
+private fun Checklist(
+    note: Note,
+    items: List<ChecklistItem>,
+    editing: Boolean,
+    actions: NoteActions,
+    padding: PaddingValues,
+    focusFirst: Boolean,
+    styles: Markdown.Styles,
+    images: @Composable () -> Unit,
+) {
     val requesters = remember { mutableStateMapOf<Long, FocusRequester>() }
+    val haptics = LocalHapticFeedback.current
     // An item to put the cursor in once it's on screen: one just added, or the first of a new checklist.
     var focusing by remember { mutableStateOf(if (focusFirst) items.firstOrNull()?.id else null) }
     var showTicked by rememberSaveable { mutableStateOf(true) }
     val open = items.filter { !it.checked }
     val ticked = items.filter { it.checked }
     val add = { afterId: Long?, text: String -> focusing = actions.addItem(afterId, text) }
+    // The unticked items' order on screen, moved as rows are dragged and saved when one is dropped.
+    val saved = open.map { it.id }
+    var order by remember { mutableStateOf(saved) }
+    LaunchedEffect(saved) { order = saved }
+    val listState = rememberLazyListState()
+    val reorderState = rememberReorderableLazyListState(listState) { from, to ->
+        val fromIndex = order.indexOf(from.key)
+        val toIndex = order.indexOf(to.key)
+        if (fromIndex >= 0 && toIndex >= 0) {
+            order = order.toMutableList().apply { add(toIndex, removeAt(fromIndex)) }
+            haptics.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
+        }
+    }
+    val openById = open.associateBy { it.id }
 
     LaunchedEffect(focusing, items) {
         val id = focusing ?: return@LaunchedEffect
@@ -384,7 +501,8 @@ private fun Checklist(note: Note, items: List<ChecklistItem>, editing: Boolean, 
         }
     }
 
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
+    LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = padding) {
+        if (note.images.isNotEmpty()) item(key = "images") { Box(Modifier.padding(horizontal = RangeSpace.gutter)) { images() } }
         item(key = "title") {
             if (editing) {
                 TitleField(note.title, actions.setTitle, Modifier.padding(horizontal = RangeSpace.gutter))
@@ -396,11 +514,20 @@ private fun Checklist(note: Note, items: List<ChecklistItem>, editing: Boolean, 
                 )
             }
         }
-        items(open, key = { it.id }) { item ->
+        items(order.mapNotNull(openById::get), key = { it.id }) { item ->
             if (editing) {
-                ItemRow(item, requesters.getOrPut(item.id) { FocusRequester() }, actions, add, Modifier.animateItem())
+                ReorderableItem(reorderState, key = item.id) { dragging ->
+                    val elevation by animateDpAsState(if (dragging) 8.dp else 0.dp, label = "rowElevation")
+                    val handle = Modifier.draggableHandle(
+                        onDragStarted = { haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate) },
+                        onDragStopped = { actions.reorder(order) },
+                    )
+                    Surface(shadowElevation = elevation, tonalElevation = elevation) {
+                        ItemRow(item, requesters.getOrPut(item.id) { FocusRequester() }, actions, add, handle = { RangeDragHandle(handle) })
+                    }
+                }
             } else {
-                ReadItemRow(item, actions, Modifier.animateItem())
+                ReadItemRow(item, actions, styles, Modifier.animateItem())
             }
         }
         if (editing) item(key = "add") {
@@ -408,7 +535,8 @@ private fun Checklist(note: Note, items: List<ChecklistItem>, editing: Boolean, 
                 Modifier
                     .fillMaxWidth()
                     .clickable { add(null, "") }
-                    .padding(horizontal = RangeSpace.gutter, vertical = RangeSpace.s3),
+                    // Under the items' boxes, past their drag handles.
+                    .padding(start = RangeSpace.s1 + 48.dp + 12.dp, end = RangeSpace.gutter, top = RangeSpace.s3, bottom = RangeSpace.s3),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(RangeSpace.s4),
             ) {
@@ -436,9 +564,9 @@ private fun Checklist(note: Note, items: List<ChecklistItem>, editing: Boolean, 
             if (showTicked) {
                 items(ticked, key = { it.id }) { item ->
                     if (editing) {
-                        ItemRow(item, requesters.getOrPut(item.id) { FocusRequester() }, actions, add, Modifier.animateItem())
+                        ItemRow(item, requesters.getOrPut(item.id) { FocusRequester() }, actions, add, Modifier.animateItem(), handle = { Spacer(Modifier.size(48.dp)) })
                     } else {
-                        ReadItemRow(item, actions, Modifier.animateItem())
+                        ReadItemRow(item, actions, styles, Modifier.animateItem())
                     }
                 }
             }
@@ -448,7 +576,7 @@ private fun Checklist(note: Note, items: List<ChecklistItem>, editing: Boolean, 
 
 /** A checklist item to tick off while reading: the whole row ticks it. */
 @Composable
-private fun ReadItemRow(item: ChecklistItem, actions: NoteActions, modifier: Modifier = Modifier) {
+private fun ReadItemRow(item: ChecklistItem, actions: NoteActions, styles: Markdown.Styles, modifier: Modifier = Modifier) {
     val colors = MaterialTheme.colorScheme
     Row(
         modifier
@@ -459,7 +587,7 @@ private fun ReadItemRow(item: ChecklistItem, actions: NoteActions, modifier: Mod
     ) {
         Checkbox(checked = item.checked, onCheckedChange = null, modifier = Modifier.size(48.dp))
         Text(
-            item.text,
+            Markdown.linked(item.text, styles),
             modifier = Modifier.padding(vertical = RangeSpace.s3).padding(end = RangeSpace.s4),
             style = MaterialTheme.typography.bodyLarge,
             color = if (item.checked) colors.onSurfaceVariant else colors.onSurface,
@@ -476,10 +604,13 @@ private fun ItemRow(
     actions: NoteActions,
     add: (afterId: Long?, text: String) -> Unit,
     modifier: Modifier = Modifier,
+    /** The drag handle at the start, or room for one. */
+    handle: @Composable () -> Unit = {},
 ) {
     var focused by remember { mutableStateOf(false) }
     val colors = MaterialTheme.colorScheme
     Row(modifier.fillMaxWidth().padding(start = RangeSpace.s1, end = RangeSpace.s1), verticalAlignment = Alignment.CenterVertically) {
+        handle()
         Checkbox(checked = item.checked, onCheckedChange = { actions.setChecked(item.id, it) })
         PlainField(
             value = item.text,
@@ -581,4 +712,41 @@ private fun MenuItem(icon: ImageVector, text: String, onClick: () -> Unit) {
 /** Styles the text as typed, keeping every character where it is so the cursor stays put. */
 private class MarkdownTransformation(private val styles: Markdown.Styles) : VisualTransformation {
     override fun filter(text: AnnotatedString) = TransformedText(Markdown.highlight(text.text, styles), OffsetMapping.Identity)
+}
+
+/** A note's pictures, full width above it; tapped to see one whole. While writing, each can be taken off. */
+@Composable
+private fun NoteImagesBlock(names: List<String>, editing: Boolean, onOpen: (String) -> Unit, onRemove: (String) -> Unit) {
+    if (names.isEmpty()) return
+    val width = with(LocalDensity.current) { LocalConfiguration.current.screenWidthDp.dp.roundToPx() }
+    Column(Modifier.padding(top = RangeSpace.s2), verticalArrangement = Arrangement.spacedBy(RangeSpace.s2)) {
+        names.forEach { name ->
+            Box {
+                NoteImage(
+                    name,
+                    width,
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(MaterialTheme.shapes.large)
+                        .clickable { onOpen(name) },
+                )
+                if (editing) {
+                    FilledTonalIconButton(onClick = { onRemove(name) }, modifier = Modifier.align(Alignment.TopEnd).padding(RangeSpace.s2)) {
+                        Icon(RangeIcons.Close, contentDescription = stringResource(R.string.image_remove))
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** A picture at its own shape, or a quiet box of about the right size while it loads. */
+@Composable
+fun NoteImage(name: String, width: Int, modifier: Modifier = Modifier, contentScale: ContentScale = ContentScale.FillWidth) {
+    val image = rememberNoteImage(name, width)
+    if (image == null) {
+        Box(modifier.height(200.dp).background(MaterialTheme.colorScheme.surfaceContainerHigh))
+    } else {
+        Image(image, contentDescription = stringResource(R.string.note_image), modifier = modifier, contentScale = contentScale)
+    }
 }

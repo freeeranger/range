@@ -39,4 +39,18 @@ class MigrationTest {
         connection.prepare("SELECT items FROM notes WHERE id = 2").use { assertTrue(it.step() && it.getText(0).contains("Milk")) }
         connection.close()
     }
+
+    @Test
+    fun `2 to 3 gives every note an empty list of pictures`() = runTest {
+        helper.createDatabase(2).apply {
+            execSQL("INSERT INTO notes (id, title, body, items, pinned, createdAt, editedAt, locked, secret) VALUES (1, 'Diary', '', NULL, 0, 0, 0, 1, 'sealed')")
+            close()
+        }
+        val connection = helper.runMigrationsAndValidate(3)
+        connection.prepare("SELECT images, locked, secret FROM notes WHERE id = 1").use {
+            it.step()
+            assertEquals(listOf("[]", "1", "sealed"), listOf(it.getText(0), it.getText(1), it.getText(2)))
+        }
+        connection.close()
+    }
 }

@@ -41,6 +41,8 @@ dependencies {
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.kotlinx.serialization.json)
+    // Dragging a checklist's items into a new order (Apache 2.0).
+    implementation(libs.reorderable)
 
     implementation(libs.room3.runtime)
     implementation(libs.sqlite.framework)

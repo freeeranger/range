@@ -3,13 +3,19 @@ package dev.freeranger.range.notes.data
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.time.Instant
+import java.util.Base64
 
 /**
  * Every note, as one file the user saves wherever they like and restores from. Kept apart from
  * the Room entity, so the file's shape only changes on purpose: [FORMAT] goes up when it does.
  * Locked notes are written with their content in the clear, as [Note.locked] notes to lock again.
  */
-data class Backup(val notes: List<Note>) {
+data class Backup(
+    /** With their pictures' ids, not file names. */
+    val notes: List<Note>,
+    /** Every picture's bytes, by id. */
+    val images: Map<String, ByteArray> = emptyMap(),
+) {
     fun encode(): String = json.encodeToString(
         BackupFile.serializer(),
         BackupFile(
@@ -24,14 +30,19 @@ data class Backup(val notes: List<Note>) {
                     createdAt = it.createdAt.toEpochMilli(),
                     editedAt = it.editedAt.toEpochMilli(),
                     locked = it.locked,
+                    images = it.images,
                 )
             },
+            images = images.map { (id, bytes) -> BackupFile.ImageRow(id, Base64.getEncoder().encodeToString(bytes)) },
         ),
     )
 
     companion object {
-        /** 2: notes can be locked. Their content is in the file as written, so restoring can lock them again. */
-        const val FORMAT = 2
+        /**
+         * 2: notes can be locked. Their content is in the file as written, so restoring can lock them again.
+         * 3: notes can have pictures, which the file carries whole.
+         */
+        const val FORMAT = 3
         private val json = Json { ignoreUnknownKeys = true }
 
         /** Reads a backup file, or returns null if it isn't one this version understands. */
@@ -49,8 +60,10 @@ data class Backup(val notes: List<Note>) {
                         createdAt = Instant.ofEpochMilli(it.createdAt),
                         editedAt = Instant.ofEpochMilli(it.editedAt),
                         locked = it.locked,
+                        images = it.images,
                     )
                 },
+                file.images.associate { it.id to Base64.getDecoder().decode(it.data) },
             )
         }.getOrNull()
     }
@@ -58,7 +71,7 @@ data class Backup(val notes: List<Note>) {
 
 /** The backup file's JSON. Moments are milliseconds since 1970. */
 @Serializable
-private data class BackupFile(val format: Int, val notes: List<NoteRow>) {
+private data class BackupFile(val format: Int, val notes: List<NoteRow>, val images: List<ImageRow> = emptyList()) {
     @Serializable
     data class NoteRow(
         val id: Long,
@@ -71,7 +84,13 @@ private data class BackupFile(val format: Int, val notes: List<NoteRow>) {
         val editedAt: Long,
         /** Its content is still in the clear here: locked on restore. */
         val locked: Boolean = false,
+        /** Ids of its pictures, in [BackupFile.images]. */
+        val images: List<String> = emptyList(),
     )
+
+    /** A picture, as base64 JPEG. */
+    @Serializable
+    data class ImageRow(val id: String, val data: String)
 
     @Serializable
     data class ItemRow(val text: String, val checked: Boolean)

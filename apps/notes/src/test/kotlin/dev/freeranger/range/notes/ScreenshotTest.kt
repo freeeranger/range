@@ -1,14 +1,22 @@
 package dev.freeranger.range.notes
 
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.LinearGradient
+import android.graphics.Paint
+import android.graphics.Shader
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
@@ -17,6 +25,8 @@ import dev.freeranger.range.notes.data.ChecklistItem
 import dev.freeranger.range.notes.data.Note
 import dev.freeranger.range.notes.ui.list.NoteListScreen
 import dev.freeranger.range.notes.ui.list.NoteListState
+import dev.freeranger.range.notes.ui.common.LocalImageLoader
+import dev.freeranger.range.notes.ui.note.ImageScreen
 import dev.freeranger.range.notes.ui.note.LockedNoteScreen
 import dev.freeranger.range.notes.ui.note.NoteActions
 import dev.freeranger.range.notes.ui.note.NoteScreen
@@ -60,8 +70,15 @@ class ScreenshotTest {
     private fun items(vararg texts: String, ticked: Set<String> = emptySet()) =
         texts.mapIndexed { i, text -> ChecklistItem(i + 1L, text, checked = text in ticked) }
 
-    private fun note(id: Long, title: String = "", body: String = "", items: List<ChecklistItem>? = null, pinned: Boolean = false, edited: java.time.Instant = at(friday, 9)) =
-        Note(id, title, body, items, pinned, createdAt = edited, editedAt = edited)
+    private fun note(
+        id: Long,
+        title: String = "",
+        body: String = "",
+        items: List<ChecklistItem>? = null,
+        pinned: Boolean = false,
+        edited: java.time.Instant = at(friday, 9),
+        images: List<String> = emptyList(),
+    ) = Note(id, title, body, items, pinned, createdAt = edited, editedAt = edited, images = images)
 
     private val trip = note(
         1, "Gotland trip",
@@ -85,7 +102,10 @@ class ScreenshotTest {
     private val bank = note(7, "Bank", pinned = true).copy(locked = true, secret = "sealed")
     private val diary = note(8, "Diary", body = "Slept well. Long walk by the sea.", edited = at(friday.minusDays(2), 21)).copy(locked = true)
 
-    private val state = NoteListState(listOf(trip, wifi, bank, ideas, groceries, plumber, books), loaded = true)
+    private val beach = note(9, "Gotland", body = "Ferry at 7:30 from Nynäshamn. Booking at **ferry.example.com**, or see https://www.gotland.example", images = listOf("sea.jpg"), edited = at(friday, 7, 50))
+    private val plants = note(10, images = listOf("plants.jpg"), edited = at(friday.minusDays(5), 15))
+
+    private val state = NoteListState(listOf(trip, wifi, bank, beach, ideas, groceries, plumber, plants, books), loaded = true)
 
     @Composable
     private fun List(listState: NoteListState = state, query: String = "") =
@@ -159,6 +179,22 @@ class ScreenshotTest {
     fun noteUnlockedMenu() = capture { NoteScreen(diary, friday, NoteActions(), initiallyShowingMenu = true) }
 
     @Test
+    fun notePicture() = capture { NoteScreen(beach, friday, NoteActions()) }
+
+    @Test
+    fun notePictureEditing() = capture { NoteScreen(beach, friday, NoteActions(), initiallyEditing = true) }
+
+    @Test
+    fun picture() = capture { ImageScreen("sea.jpg", onBack = {}) }
+
+    @Test
+    fun checklistRemovedTicked() = capture {
+        val snackbar = remember { SnackbarHostState() }
+        LaunchedEffect(Unit) { snackbar.showSnackbar("2 ticked items removed", actionLabel = "Undo", duration = SnackbarDuration.Indefinite) }
+        NoteScreen(trip.copy(items = trip.items!!.filterNot { it.checked }), friday, NoteActions(), snackbar = snackbar)
+    }
+
+    @Test
     fun icon() = capture {
         Row(Modifier.padding(32.dp), horizontalArrangement = Arrangement.spacedBy(32.dp)) {
             RangeAppIcon(R.drawable.ic_launcher_background, R.drawable.ic_launcher_foreground, size = 160.dp)
@@ -192,12 +228,42 @@ class ScreenshotTest {
     @Test
     fun license() = capture { RangeLicenseScreen(RangeLicense.Gpl3, onBack = {}) }
 
-    /** Material You is off so screenshots don't depend on a wallpaper. */
+    /** Material You is off so screenshots don't depend on a wallpaper; pictures are painted here. */
     private fun capture(appearance: RangeAppearance = RangeAppearance(dynamicColor = false), content: @Composable () -> Unit) {
-        compose.setContent { RangeTheme(accent = RangeAccents.Notes, appearance = appearance, content = content) }
+        compose.setContent {
+            CompositionLocalProvider(LocalImageLoader provides { name, width -> scene(name, width) }) {
+                RangeTheme(accent = RangeAccents.Notes, appearance = appearance, content = content)
+            }
+        }
         compose.waitForIdle()
         captureScreenRoboImage()
     }
 }
 
 private const val PHONE = "w412dp-h915dp-night-xxhdpi"
+
+/** A simple painted picture standing in for a photo: a beach, or leaves. */
+private fun scene(name: String, width: Int): ImageBitmap {
+    val w = width.coerceIn(200, 900)
+    val h = w * 2 / 3
+    val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    fun fill(top: Float, bottom: Float, from: Int, to: Int) {
+        paint.shader = LinearGradient(0f, top, 0f, bottom, from, to, Shader.TileMode.CLAMP)
+        canvas.drawRect(0f, top, w.toFloat(), bottom, paint)
+        paint.shader = null
+    }
+    if (name.startsWith("sea")) {
+        fill(0f, h * 0.55f, 0xFF7DD3FC.toInt(), 0xFFE0F2FE.toInt())
+        fill(h * 0.55f, h * 0.78f, 0xFF0EA5E9.toInt(), 0xFF0369A1.toInt())
+        fill(h * 0.78f, h.toFloat(), 0xFFFDE68A.toInt(), 0xFFF59E0B.toInt())
+        paint.color = 0xFFFEF08A.toInt()
+        canvas.drawCircle(w * 0.74f, h * 0.28f, h * 0.12f, paint)
+    } else {
+        fill(0f, h.toFloat(), 0xFF14532D.toInt(), 0xFF4D7C0F.toInt())
+        paint.color = 0xFF86EFAC.toInt()
+        listOf(0.2f to 0.3f, 0.55f to 0.6f, 0.8f to 0.25f, 0.35f to 0.75f).forEach { (x, y) -> canvas.drawOval(w * x - h * 0.18f, h * y - h * 0.08f, w * x + h * 0.18f, h * y + h * 0.08f, paint) }
+    }
+    return bitmap.asImageBitmap()
+}

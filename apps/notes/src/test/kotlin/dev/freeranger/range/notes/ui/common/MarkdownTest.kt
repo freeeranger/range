@@ -70,6 +70,14 @@ class MarkdownTest {
     }
 
     @Test
+    fun `web addresses become links in previews, without the punctuation after them`() {
+        val text = Markdown.preview("See https://example.com/a?b=1, or www.range.dev.", styles, links = true)
+        val links = text.getLinkAnnotations(0, text.length).map { (it.item as androidx.compose.ui.text.LinkAnnotation.Url).url to text.text.substring(it.start, it.end) }
+        assertEquals(listOf("https://example.com/a?b=1" to "https://example.com/a?b=1", "https://www.range.dev" to "www.range.dev"), links)
+        assertEquals(0, Markdown.preview("me@www.example.com", styles, links = true).getLinkAnnotations(0, 18).size)
+    }
+
+    @Test
     fun `previews drop the marks and draw bullets, while the editor keeps every character`() {
         val text = "# Trip\n- **passport** and _tickets_\nsnake_case stays"
         assertEquals("Trip\n• passport and tickets\nsnake_case stays", Markdown.preview(text, styles).text)

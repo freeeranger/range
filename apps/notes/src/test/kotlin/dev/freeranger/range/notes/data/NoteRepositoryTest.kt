@@ -15,7 +15,9 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.time.Clock
 import java.time.Instant
+import java.io.File
 import java.time.ZoneOffset
+import kotlin.io.path.createTempDirectory
 
 /** Runs the real Room database in memory. */
 @RunWith(RobolectricTestRunner::class)
@@ -25,7 +27,9 @@ class NoteRepositoryTest {
         .build()
     private var now: Instant = Instant.parse("2026-10-23T08:00:00Z")
     private val cipher = FakeCipher()
-    private val repository = NoteRepository(database.notes(), cipher) { Clock.fixed(now, ZoneOffset.UTC) }
+    private val dir = createTempDirectory("images").toFile()
+    private val images = NoteImages(dir, cipher)
+    private val repository = NoteRepository(database.notes(), cipher, images) { Clock.fixed(now, ZoneOffset.UTC) }
 
     @After
     fun close() = database.close()
@@ -174,10 +178,59 @@ class NoteRepositoryTest {
         assertFalse(repository.get(id)!!.locked)
     }
 
+    @Test
+    fun `a locked note's pictures are encrypted with it, and come back out when the lock is taken off`() = runTest {
+        val photo = "a photo".toByteArray()
+        val name = images.write("sea", photo, sealed = false)
+        val id = repository.createShared("Holiday", "", listOf(name))
+        repository.setLocked(id, true)
+
+        val sealed = repository.get(id)!!.images.single()
+        assertTrue(NoteImages.isSealed(sealed))
+        assertFalse(File(dir, name).exists())
+        assertFalse(File(dir, sealed).readBytes().contentEquals(photo))
+        assertTrue(images.read(sealed)!!.contentEquals(photo))
+        cipher.isUnlocked = false
+        assertNull(images.read(sealed))
+        cipher.isUnlocked = true
+
+        repository.setLocked(id, false)
+        val plain = repository.get(id)!!.images.single()
+        assertFalse(NoteImages.isSealed(plain))
+        assertTrue(File(dir, plain).readBytes().contentEquals(photo))
+    }
+
+    @Test
+    fun `a backup carries every picture, locked notes' too`() = runTest {
+        val open = repository.createShared("", "", listOf(images.write("sea", "sea".toByteArray(), sealed = false)))
+        val locked = repository.createShared("Passport", "", listOf(images.write("passport", "passport".toByteArray(), sealed = false)))
+        repository.setLocked(locked, true)
+        val backup = repository.exportBackup()
+        dir.listFiles()!!.forEach { it.delete() }
+
+        assertTrue(repository.importBackup(backup))
+        assertTrue(images.read(repository.get(open)!!.images.single())!!.contentEquals("sea".toByteArray()))
+        val restored = repository.get(locked)!!
+        assertTrue(restored.locked && NoteImages.isSealed(restored.images.single()))
+        assertTrue(images.read(restored.images.single())!!.contentEquals("passport".toByteArray()))
+    }
+
+    @Test
+    fun `pictures no note has any more are deleted, once they're an hour old`() = runTest {
+        val kept = images.write("kept", byteArrayOf(1), sealed = false)
+        repository.createShared("", "", listOf(kept))
+        val dropped = images.write("dropped", byteArrayOf(2), sealed = false)
+        val fresh = images.write("fresh", byteArrayOf(3), sealed = false)
+        listOf(kept, dropped).forEach { File(dir, it).setLastModified(System.currentTimeMillis() - 2 * 60 * 60 * 1000) }
+
+        repository.tidyImages()
+        assertEquals(setOf(kept, fresh), dir.list()!!.toSet())
+    }
+
     /** Scrambles reversibly, so plain text never shows in what's stored. */
     private class FakeCipher : NoteCipher {
         override var isUnlocked = true
-        override fun encrypt(plain: String): String = java.util.Base64.getEncoder().encodeToString(plain.reversed().toByteArray())
-        override fun decrypt(secret: String): String = String(java.util.Base64.getDecoder().decode(secret)).reversed()
+        override fun encrypt(plain: ByteArray): ByteArray = plain.reversedArray().map { (it.toInt() xor 0x5A).toByte() }.toByteArray()
+        override fun decrypt(sealed: ByteArray): ByteArray = sealed.map { (it.toInt() xor 0x5A).toByte() }.toByteArray().reversedArray()
     }
 }

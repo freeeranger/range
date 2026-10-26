@@ -58,4 +58,17 @@
     <string name="lock_needs_screen_lock">Set a screen lock on your phone first: locked notes open with your fingerprint or the phone’s PIN.</string>
     <string name="lock_lost">Locked notes can’t be opened any more, as the phone’s screen lock was removed after they were locked. A backup brings them back.</string>
     <string name="dialog_ok">OK</string>
+
+    <!-- Shortcuts, pictures and tidying checklists -->
+    <string name="checklist_new">New checklist</string>
+    <string name="note_add_image">Add image</string>
+    <string name="note_image">Image</string>
+    <string name="image_remove">Remove image</string>
+    <string name="image_removed">Image removed</string>
+    <string name="checklist_untick_all">Untick all</string>
+    <string name="checklist_remove_ticked">Remove ticked items</string>
+    <plurals name="checklist_removed_ticked">
+        <item quantity="one">%1$d ticked item removed</item>
+        <item quantity="other">%1$d ticked items removed</item>
+    </plurals>
 </resources>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Long-pressing the app's icon offers these. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_note"
+        android:shortcutId="new_note"
+        android:shortcutShortLabel="@string/note_new">
+        <intent
+            android:action="dev.freeranger.range.notes.NEW_NOTE"
+            android:targetClass="dev.freeranger.range.notes.MainActivity"
+            android:targetPackage="dev.freeranger.range.notes" />
+    </shortcut>
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_checklist"
+        android:shortcutId="new_checklist"
+        android:shortcutShortLabel="@string/checklist_new">
+        <intent
+            android:action="dev.freeranger.range.notes.NEW_CHECKLIST"
+            android:targetClass="dev.freeranger.range.notes.MainActivity"
+            android:targetPackage="dev.freeranger.range.notes" />
+    </shortcut>
+</shortcuts>

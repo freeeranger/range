@@ -1,6 +1,8 @@
 package dev.freeranger.range.notes.ui.common
 
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.buildAnnotatedString
@@ -25,7 +27,9 @@ object Markdown {
     private val italic = Regex("""(?<![\p{L}\p{N}_])_(?=\S)(.+?)(?<=\S)_(?![\p{L}\p{N}_])""")
 
     /** How the parts look: set from the theme by the screen. */
-    data class Styles(val heading: SpanStyle, val bold: SpanStyle, val italic: SpanStyle, val mark: SpanStyle)
+    data class Styles(val heading: SpanStyle, val bold: SpanStyle, val italic: SpanStyle, val mark: SpanStyle, val link: SpanStyle = SpanStyle())
+
+    private val url = Regex("""(?i)(?<![\w@])(?:https?://|www\.)[^\s<>"]*[^\s<>".,;:!?)\]'"]""")
 
     /** The text as typed, styled, with its marks dimmed: for the editor, so every character stays where it is. */
     fun highlight(text: String, styles: Styles): AnnotatedString = buildAnnotatedString {
@@ -48,8 +52,8 @@ object Markdown {
         }
     }
 
-    /** The text styled with its marks gone and bullets drawn as "•": for previews. */
-    fun preview(text: String, styles: Styles): AnnotatedString = buildAnnotatedString {
+    /** The text styled with its marks gone and bullets drawn as "•": for previews. With [links], web addresses open when tapped. */
+    fun preview(text: String, styles: Styles, links: Boolean = false): AnnotatedString = buildAnnotatedString {
         text.split('\n').forEachIndexed { index, line ->
             if (index > 0) append('\n')
             when (val prefix = prefixOf(line)) {
@@ -60,6 +64,20 @@ object Markdown {
                     appendInline(line.substring(prefix.length), styles)
                 }
             }
+        }
+        if (links) addLinks(toAnnotatedString().text, styles)
+    }
+
+    /** Plain text with its web addresses tappable. */
+    fun linked(text: String, styles: Styles): AnnotatedString = buildAnnotatedString {
+        append(text)
+        addLinks(text, styles)
+    }
+
+    private fun AnnotatedString.Builder.addLinks(text: String, styles: Styles) {
+        for (match in url.findAll(text)) {
+            val address = match.value.let { if (it.startsWith("www.", ignoreCase = true)) "https://$it" else it }
+            addLink(LinkAnnotation.Url(address, TextLinkStyles(styles.link)), match.range.first, match.range.last + 1)
         }
     }
 
