@@ -226,7 +226,7 @@ class Evaluator(
     private fun negate(value: Value): Value = when (value) {
         is Quantity -> value.copy(number = value.number.negate())
         is Percent -> Percent(value.number.negate())
-        is DateValue -> throw CalcException("Negative date")
+        is DateValue, is Solution -> throw CalcException("Can't negate this")
     }
 
     private fun shift(date: DateValue, by: Quantity, sign: Int): DateValue {
@@ -276,7 +276,7 @@ class Evaluator(
     private fun plain(value: Value): BigDecimal = when (value) {
         is Quantity -> value.number
         is Percent -> value.fraction()
-        is DateValue -> throw CalcException("A date isn't a number")
+        is DateValue, is Solution -> throw CalcException("Not a number")
     }
 
     private fun function(name: String, argument: Value): Value {

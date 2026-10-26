@@ -115,6 +115,13 @@ class ScreenshotTest {
     fun scientific() = capture(RangeAppearance(theme = ThemeMode.Light, dynamicColor = false)) { Calc(listOf("sin(30)", "sin(30) + ln(e²)"), expanded = true) }
 
     @Test
+    fun equations() = capture { Calc(listOf("2x + 3 = 11", "x × 2", "x² − 5x + 6 = 0", "3^x = 81", "x² = −1"), expanded = true) }
+
+    @Test
+    @Config(qualifiers = "sv-rSE-$SIZE")
+    fun equationsSwedish() = capture { Calc(listOf("x² − 5x + 6 = 0", "2x = x + x"), keypad = false) }
+
+    @Test
     fun keyboard() = capture { Calc(trip.take(6), mode = InputMode.Keyboard) }
 
     @Test

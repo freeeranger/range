@@ -14,5 +14,8 @@ data class Percent(val number: BigDecimal) : Value
 
 data class DateValue(val date: LocalDate) : Value
 
+/** An equation's answer: what [name], its unknown, has to be. */
+data class Solution(val name: String, val solutions: Solutions) : Value
+
 /** Something that can't be worked out, like dividing by zero or adding metres to kilograms. */
 class CalcException(message: String) : Exception(message)

@@ -85,6 +85,8 @@ import dev.freeranger.range.calc.math.LineResult
 import dev.freeranger.range.calc.math.Quantity
 import dev.freeranger.range.calc.math.Rates
 import dev.freeranger.range.calc.math.Sheet
+import dev.freeranger.range.calc.math.Solution
+import dev.freeranger.range.calc.math.Solutions
 import dev.freeranger.range.calc.math.UnitTable
 import dev.freeranger.range.calc.math.Value
 import dev.freeranger.range.ui.icons.RangeIcons
@@ -176,7 +178,7 @@ fun CalcScreen(
     val change = { value: TextFieldValue -> actions.change(value) }
     // Earlier answers, newest first, to drop into the line being written.
     val answers = remember(results, editing) {
-        results.take(editing).mapNotNull { it.value }.reversed().map { insertable(it, format) }.distinct().take(3)
+        results.take(editing).mapNotNull { it.value }.reversed().mapNotNull { insertable(it, format) }.distinct().take(3)
     }
 
     LaunchedEffect(editing, lines.size) { listState.animateScrollToItem(editing) }
@@ -272,7 +274,7 @@ fun CalcScreen(
                     }
                     val copy = {
                         result.value?.let {
-                            clipboard.setText(AnnotatedString(insertable(it, format)))
+                            clipboard.setText(AnnotatedString(insertable(it, format) ?: format.format(it)))
                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                         }
                         Unit
@@ -460,6 +462,14 @@ private fun Functions(
 ) {
     Column(Modifier.padding(horizontal = RangeSpace.s3, vertical = RangeSpace.s1), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         if (expanded) {
+            // The = here is an equation's; the keypad's = keeps the line.
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                FunctionKey("x") { onKey("x") }
+                FunctionKey("y") { onKey("y") }
+                FunctionKey("=") { onKey(" = ") }
+                FunctionKey("mod") { onKey(" mod ") }
+                FunctionKey("|x|") { onKey("abs(") }
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 FunctionKey("INV", selected = inverse, onClick = onInverse)
                 FunctionKey(if (angles == AngleMode.Degrees) "DEG" else "RAD", onClick = onAngles)
@@ -585,6 +595,9 @@ private fun Accessory(onKeypad: () -> Unit, onKey: (String) -> Unit) {
     }
 }
 
-/** An answer as it can be typed back in: without ≈. */
-private fun insertable(value: Value, format: CalcFormat): String =
-    format.format(if (value is Quantity) value.copy(approx = false) else value)
+/** An answer as it can be typed back in: without ≈, and an equation's one solution as just its number. */
+private fun insertable(value: Value, format: CalcFormat): String? = when (value) {
+    is Quantity -> format.format(value.copy(approx = false))
+    is Solution -> (value.solutions as? Solutions.Roots)?.values?.singleOrNull()?.let { format.format(Quantity(it)) }
+    else -> format.format(value)
+}

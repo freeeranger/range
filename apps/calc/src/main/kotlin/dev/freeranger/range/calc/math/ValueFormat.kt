@@ -17,7 +17,11 @@ class ValueFormat(
     private val date: (LocalDate) -> String = LocalDate::toString,
     /** A unit's name after a number, for time units in the app's language ("3 veckor"). */
     private val unitName: (CalcUnit, BigDecimal) -> String = { unit, _ -> unit.symbol },
+    /** The words around an equation's answers: "or", "no solution", "any x". */
+    private val words: SolutionWords = SolutionWords(),
 ) {
+    data class SolutionWords(val or: String = "or", val none: String = "no solution", val any: (String) -> String = { "any $it" })
+
     private val symbols = DecimalFormatSymbols.getInstance(locale)
     val decimal: Char = symbols.decimalSeparator
     val grouping: Char = symbols.groupingSeparator
@@ -36,6 +40,11 @@ class ValueFormat(
         }
         is Percent -> "${number(value.number, 10)} %"
         is DateValue -> date(value.date)
+        is Solution -> when (val s = value.solutions) {
+            is Solutions.Roots -> "${value.name} = " + s.values.joinToString(" ${words.or} ") { number(it, 10) }
+            Solutions.None -> words.none
+            Solutions.Any -> words.any(value.name)
+        }
     }
 
     /** A plain number, as typed into the keypad would show it. */

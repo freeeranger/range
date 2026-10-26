@@ -46,6 +46,29 @@ class SheetTest {
     }
 
     @Test
+    fun `equations in one unknown are solved`() {
+        assertEquals("x = 4", answer("2x + 3 = 11"))
+        assertEquals("x = 2 or 3", answer("x² - 5x + 6 = 0"))
+        assertEquals("x = −3 or 3", answer("x^2 = 9"))
+        assertEquals("x = 4", answer("3^x = 81"))
+        assertEquals("x = 0,3333333333", answer("3x = 1"))
+        assertEquals("y = 1,5", answer("solve 2y = 3"))
+        assertEquals("x = 1", answer("(x - 1)² = 0"))
+        assertEquals("x = 1,3247179572", answer("x³ = x + 1"))
+        assertEquals("x = 0,5", answer("1/x = 2"))
+        assertEquals("no solution", answer("x² = -1"))
+        assertEquals("any x", answer("2x = x + x"))
+        assertEquals("n = 30", answer("n % of 200 = 60"))
+        // One answer is a name for the lines below.
+        assertEquals(listOf("x = 4", "8"), answers("2x + 3 = 11", "x × 2"))
+        // An x that came from solving can be solved for again; one set by hand can't.
+        assertEquals(listOf("x = 4", "x = 2 or 3", "x = 9"), answers("2x + 3 = 11", "x² - 5x + 6 = 0", "x - 1 = 8"))
+        assertEquals(listOf("5", "y = 5"), answers("x = 5", "2y = 2x"))
+        // A name already given isn't the unknown: here a is known and x is solved for.
+        assertEquals(listOf("2", "x = 3"), answers("a = 2", "a x = 6"))
+    }
+
+    @Test
     fun `mod is the remainder, and logarithms take a base`() {
         assertEquals("1", answer("5 mod 2"))
         assertEquals("2", answer("-7 mod 3"))

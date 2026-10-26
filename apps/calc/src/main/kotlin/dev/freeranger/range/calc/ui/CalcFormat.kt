@@ -38,6 +38,11 @@ class CalcFormat(context: Context) {
         locale,
         date = { date -> date.format(if (date.year == LocalDate.now().year) shortDate else longDate).replaceFirstChar { it.titlecase(locale) } },
         unitName = { unit, amount -> unitName(unit, amount) },
+        words = ValueFormat.SolutionWords(
+            or = res.getString(R.string.solve_or),
+            none = res.getString(R.string.solve_none),
+            any = { res.getString(R.string.solve_any, it) },
+        ),
     )
 
     val decimal: Char get() = value.decimal

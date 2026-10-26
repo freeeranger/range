@@ -35,4 +35,9 @@
         <item quantity="one">year</item>
         <item quantity="other">years</item>
     </plurals>
+
+    <!-- Equations: "x = 2 or 3" -->
+    <string name="solve_or">or</string>
+    <string name="solve_none">no solution</string>
+    <string name="solve_any">any %1$s</string>
 </resources>

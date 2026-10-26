@@ -34,4 +34,8 @@
         <item quantity="one">år</item>
         <item quantity="other">år</item>
     </plurals>
+
+    <string name="solve_or">eller</string>
+    <string name="solve_none">ingen lösning</string>
+    <string name="solve_any">alla %1$s</string>
 </resources>

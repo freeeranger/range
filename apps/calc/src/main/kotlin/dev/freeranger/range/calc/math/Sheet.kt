@@ -1,5 +1,6 @@
 package dev.freeranger.range.calc.math
 
+import java.math.BigDecimal
 import java.time.LocalDate
 
 /** What one line of a sheet is, and comes to. */
@@ -35,6 +36,8 @@ class Sheet(
     fun evaluate(lines: List<String>): List<LineResult> {
         val names = linkedMapOf<String, Value>()
         val shown = mutableMapOf<String, String>()
+        // Names that came from solving an equation: a later equation may solve for them again.
+        val solved = mutableSetOf<String>()
         var previous: Value? = null
         val block = mutableListOf<Value>()
         return lines.map { raw ->
@@ -43,6 +46,24 @@ class Sheet(
                 line.isEmpty() -> LineResult(LineResult.Kind.Blank).also { block.clear() }
                 line.startsWith("#") -> LineResult(LineResult.Kind.Heading).also { block.clear() }
                 line.startsWith("//") -> LineResult(LineResult.Kind.Comment)
+                isEquation(line, names) -> {
+                    val result = solve(line, names - solved, shown, previous)
+                    if (result.value is Solution) {
+                        val single = (result.value.solutions as? Solutions.Roots)?.values?.singleOrNull()
+                        // One answer can be used further down, as a name: "x = 4", then "x × 2".
+                        if (single != null) {
+                            val x = Quantity(single)
+                            names[result.value.name] = x
+                            shown[result.value.name] = result.value.name
+                            solved += result.value.name
+                            previous = x
+                        } else {
+                            names -= result.value.name
+                            solved -= result.value.name
+                        }
+                    }
+                    result
+                }
                 else -> {
                     val assignment = ASSIGNMENT.matchEntire(line)
                     val name = assignment?.groupValues?.get(1)?.trim()
@@ -67,6 +88,7 @@ class Sheet(
                             if (name != null) {
                                 names[name.lowercase()] = value
                                 shown[name.lowercase()] = name
+                                solved -= name.lowercase()
                             }
                             LineResult(LineResult.Kind.Answer, value, name)
                         }
@@ -74,6 +96,40 @@ class Sheet(
                 }
             }
         }
+    }
+
+    /**
+     * "2x + 3 = 11": one "=", with something worked out on its left, not just a new name. "solve"
+     * in front always makes one, and so does a left side made of names already given ("a x = 6").
+     */
+    private fun isEquation(line: String, names: Map<String, Value>): Boolean {
+        val text = line.substringBefore("//").trimEnd().removeSuffix("=")
+        if (text.count { it == '=' } != 1 || text.substringAfter('=').isBlank()) return false
+        if (SOLVE.containsMatchIn(text)) return true
+        val name = ASSIGNMENT.matchEntire(text)?.groupValues?.get(1)?.trim() ?: return true
+        val words = name.lowercase().split(' ').filter { it.isNotEmpty() }
+        return words.size > 1 && name.lowercase() !in names && words.any { it in names }
+    }
+
+    /** Solves for the first single letter in the line that isn't a name already: x, y, z, n… */
+    private fun solve(line: String, names: Map<String, Value>, shown: Map<String, String>, previous: Value?): LineResult {
+        val text = line.substringBefore("//").trimEnd().let { SOLVE.replace(it, "") }
+        val (left, right) = text.split('=', limit = 2)
+        val letters = Regex("""(?<!\p{L})(\p{L})(?!\p{L})""").findAll(text).map { it.groupValues[1].lowercase() }.toSet()
+        val unknown = UNKNOWNS.firstOrNull { it in letters && it !in names } ?: return LineResult(LineResult.Kind.Unsolved)
+        val lexer = Lexer(units, decimal, grouping, today, shown.values + unknown)
+        val (l, r) = lexer.tokens(left) to lexer.tokens(right)
+        val side = { tokens: List<Token>, x: BigDecimal ->
+            Evaluator(tokens, rates, angles, { if (it == unknown) Quantity(x) else names[it] }, previous, { null }).evaluate()
+        }
+        val f = { x: BigDecimal ->
+            runCatching {
+                val difference = Evaluator(listOf(Token.Var("l"), Token.Op('-'), Token.Var("r")), rates, angles, { if (it == "l") side(l, x) else side(r, x) }, null, { null }).evaluate()
+                (difference as? Quantity)?.number
+            }.getOrNull()
+        }
+        if (f(BigDecimal.ONE) == null && f(BigDecimal.ZERO) == null && f(BigDecimal(2)) == null) return LineResult(LineResult.Kind.Unsolved)
+        return LineResult(LineResult.Kind.Answer, Solution(unknown, Solver(f).solve()))
     }
 
     /** Adds the values up as "+" would, in the first one's unit. */
@@ -93,6 +149,13 @@ class Sheet(
 
     private companion object {
         /** "Per person = Total / 3": a name of words, then what it stands for. */
-        val ASSIGNMENT = Regex("""^\s*(\p{L}[\p{L}\p{N} _]*?)\s*=\s*(.+)$""")
+        // Ordinary digits only: "x²" is something to work out, not a name.
+        val ASSIGNMENT = Regex("""^\s*(\p{L}[\p{L}\p{Nd} _]*?)\s*=\s*(.+)$""")
+
+        /** "solve" or "lös" before an equation asks for nothing more than the equation does. */
+        val SOLVE = Regex("""^\s*(solve|lös)\s+""", RegexOption.IGNORE_CASE)
+
+        /** Letters that can be an equation's unknown, most likely first. */
+        val UNKNOWNS = listOf("x", "y", "z", "n", "a", "b", "k", "p", "q", "r", "u", "v", "w")
     }
 }
