@@ -2,6 +2,8 @@
     <string name="app_name">Range Calculator</string>
     <!-- Answers are formatted in this language, with the phone's region deciding numbers and dates. -->
     <string name="format_language" translatable="false">en</string>
+    <!-- The app's name under its icon on the home screen, untranslated in every language. -->
+    <string name="app_title" translatable="false">Calculator</string>
 
     <string name="action_back">Back</string>
     <string name="action_more">More options</string>

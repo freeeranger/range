@@ -2,7 +2,7 @@
     <string name="app_name">Range Notes</string>
     <!-- Dates are formatted in this language, with the phone's region deciding order and clock. -->
     <string name="format_language" translatable="false">en</string>
-    <!-- The top bar shows the app's name, untranslated, in every language. -->
+    <!-- The app's name in the top bar and under its icon on the home screen, untranslated in every language. -->
     <string name="app_title" translatable="false">Notes</string>
 
     <string name="action_back">Back</string>
