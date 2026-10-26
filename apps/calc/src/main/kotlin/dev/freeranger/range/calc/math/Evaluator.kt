@@ -69,7 +69,16 @@ class Evaluator(
                 peek() == Token.Of -> { next(); share(value, unary()) { p, x -> x.multiply(p) } }
                 peek() == Token.Off -> { next(); share(value, unary()) { p, x -> x.multiply(BigDecimal.ONE - p) } }
                 peek() == Token.On -> { next(); share(value, unary()) { p, x -> x.multiply(BigDecimal.ONE + p) } }
-                startsValue(peek()) -> multiply(value, unary())
+                peek() == Token.Mod -> { next(); remainder(value, unary()) }
+                startsValue(peek()) -> {
+                    val right = unary()
+                    // Amounts side by side that measure the same thing add up: "1 h 30 min", "1 m 80 cm".
+                    if (value is Quantity && right is Quantity && value.unit != null && right.unit?.dimension == value.unit.dimension) {
+                        add(value, right)
+                    } else {
+                        multiply(value, right)
+                    }
+                }
                 else -> return value
             }
         }
@@ -130,7 +139,8 @@ class Evaluator(
             '(' -> conversion().also { close() }
             else -> throw CalcException("Unexpected ${token.char}")
         }
-        is Token.Unit -> throw CalcException("A unit with no number")
+        // A unit on its own is one of it: "m² in cm²", "kr in EUR".
+        is Token.Unit -> Quantity(BigDecimal.ONE, token.unit)
         else -> throw CalcException("Unexpected $token")
     }
 
@@ -196,6 +206,16 @@ class Evaluator(
         val (result, scale) = DERIVED[Triple(ua.dimension, ub.dimension, multiply)] ?: throw CalcException("Can't combine ${ua.symbol} and ${ub.symbol}")
         val base = if (multiply) toBase(a).multiply(toBase(b), MATH) else toBase(a).divide(toBase(b), MATH)
         return Quantity(base.multiply(scale, MATH).divide(result.factor, MATH), result, a.approx || b.approx)
+    }
+
+    /** The remainder, never negative for a positive divisor: −7 mod 3 is 2. Units stay with the left side. */
+    private fun remainder(a: Value, b: Value): Value {
+        val x = a as? Quantity ?: throw CalcException("mod needs numbers")
+        val y = (b as? Quantity)?.let { if (it.unit != null && x.unit != null) convertNumber(it, x.unit) else it.number } ?: throw CalcException("mod needs numbers")
+        if (y.signum() == 0) throw CalcException("Division by zero")
+        var r = x.number.remainder(y, MATH)
+        if (r.signum() != 0 && r.signum() != y.signum()) r = r.add(y)
+        return x.copy(number = r)
     }
 
     private fun share(percent: Value, of: Value, op: (BigDecimal, BigDecimal) -> BigDecimal): Value {
@@ -278,6 +298,8 @@ class Evaluator(
             "atan" -> fromRadians(kotlin.math.atan(x.toDouble())).toBig()
             "ln" -> positive(x).let { kotlin.math.ln(it.toDouble()).toBig() }
             "log" -> positive(x).let { kotlin.math.log10(it.toDouble()).toBig() }
+            "log2" -> positive(x).let { (kotlin.math.ln(it.toDouble()) / kotlin.math.ln(2.0)).toBig() }
+            "cbrt" -> Math.cbrt(x.toDouble()).toBig()
             "exp" -> kotlin.math.exp(x.toDouble()).toBig()
             "sqrt" -> {
                 if (x.signum() < 0) throw CalcException("Square root of a negative number")

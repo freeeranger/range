@@ -46,9 +46,12 @@ class Sheet(
                 else -> {
                     val assignment = ASSIGNMENT.matchEntire(line)
                     val name = assignment?.groupValues?.get(1)?.trim()
-                    val expression = assignment?.groupValues?.get(2) ?: line
+                    // "2 + 2 =": an = at the end, out of habit, asks for nothing more.
+                    val expression = (assignment?.groupValues?.get(2) ?: line).trimEnd().removeSuffix("=")
                     val tokens = Lexer(units, decimal, grouping, today, shown.values).tokens(expression)
-                    if (tokens.none(::isValueToken)) {
+                    // Units alone count once they're converted: "m² in cm²", but not a mention of "miles".
+                    val converting = Token.Into in tokens && tokens.any { it is Token.Unit || it is Token.Prefix }
+                    if (tokens.none(::isValueToken) && !converting) {
                         LineResult(LineResult.Kind.Text)
                     } else {
                         val sumOfBlock = { block.toList().takeIf { it.isNotEmpty() }?.let(::total) }

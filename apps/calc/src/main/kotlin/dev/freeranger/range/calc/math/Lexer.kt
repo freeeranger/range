@@ -23,6 +23,8 @@ sealed interface Token {
     data object Off : Token
     /** "on" ("på"): added on to what follows. */
     data object On : Token
+    /** "mod": the remainder after dividing. */
+    data object Mod : Token
     data object Ans : Token
     data object Sum : Token
 }
@@ -145,6 +147,7 @@ class Lexer(
             "of", "av" -> out += Token.Of
             "off" -> out += Token.Off
             "on", "på" -> out += Token.On
+            "mod" -> out += Token.Mod
             "ans", "svar" -> out += Token.Ans
             "sum", "summa" -> out += Token.Sum
             "pi" -> out += Token.Const(BigDecimal(Math.PI))
@@ -177,8 +180,8 @@ class Lexer(
         val FUNCTIONS = mapOf(
             "sin" to "sin", "cos" to "cos", "tan" to "tan",
             "asin" to "asin", "acos" to "acos", "atan" to "atan", "arcsin" to "asin", "arccos" to "acos", "arctan" to "atan",
-            "ln" to "ln", "log" to "log", "lg" to "log", "exp" to "exp",
-            "sqrt" to "sqrt", "rot" to "sqrt", "abs" to "abs",
+            "ln" to "ln", "log" to "log", "lg" to "log", "log10" to "log", "log2" to "log2", "exp" to "exp",
+            "sqrt" to "sqrt", "rot" to "sqrt", "cbrt" to "cbrt", "abs" to "abs",
             "round" to "round", "avrunda" to "round", "floor" to "floor", "ceil" to "ceil",
         )
     }

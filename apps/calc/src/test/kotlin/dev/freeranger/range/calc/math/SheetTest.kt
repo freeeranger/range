@@ -40,8 +40,21 @@ class SheetTest {
         // Swedish writes the exponent as "×10^", which reads back in as a sum too.
         assertEquals("1,23456789×10^20", answer("123456789 × 10^12"))
         assertEquals("1,23456789×10^20", answer("1,23456789×10^20"))
+        assertEquals("4", answer("2 + 2 ="))
         // A ")" left open at the end is closed, as Google's calculator does.
         assertEquals("21", answer("3 × (4 + 3"))
+    }
+
+    @Test
+    fun `mod is the remainder, and logarithms take a base`() {
+        assertEquals("1", answer("5 mod 2"))
+        assertEquals("2", answer("-7 mod 3"))
+        assertEquals("1,5", answer("7,5 mod 3"))
+        assertEquals("20 min", answer("80 min mod 1 h"))
+        assertEquals("6", answer("log2(64)"))
+        assertEquals("3", answer("log10(1000)"))
+        assertEquals("3", answer("cbrt(27)"))
+        assertEquals(listOf(null), answers("5 mod 0"))
     }
 
     @Test
@@ -77,6 +90,14 @@ class SheetTest {
         assertEquals("12 m²", answer("3 m × 4 m"))
         assertEquals("10", answer("ceil(20 m² / 2,2 m²)"))
         assertEquals("1 500 g", answer("1,5 kg in g"))
+        assertEquals("1,5 h", answer("1 h 30 min"))
+        assertEquals("1,8 m", answer("1 m 80 cm"))
+        assertEquals("90 min", answer("1 h 30 min in min"))
+        // A unit with no number is one of it.
+        assertEquals("10 000 cm²", answer("m2 in cm2"))
+        assertEquals("10 000 cm²", answer("m² to cm²"))
+        assertEquals("1 000 m", answer("km in m"))
+        assertEquals("≈ 0,09 €", answer("kr in EUR"))
         assertEquals("0,5", answer("500 g / 1 kg"))
         assertEquals(listOf(null), answers("5 km + 3 kg"))
     }
