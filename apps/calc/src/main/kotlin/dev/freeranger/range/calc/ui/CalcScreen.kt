@@ -3,6 +3,7 @@ package dev.freeranger.range.calc.ui
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -55,6 +56,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -192,6 +194,13 @@ fun CalcScreen(
     }
 
     LaunchedEffect(editing, lines.size) { listState.animateScrollToItem(editing) }
+    // The line being written grows when its answer moves under it: keep all of it in view.
+    LaunchedEffect(listState, editing) {
+        snapshotFlow {
+            val info = listState.layoutInfo
+            info.visibleItemsInfo.firstOrNull { it.index == editing }?.let { it.offset + it.size - info.viewportEndOffset }
+        }.collect { overflow -> if (overflow != null && overflow > 0) listState.animateScrollBy(overflow.toFloat()) }
+    }
     LaunchedEffect(editing, mode, showingKeypad) {
         if (mode == InputMode.Keyboard || showingKeypad) {
             runCatching { focus.requestFocus() }
