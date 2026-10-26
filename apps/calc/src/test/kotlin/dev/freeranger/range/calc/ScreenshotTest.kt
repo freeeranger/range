@@ -121,6 +121,25 @@ class ScreenshotTest {
     @Config(qualifiers = "sv-rSE-$SIZE")
     fun equationsSwedish() = capture { Calc(listOf("x² − 5x + 6 = 0", "2x = x + x"), keypad = false) }
 
+    private val exact = listOf("1/3 + 1/4", "x² - 5x + 3 = 0", "Area = 3,5 m × 4,25 m", "Share = 1 000 kr / 7", "x² - 7x + 1 = 0")
+
+    @Test
+    fun wideAnswers() = capture { Calc(exact, keypad = false) }
+
+    @Test
+    fun wideAnswerEditing() = capture { Calc(exact, editing = 1, mode = InputMode.Keyboard) }
+
+    @Test
+    fun exactDisplay() = capture { Calc(exact) }
+
+    @Test
+    @Config(qualifiers = "en-rSE-$LANDSCAPE")
+    fun landscape() = capture { Calc(sums + "sin(30) + ln(e²)") }
+
+    @Test
+    @Config(qualifiers = "en-rSE-$LANDSCAPE")
+    fun landscapeLight() = capture(RangeAppearance(theme = ThemeMode.Light, dynamicColor = false)) { Calc(exact) }
+
     @Test
     fun keyboard() = capture { Calc(trip.take(6), mode = InputMode.Keyboard) }
 
@@ -172,6 +191,7 @@ class ScreenshotTest {
 }
 
 private const val SIZE = "w412dp-h915dp-night-xxhdpi"
+private const val LANDSCAPE = "w915dp-h412dp-land-night-xxhdpi"
 
 /** English with a Swedish region, as on the phone it's built for: "10 500", "0,7". */
 private const val PHONE = "en-rSE-$SIZE"

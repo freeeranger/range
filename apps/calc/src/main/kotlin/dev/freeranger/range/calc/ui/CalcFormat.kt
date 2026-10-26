@@ -48,7 +48,10 @@ class CalcFormat(context: Context) {
     val decimal: Char get() = value.decimal
     val grouping: Char get() = value.grouping
 
-    fun format(answer: Value): String = value.format(answer)
+    fun format(answer: Value, fractions: Boolean = true): String = value.format(answer, fractions)
+
+    /** Whether the answer shows as a fraction or root, so its decimal can show too. */
+    fun isExact(answer: Value): Boolean = value.isExact(answer)
 
     /** "23 Oct", for when the currency rates are from. */
     fun day(date: LocalDate): String = date.format(dayMonth)

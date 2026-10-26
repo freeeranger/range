@@ -7,15 +7,20 @@ import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -42,6 +47,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -49,6 +55,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -59,6 +66,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.InterceptPlatformTextInput
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
@@ -74,6 +82,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -206,68 +216,49 @@ fun CalcScreen(
         }
     }
 
-    Scaffold(
-        modifier = modifier,
-        topBar = {
-            TopAppBar(
-                title = {},
-                actions = {
-                    Box {
-                        IconButton(onClick = { menu = true }) { Icon(RangeIcons.MoreVert, contentDescription = stringResource(R.string.action_more)) }
-                        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.menu_clear)) },
-                                leadingIcon = { Icon(RangeIcons.DeleteSweep, contentDescription = null) },
-                                enabled = lines.any { it.isNotBlank() },
-                                onClick = {
-                                    menu = false
-                                    val before = actions.clear()
-                                    scope.launch {
-                                        val result = snackbar.showSnackbar(
-                                            resources.getString(R.string.sheet_cleared),
-                                            actionLabel = resources.getString(R.string.action_undo),
-                                            duration = SnackbarDuration.Short,
-                                        )
-                                        if (result == SnackbarResult.ActionPerformed) actions.restore(before)
-                                    }
-                                },
+    val menuButton = @Composable {
+        Box {
+            IconButton(onClick = { menu = true }) { Icon(RangeIcons.MoreVert, contentDescription = stringResource(R.string.action_more)) }
+            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.menu_clear)) },
+                    leadingIcon = { Icon(RangeIcons.DeleteSweep, contentDescription = null) },
+                    enabled = lines.any { it.isNotBlank() },
+                    onClick = {
+                        menu = false
+                        val before = actions.clear()
+                        scope.launch {
+                            val result = snackbar.showSnackbar(
+                                resources.getString(R.string.sheet_cleared),
+                                actionLabel = resources.getString(R.string.action_undo),
+                                duration = SnackbarDuration.Short,
                             )
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.settings_title)) },
-                                leadingIcon = { Icon(RangeIcons.Settings, contentDescription = null) },
-                                onClick = {
-                                    menu = false
-                                    actions.openSettings()
-                                },
-                            )
+                            if (result == SnackbarResult.ActionPerformed) actions.restore(before)
                         }
-                    }
-                },
-            )
-        },
-        snackbarHost = { SnackbarHost(snackbar) },
-        floatingActionButton = {
-            if (mode == InputMode.Keypad && !showingKeypad) {
-                ExtendedFloatingActionButton(
-                    text = { Text(stringResource(R.string.keypad)) },
-                    icon = { Icon(RangeIcons.Dialpad, contentDescription = null) },
-                    onClick = { showingKeypad = true },
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.settings_title)) },
+                    leadingIcon = { Icon(RangeIcons.Settings, contentDescription = null) },
+                    onClick = {
+                        menu = false
+                        actions.openSettings()
+                    },
                 )
             }
-        },
-    ) { padding ->
-        Column(Modifier.padding(top = padding.calculateTopPadding()).fillMaxSize()) {
-            val compact = mode == InputMode.Keypad && showingKeypad
-            LazyColumn(
-                Modifier.weight(1f).fillMaxWidth(),
-                state = listState,
-                verticalArrangement = Arrangement.Bottom,
-            ) {
+        }
+    }
+
+    BoxWithConstraints(modifier) {
+        // Turned on its side, the sheet goes left and every key fits on the right, as on Google's calculator.
+        val landscape = maxWidth > maxHeight && mode == InputMode.Keypad && showingKeypad
+        val compact = mode == InputMode.Keypad && showingKeypad
+        val sheet = @Composable { sheetModifier: Modifier ->
+            LazyColumn(sheetModifier, state = listState, verticalArrangement = Arrangement.Bottom) {
                 itemsIndexed(lines) { index, text ->
                     val result = results.getOrNull(index) ?: LineResult(LineResult.Kind.Text)
-                    val answer = result.value?.let(format::format)
+                    val answer = result.value?.let { format.format(it) }
+                    val decimal = result.value?.takeIf { format.isExact(it) }?.let { format.format(it, fractions = false) }
                     val open = {
                         if (mode == InputMode.Keypad) showingKeypad = true
                         actions.edit(index)
@@ -281,68 +272,119 @@ fun CalcScreen(
                     }
                     val writing = index == editing && (mode == InputMode.Keyboard || showingKeypad)
                     when {
-                        writing && compact && index == lines.lastIndex -> Display(field, answer, mode, change, focus, actions.commit)
+                        writing && compact && index == lines.lastIndex -> Display(field, answer, decimal, mode, change, focus, actions.commit)
                         writing -> EditingRow(field, answer, mode, change, focus, actions.commit)
                         else -> LineRow(text, result, answer, dim = compact, onClick = open, onLongClick = copy)
                     }
                 }
             }
-            if (mode == InputMode.Keyboard) {
-                Accessory(
-                    onKeypad = {
-                        mode = InputMode.Keypad
-                        showingKeypad = true
-                        keyboard?.hide()
-                    },
-                    onKey = press,
-                )
-            } else if (showingKeypad) {
-                Column(
-                    Modifier
-                        .navigationBarsPadding()
-                        .pointerInput(Unit) {
-                            var dragged = 0f
-                            detectVerticalDragGestures(
-                                onDragStart = { dragged = 0f },
-                                onVerticalDrag = { _, amount -> dragged += amount },
-                                // Dragged down: the whole sheet shows.
-                                onDragEnd = { if (dragged > 120f) showingKeypad = false },
-                            )
-                        },
+        }
+        val chips = @Composable {
+            if (answers.isNotEmpty()) {
+                Row(
+                    Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = RangeSpace.s3),
+                    horizontalArrangement = Arrangement.spacedBy(RangeSpace.s2),
                 ) {
-                    if (answers.isNotEmpty()) {
-                        Row(
-                            Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = RangeSpace.s3),
-                            horizontalArrangement = Arrangement.spacedBy(RangeSpace.s2),
-                        ) {
-                            AssistChip(onClick = { change(keys.insert(field, "ans")) }, label = { Text("ans") })
-                            answers.forEach { text -> AssistChip(onClick = { change(keys.insert(field, text)) }, label = { Text(text) }) }
-                        }
-                    }
-                    Functions(
-                        expanded = expanded,
-                        inverse = inverse,
-                        angles = angles,
-                        onExpand = { expanded = !expanded },
-                        onInverse = { inverse = !inverse },
-                        onAngles = actions.toggleAngles,
-                        onKey = press,
+                    AssistChip(onClick = { change(keys.insert(field, "ans")) }, label = { Text("ans") })
+                    answers.forEach { text -> AssistChip(onClick = { change(keys.insert(field, text)) }, label = { Text(text) }) }
+                }
+            }
+        }
+        val functions = @Composable { all: Boolean, keyHeight: Dp ->
+            Functions(
+                expanded = all || expanded,
+                showExpand = !all,
+                inverse = inverse,
+                angles = angles,
+                keyHeight = keyHeight,
+                onExpand = { expanded = !expanded },
+                onInverse = { inverse = !inverse },
+                onAngles = actions.toggleAngles,
+                onKey = press,
+            )
+        }
+        Scaffold(
+            topBar = { if (!landscape) TopAppBar(title = {}, actions = { menuButton() }) },
+            snackbarHost = { SnackbarHost(snackbar) },
+            floatingActionButton = {
+                if (mode == InputMode.Keypad && !showingKeypad) {
+                    ExtendedFloatingActionButton(
+                        text = { Text(stringResource(R.string.keypad)) },
+                        icon = { Icon(RangeIcons.Dialpad, contentDescription = null) },
+                        onClick = { showingKeypad = true },
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
                     )
-                    Keypad(decimal = format.decimal, onKey = press, onKeyboard = { mode = InputMode.Keyboard })
+                }
+            },
+        ) { padding ->
+            if (landscape) {
+                Row(
+                    Modifier
+                        .fillMaxSize()
+                        .windowInsetsPadding(WindowInsets.safeDrawing)
+                        .padding(vertical = RangeSpace.s2),
+                ) {
+                    Column(Modifier.weight(1f).fillMaxHeight()) {
+                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopEnd) { menuButton() }
+                        sheet(Modifier.weight(1f).fillMaxWidth())
+                        chips()
+                    }
+                    // Five rows of functions beside the keypad's five, filling the height.
+                    val rows = 5
+                    val gap = 6.dp
+                    val keyHeight = ((this@BoxWithConstraints.maxHeight - RangeSpace.s2 * 2 - gap * (rows - 1)) / rows).coerceIn(32.dp, 58.dp)
+                    Row(Modifier.weight(1.5f).fillMaxHeight(), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.weight(1f)) { functions(true, keyHeight) }
+                        Box(Modifier.weight(1f)) { Keypad(decimal = format.decimal, keyHeight = keyHeight, gap = gap, onKey = press, onKeyboard = { mode = InputMode.Keyboard }) }
+                    }
                 }
             } else {
-                Box(Modifier.navigationBarsPadding().height(88.dp))
+                Column(Modifier.padding(top = padding.calculateTopPadding()).fillMaxSize()) {
+                    sheet(Modifier.weight(1f).fillMaxWidth())
+                    if (mode == InputMode.Keyboard) {
+                        Accessory(
+                            onKeypad = {
+                                mode = InputMode.Keypad
+                                showingKeypad = true
+                                keyboard?.hide()
+                            },
+                            onKey = press,
+                        )
+                    } else if (showingKeypad) {
+                        Column(
+                            Modifier
+                                .navigationBarsPadding()
+                                .pointerInput(Unit) {
+                                    var dragged = 0f
+                                    detectVerticalDragGestures(
+                                        onDragStart = { dragged = 0f },
+                                        onVerticalDrag = { _, amount -> dragged += amount },
+                                        // Dragged down: the whole sheet shows.
+                                        onDragEnd = { if (dragged > 120f) showingKeypad = false },
+                                    )
+                                },
+                        ) {
+                            chips()
+                            functions(false, 36.dp)
+                            Keypad(decimal = format.decimal, keyHeight = 58.dp, gap = 9.dp, onKey = press, onKeyboard = { mode = InputMode.Keyboard })
+                        }
+                    } else {
+                        Box(Modifier.navigationBarsPadding().height(88.dp))
+                    }
+                }
             }
         }
     }
 }
 
-/** The line being written at the bottom of the sheet, big, with its answer under it. */
+/** The line being written at the bottom of the sheet, big, with its answer under it, and an exact answer's decimal under that. */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun Display(
     field: TextFieldValue,
     answer: String?,
+    decimal: String?,
     mode: InputMode,
     onChange: (TextFieldValue) -> Unit,
     focus: FocusRequester,
@@ -363,6 +405,9 @@ private fun Display(
             textAlign = TextAlign.End,
             modifier = Modifier.fillMaxWidth(),
         )
+        if (decimal != null) {
+            Text(decimal, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.End, modifier = Modifier.fillMaxWidth())
+        }
     }
 }
 
@@ -376,16 +421,34 @@ private fun EditingRow(
     focus: FocusRequester,
     onCommit: () -> Unit,
 ) {
-    Row(
+    AnswerLayout(
         Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surfaceContainerLow)
             .padding(horizontal = RangeSpace.gutter, vertical = RangeSpace.s2),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(RangeSpace.s3),
-    ) {
-        Box(Modifier.weight(1f)) { Field(field, onChange, mode, focus, onCommit, MaterialTheme.typography.bodyLarge) }
-        if (answer != null) Text(answer, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.primary)
+        input = { Field(field, onChange, mode, focus, onCommit, MaterialTheme.typography.bodyLarge) },
+        answer = answer?.let { { Text(it, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.End) } },
+    )
+}
+
+/**
+ * The line's text with its answer at the end, or under it, at the right, when the answer would
+ * take more than half the width: the line keeps room to be read and written.
+ */
+@Composable
+private fun AnswerLayout(modifier: Modifier, input: @Composable () -> Unit, answer: (@Composable () -> Unit)?) {
+    Layout(contents = listOf(input, answer ?: {}), modifier = modifier) { (inputs, answers), constraints ->
+        val width = constraints.maxWidth
+        val gap = RangeSpace.s3.roundToPx()
+        val answerPlaceable = answers.firstOrNull()?.measure(Constraints(maxWidth = width))
+        val stacked = answerPlaceable != null && answerPlaceable.width > width * 0.5f
+        val inputWidth = if (answerPlaceable == null || stacked) width else (width - answerPlaceable.width - gap).coerceAtLeast(0)
+        val inputPlaceable = inputs.first().measure(Constraints(minWidth = inputWidth, maxWidth = inputWidth))
+        val height = if (stacked) inputPlaceable.height + answerPlaceable!!.height else maxOf(inputPlaceable.height, answerPlaceable?.height ?: 0)
+        layout(width, height) {
+            inputPlaceable.place(0, 0)
+            answerPlaceable?.place(width - answerPlaceable.width, if (stacked) inputPlaceable.height else 0)
+        }
     }
 }
 
@@ -429,37 +492,40 @@ private fun LineRow(text: String, result: LineResult, answer: String?, dim: Bool
         LineResult.Kind.Comment -> MaterialTheme.typography.bodyLarge.copy(color = colors.outline)
         else -> MaterialTheme.typography.bodyLarge.copy(color = if (dim) colors.onSurfaceVariant else colors.onSurface)
     }
-    Row(
+    AnswerLayout(
         Modifier
             .fillMaxWidth()
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .padding(horizontal = RangeSpace.gutter, vertical = if (dim) RangeSpace.s1 else RangeSpace.s2),
-        verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.spacedBy(RangeSpace.s3),
-    ) {
-        Text(text.removePrefix("#").trim().takeIf { result.kind == LineResult.Kind.Heading } ?: text, style = style, modifier = Modifier.weight(1f))
-        if (answer != null) {
-            Text(
-                answer,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = if (dim) FontWeight.Normal else FontWeight.Medium,
-                color = if (dim && result.name == null) colors.onSurfaceVariant else colors.primary,
-            )
-        }
-    }
+        input = { Text(text.removePrefix("#").trim().takeIf { result.kind == LineResult.Kind.Heading } ?: text, style = style) },
+        answer = answer?.let {
+            {
+                Text(
+                    it,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = if (dim) FontWeight.Normal else FontWeight.Medium,
+                    color = if (dim && result.name == null) colors.onSurfaceVariant else colors.primary,
+                    textAlign = TextAlign.End,
+                )
+            }
+        },
+    )
 }
 
 /** √ π ^ % above the keypad, and the rest of the scientific functions when opened. */
 @Composable
 private fun Functions(
     expanded: Boolean,
+    showExpand: Boolean,
     inverse: Boolean,
     angles: AngleMode,
+    keyHeight: Dp,
     onExpand: () -> Unit,
     onInverse: () -> Unit,
     onAngles: () -> Unit,
     onKey: (String) -> Unit,
 ) {
+    CompositionLocalProvider(LocalKeyHeight provides keyHeight) {
     Column(Modifier.padding(horizontal = RangeSpace.s3, vertical = RangeSpace.s1), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         if (expanded) {
             // The = here is an equation's; the keypad's = keeps the line.
@@ -490,14 +556,22 @@ private fun Functions(
             FunctionKey("π") { onKey("π") }
             FunctionKey("^") { onKey("^") }
             FunctionKey("%") { onKey("%") }
-            FunctionKey(
-                icon = if (expanded) RangeIcons.ExpandLess else RangeIcons.ExpandMore,
-                description = stringResource(if (expanded) R.string.key_fewer else R.string.key_more),
-                onClick = onExpand,
-            )
+            if (showExpand) {
+                FunctionKey(
+                    icon = if (expanded) RangeIcons.ExpandLess else RangeIcons.ExpandMore,
+                    description = stringResource(if (expanded) R.string.key_fewer else R.string.key_more),
+                    onClick = onExpand,
+                )
+            } else {
+                FunctionKey("ans") { onKey("ans") }
+            }
         }
     }
+    }
 }
+
+/** How tall the function keys are: short above the keypad, as tall as the keypad's beside it. */
+private val LocalKeyHeight = staticCompositionLocalOf { 36.dp }
 
 @Composable
 private fun RowScope.FunctionKey(
@@ -510,7 +584,7 @@ private fun RowScope.FunctionKey(
     val colors = MaterialTheme.colorScheme
     Surface(
         onClick = onClick,
-        modifier = Modifier.weight(1f).height(36.dp).let { m -> description?.let { d -> m.semantics { contentDescription = d } } ?: m },
+        modifier = Modifier.weight(1f).height(LocalKeyHeight.current).let { m -> description?.let { d -> m.semantics { contentDescription = d } } ?: m },
         shape = CircleShape,
         color = if (selected) colors.secondaryContainer else colors.surfaceContainer,
         contentColor = if (selected) colors.onSecondaryContainer else colors.onSurface,
@@ -523,9 +597,9 @@ private fun RowScope.FunctionKey(
 
 /** Google's calculator keypad, with abc for the keyboard where its conversion key would be. */
 @Composable
-private fun Keypad(decimal: Char, onKey: (String) -> Unit, onKeyboard: () -> Unit) {
+private fun Keypad(decimal: Char, keyHeight: Dp, gap: Dp, onKey: (String) -> Unit, onKeyboard: () -> Unit) {
     val colors = MaterialTheme.colorScheme
-    Column(Modifier.padding(start = RangeSpace.s3, end = RangeSpace.s3, top = RangeSpace.s1, bottom = RangeSpace.s3), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+    Column(Modifier.padding(start = RangeSpace.s3, end = RangeSpace.s3, top = RangeSpace.s1, bottom = RangeSpace.s3), verticalArrangement = Arrangement.spacedBy(gap)) {
         val rows = listOf(
             listOf("AC", "()", "⌫", "÷"),
             listOf("7", "8", "9", "×"),
@@ -534,7 +608,7 @@ private fun Keypad(decimal: Char, onKey: (String) -> Unit, onKeyboard: () -> Uni
             listOf("0", decimal.toString(), "abc", "="),
         )
         rows.forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
                 row.forEach { key ->
                     val (container, content) = when (key) {
                         "=" -> colors.primary to colors.onPrimary
@@ -544,7 +618,7 @@ private fun Keypad(decimal: Char, onKey: (String) -> Unit, onKeyboard: () -> Uni
                     }
                     Surface(
                         onClick = { if (key == "abc") onKeyboard() else onKey(key) },
-                        modifier = Modifier.weight(1f).height(58.dp),
+                        modifier = Modifier.weight(1f).height(keyHeight),
                         shape = CircleShape,
                         color = container,
                         contentColor = content,

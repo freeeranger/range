@@ -8,8 +8,8 @@ import kotlin.math.sign
 
 /** What an equation in one unknown comes to. */
 sealed interface Solutions {
-    /** The real values of the unknown that make it true, smallest first. */
-    data class Roots(val values: List<BigDecimal>) : Solutions
+    /** The real values of the unknown that make it true, smallest first, and where known, each written exactly. */
+    data class Roots(val values: List<BigDecimal>, val exact: List<Exact?> = values.map { null }) : Solutions
     /** True whatever the unknown is: "2x = x + x". */
     data object Any : Solutions
     /** No real value makes it true: "x² = −1". */
@@ -37,6 +37,9 @@ class Solver(
         // Does a x² + b x + c match every point?
         val fits = xs.indices.all { i -> close(a.multiply(xs[i].pow(2)).add(b.multiply(xs[i])).add(c, MATH), ys[i]) }
         if (!fits) return null
+        // Whole numbers and fractions in, an exact answer out: x² − 5x + 3 = 0 is (5 ± √13)/2.
+        val fractions = listOf(a, b, c).map { Fraction.near(it, 1_000_000) }
+        if (fractions.all { it != null }) exactRoots(fractions[0]!!, fractions[1]!!, fractions[2]!!)?.let { return it }
         if (isZero(a)) {
             if (isZero(b)) return if (isZero(c)) Solutions.Any else Solutions.None
             return roots(listOf(c.negate().divide(b, MATH)))
@@ -47,6 +50,31 @@ class Solver(
         val root = discriminant.sqrt(MATH)
         val twoA = TWO.multiply(a)
         return roots(listOf(b.negate().subtract(root).divide(twoA, MATH), b.negate().add(root).divide(twoA, MATH)))
+    }
+
+    /** a x² + b x + c = 0 with fractions for a, b and c, solved without rounding. */
+    private fun exactRoots(a: Fraction, b: Fraction, c: Fraction): Solutions? {
+        val zero = Fraction.ZERO
+        if (a == zero) {
+            if (b == zero) return if (c == zero) Solutions.Any else Solutions.None
+            val x = -c / b
+            return Solutions.Roots(listOf(x.toBigDecimal()), listOf(Exact(x)))
+        }
+        val two = Fraction.of(2)
+        val discriminant = b * b - Fraction.of(4) * a * c
+        if (discriminant.num.signum() < 0) return Solutions.None
+        val middle = -b / (two * a)
+        if (discriminant == zero) return Solutions.Roots(listOf(middle.toBigDecimal()), listOf(Exact(middle)))
+        val root = Exact.root(discriminant)
+        val spread = (if (root.surd == zero) root.rational else root.surd) / (two * a)
+        val half = if (spread.num.signum() < 0) -spread else spread
+        val exact = if (root.surd == zero) {
+            listOf(Exact(middle - half), Exact(middle + half))
+        } else {
+            listOf(Exact(middle, -half, root.radicand), Exact(middle, half, root.radicand))
+        }
+        val values = exact.map { it.rational.toBigDecimal().add(it.surd.toBigDecimal().multiply(BigDecimal(it.radicand).sqrt(MATH), MATH), MATH) }
+        return Solutions.Roots(values.map { it.round(MathContext(30)) }, exact)
     }
 
     private fun numeric(): Solutions {

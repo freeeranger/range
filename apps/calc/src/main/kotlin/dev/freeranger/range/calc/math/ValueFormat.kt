@@ -26,11 +26,15 @@ class ValueFormat(
     val decimal: Char = symbols.decimalSeparator
     val grouping: Char = symbols.groupingSeparator
 
-    fun format(value: Value): String = when (value) {
+    /**
+     * The answer, as text. With [fractions], plain numbers whose decimals would run on come out as
+     * fractions (1/3, not 0,3333333333) and equations' answers exactly where they can be.
+     */
+    fun format(value: Value, fractions: Boolean = true): String = when (value) {
         is Quantity -> {
             val unit = value.unit
             val number = when {
-                unit == null -> number(value.number, 10)
+                unit == null -> if (fractions) fractionOrNumber(value.number) else number(value.number, 10)
                 unit.dimension == Dimension.Currency -> number(value.number, if (value.number.isWholeAt(2)) 0 else 2, minFraction = if (value.number.isWholeAt(2)) 0 else 2)
                 value.number.abs() < BigDecimal.ONE -> number(value.number.round(MathContext(3)), 10)
                 else -> number(value.number, 2)
@@ -41,11 +45,53 @@ class ValueFormat(
         is Percent -> "${number(value.number, 10)} %"
         is DateValue -> date(value.date)
         is Solution -> when (val s = value.solutions) {
-            is Solutions.Roots -> "${value.name} = " + s.values.joinToString(" ${words.or} ") { number(it, 10) }
+            is Solutions.Roots -> "${value.name} = " + s.values.indices.joinToString(" ${words.or} ") { i ->
+                val exact = s.exact.getOrNull(i)
+                when {
+                    !fractions -> number(s.values[i], 10)
+                    // A root stays a root; a fraction follows the same rule as any number.
+                    exact != null && exact.surd.num.signum() != 0 -> exact(exact)
+                    else -> fractionOrNumber(s.values[i])
+                }
+            }
             Solutions.None -> words.none
             Solutions.Any -> words.any(value.name)
         }
     }
+
+    /** Whether [format] wrote [value] as a fraction or root, which the decimal can then go with. */
+    fun isExact(value: Value): Boolean = format(value) != format(value, fractions = false)
+
+    /** A fraction when the decimals would run on past ten places, else the number: 1/3, 2,5. */
+    private fun fractionOrNumber(x: BigDecimal): String {
+        if (x.stripTrailingZeros().scale() <= 10) return number(x, 10)
+        val fraction = Fraction.near(x) ?: return number(x, 10)
+        return fraction(fraction)
+    }
+
+    private fun fraction(f: Fraction): String =
+        if (f.isWhole) number(BigDecimal(f.num), 0) else "${number(BigDecimal(f.num), 0)}/${number(BigDecimal(f.den), 0)}"
+
+    /** 5/2 − √13/2 as (5 − √13)/2, over one bottom. */
+    private fun exact(e: Exact): String {
+        if (e.surd.num.signum() == 0) return fraction(e.rational)
+        val den = lcm(e.rational.den, e.surd.den)
+        val r = e.rational.num * (den / e.rational.den)
+        val s = e.surd.num * (den / e.surd.den)
+        val minus = symbols.minusSign
+        val root = (if (s.abs() == java.math.BigInteger.ONE) "" else number(BigDecimal(s.abs()), 0)) + "√" + number(BigDecimal(e.radicand), 0)
+        val top = when {
+            r.signum() == 0 -> (if (s.signum() < 0) minus.toString() else "") + root
+            else -> number(BigDecimal(r), 0) + (if (s.signum() < 0) " $minus " else " + ") + root
+        }
+        return when {
+            den == java.math.BigInteger.ONE -> top
+            r.signum() == 0 -> "$top/${number(BigDecimal(den), 0)}"
+            else -> "($top)/${number(BigDecimal(den), 0)}"
+        }
+    }
+
+    private fun lcm(a: java.math.BigInteger, b: java.math.BigInteger) = a / a.gcd(b) * b
 
     /** A plain number, as typed into the keypad would show it. */
     fun number(x: BigDecimal, maxFraction: Int, minFraction: Int = 0): String {
