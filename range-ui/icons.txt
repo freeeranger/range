@@ -52,3 +52,6 @@ check_box
 check_box_outline_blank
 lock
 lock_open
+add_photo_alternate
+remove_done
+delete_sweep

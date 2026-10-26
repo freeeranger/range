@@ -29,4 +29,5 @@
     <string name="range_backup_invalid">Filen är ingen säkerhetskopia från %1$s</string>
     <string name="range_backup_saved">Säkerhetskopian är sparad</string>
     <string name="range_backup_restored">Säkerhetskopian är återställd</string>
+    <string name="range_drag">Dra för att flytta</string>
 </resources>

@@ -30,4 +30,5 @@
     <string name="range_backup_invalid">That file isn’t a %1$s backup</string>
     <string name="range_backup_saved">Backup saved</string>
     <string name="range_backup_restored">Backup restored</string>
+    <string name="range_drag">Drag to reorder</string>
 </resources>
