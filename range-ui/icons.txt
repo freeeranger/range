@@ -55,3 +55,8 @@ lock_open
 add_photo_alternate
 remove_done
 delete_sweep
+backspace
+dialpad
+content_copy
+expand_less
+keyboard

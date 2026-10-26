@@ -46,6 +46,22 @@ object RangeAccents {
         ),
     )
 
+    /** Tailwind rose. 700 in light mode, so white text on it stays readable. */
+    val Calc = RangeAccent(
+        light = rangeLight(
+            primary = Color(0xFFBE123C),
+            container = Color(0xFFFFE4E6),
+            onContainer = Color(0xFF881337),
+        ),
+        dark = rangeDark(
+            primary = Color(0xFFFDA4AF),
+            onPrimary = Color(0xFF4C0519),
+            container = Color(0xFF9F1239),
+            onContainer = Color(0xFFFFE4E6),
+            selection = Color(0xFF881337),
+        ),
+    )
+
     /** Tailwind amber. 700 in light mode, so white text on it stays readable. */
     val Notes = RangeAccent(
         light = rangeLight(
