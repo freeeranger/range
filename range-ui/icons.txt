@@ -60,3 +60,4 @@ dialpad
 content_copy
 expand_less
 keyboard
+currency_exchange
