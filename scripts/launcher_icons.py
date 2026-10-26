@@ -8,7 +8,7 @@ Vector drawables have no masks or boolean operations, so the results are written
 """
 import math
 from pathlib import Path
-from shapely.geometry import LineString, Polygon, box
+from shapely.geometry import LineString, Point, Polygon, box
 from shapely.affinity import rotate, translate, scale
 
 REPO = Path(__file__).resolve().parent.parent
@@ -79,3 +79,9 @@ front_note = front_place(note)
 back_note = translate(rotate(rrect(0, 0, 38, 38, 7), 12, origin=(19, 19)), 42, 27)
 write("notes", "The Range Notes mark: a sticky note on top of another, with two lines on it and its corner lifting.",
       [(back_note.difference(front_note), 0.45), (front_place(note.difference(lines).difference(crease)), 1)])
+
+# Calculator: a round key with "=" on it, in front of another.
+key = Point(50, 58).buffer(19, quad_segs=Q)
+equals = rrect(41, 49, 18, 5, 2.5).union(rrect(41, 60, 18, 5, 2.5))
+write("calc", "The Range Calculator mark: a round key with = on it, in front of another.",
+      [(Point(62, 46).buffer(16, quad_segs=Q).difference(key), 0.45), (key.difference(equals), 1)])
