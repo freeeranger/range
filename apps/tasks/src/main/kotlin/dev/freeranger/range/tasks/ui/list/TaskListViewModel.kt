@@ -2,6 +2,7 @@ package dev.freeranger.range.tasks.ui.list
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dev.freeranger.range.tasks.data.Backfilled
 import dev.freeranger.range.tasks.data.Completion
 import dev.freeranger.range.tasks.data.Deleted
 import dev.freeranger.range.tasks.data.Schedule
@@ -26,7 +27,7 @@ data class TaskListState(
 )
 
 /** A tick that just happened, with the task as it was before, or the day logged after the fact, so it can be undone. */
-data class Ticked(val before: Task, val after: Task, val backfilled: Completion? = null)
+data class Ticked(val before: Task, val after: Task, val backfilled: Backfilled? = null)
 
 class TaskListViewModel(private val repository: TaskRepository) : ViewModel() {
     val state: StateFlow<TaskListState> = combine(repository.tasks, repository.completions) { tasks, completions ->

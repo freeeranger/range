@@ -161,6 +161,23 @@ class TaskRepositoryTest {
     }
 
     @Test
+    fun `a late tick logged under the wrong day by an older version is moved, not doubled`() = runTest {
+        val id = repository.add("Take vitamins", schedule = vitamins)
+        val saturday = friday.plusDays(1)
+        now = saturday.atTime(9, 0)
+        repository.check(id)
+        repository.check(id)
+        // As the older version logged it: under the day the late tick was made.
+        val row = repository.completions.first().single()
+        database.tasks().moveCompletion(row.id, saturday)
+
+        val moved = repository.backfill(id, friday)!!
+        assertEquals(listOf(friday), repository.completions.first().map { it.day })
+        repository.unbackfill(moved)
+        assertEquals(listOf(saturday), repository.completions.first().map { it.day })
+    }
+
+    @Test
     fun `a one-off task ticked off from its gone day's page is logged under that day`() = runTest {
         val id = repository.add("Pay rent", schedule = Schedule(friday))
         now = friday.plusDays(3).atTime(9, 0)

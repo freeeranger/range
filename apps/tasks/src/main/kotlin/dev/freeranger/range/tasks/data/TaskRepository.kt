@@ -61,20 +61,32 @@ class TaskRepository(
 
     /**
      * Logs a gone [day] of a repeating task as done after all, when the task has already moved past
-     * it: the task stays where it is, only the history changes. Returns the logged row for Undo, or
+     * it: the task stays where it is, only the history changes. Returns what was logged for Undo, or
      * null if the day wasn't one of the task's or is already logged.
+     *
+     * Late ticks used to be logged under the day they were made. If the task's last finished day is
+     * this one but was logged under another, that row is moved here instead of adding a second.
      */
-    suspend fun backfill(id: Long, day: LocalDate): Completion? {
+    suspend fun backfill(id: Long, day: LocalDate): Backfilled? {
         val task = dao.get(id) ?: return null
         val sittingOnIt = !task.isCompleted && task.dueDate == day
         if (day >= today() || sittingOnIt || !task.wasDueOn(day, clock().zone)) return null
-        if (dao.completionsOf(id).any { it.day == day }) return null
+        val history = dao.completionsOf(id)
+        if (history.any { it.day == day }) return null
+        val misfiled = history.firstOrNull { task.lastDoneDay == day && it.at == task.lastDoneAt }
+        if (misfiled != null) {
+            dao.moveCompletion(misfiled.id, day)
+            return Backfilled(misfiled.copy(day = day), movedFrom = misfiled.day)
+        }
         val completion = Completion(taskId = id, day = day, at = clock().instant())
-        return completion.copy(id = dao.insertCompletion(completion))
+        return Backfilled(completion.copy(id = dao.insertCompletion(completion)))
     }
 
     /** Undoes [backfill]. */
-    suspend fun unbackfill(completion: Completion) = dao.deleteCompletion(completion.id)
+    suspend fun unbackfill(backfilled: Backfilled) {
+        val from = backfilled.movedFrom
+        if (from != null) dao.moveCompletion(backfilled.completion.id, from) else dao.deleteCompletion(backfilled.completion.id)
+    }
 
     /** Takes back one tick on the task's current day. */
     suspend fun uncheck(id: Long) = change(id) { uncheck() }
@@ -166,6 +178,9 @@ class TaskRepository(
 
     private fun today() = LocalDate.now(clock())
 }
+
+/** A day logged after the fact: a new row, or one moved here [movedFrom] the day a late tick was logged under. */
+data class Backfilled(val completion: Completion, val movedFrom: LocalDate? = null)
 
 /** A deleted task and its history of finished days, kept for Undo. */
 data class Deleted(val task: Task, val history: List<Completion>)

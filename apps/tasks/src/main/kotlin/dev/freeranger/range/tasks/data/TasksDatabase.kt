@@ -96,6 +96,9 @@ abstract class TaskDao {
     @Query("DELETE FROM completions WHERE id = :id")
     abstract suspend fun deleteCompletion(id: Long)
 
+    @Query("UPDATE completions SET day = :day WHERE id = :id")
+    abstract suspend fun moveCompletion(id: Long, day: LocalDate)
+
     /** Saves a task together with the change to its history, so the two never disagree. */
     @Transaction
     open suspend fun update(task: Task, finished: Completion?, undone: Instant?) {
