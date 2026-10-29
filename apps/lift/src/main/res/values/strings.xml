@@ -21,6 +21,19 @@
     <string name="home_this_week">This week</string>
     <string name="workout_start">Start workout</string>
     <string name="workout_continue">Continue workout</string>
+
+    <!-- History -->
+    <string name="history_day">Day</string>
+    <string name="history_week">Week</string>
+    <string name="history_month">Month</string>
+    <string name="history_all">All</string>
+    <string name="history_this_week">This week</string>
+    <string name="history_last_week">Last week</string>
+    <string name="history_week_range">%1$s – %2$s</string>
+    <string name="history_totals">%1$s · %2$s · %3$s</string>
+    <string name="history_none">No workouts</string>
+    <string name="history_trained">Trained</string>
+
     <string name="workouts_empty">No workouts yet.</string>
     <string name="workouts_rest_day">Rest day</string>
     <string name="action_go_to_date">Go to date</string>

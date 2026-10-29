@@ -2,19 +2,11 @@ package dev.freeranger.range.lift.ui.home
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
@@ -24,6 +16,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -33,23 +28,20 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.freeranger.range.lift.LocalAppContainer
 import dev.freeranger.range.lift.R
-import dev.freeranger.range.lift.data.WorkoutLog
-import dev.freeranger.range.lift.ui.common.LiftFormat
 import dev.freeranger.range.lift.ui.common.rememberLiftFormat
 import dev.freeranger.range.lift.ui.common.rememberNow
 import dev.freeranger.range.lift.ui.exercise.ExerciseList
 import dev.freeranger.range.ui.components.RangeDatePickerDialog
 import dev.freeranger.range.ui.components.RangeDayPager
+import dev.freeranger.range.ui.components.RangePeriod
+import dev.freeranger.range.ui.components.RangePeriodPager
 import dev.freeranger.range.ui.components.RangeWeekStrip
 import dev.freeranger.range.ui.icons.RangeIcons
 import dev.freeranger.range.ui.theme.RangeSpace
@@ -101,8 +93,8 @@ data class HomeActions(
 enum class HomeTab { Workouts, Home, Exercises }
 
 /**
- * Three tabs: past workouts a day at a time under a week strip, the dashboard in the middle where
- * the app opens, and the exercise library. Starting a workout offers an empty one or a template;
+ * Three tabs: past workouts by day under a week strip, by week, by month on a calendar or all at
+ * once, the dashboard in the middle where the app opens, and the exercise library. Starting a workout offers an empty one or a template;
  * the templates have their own page, from the dashboard's top bar, as do the tools.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -114,6 +106,7 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
     initialTab: HomeTab = HomeTab.Home,
     initialDay: LocalDate? = null,
+    initialRange: HistoryRange = HistoryRange.Day,
     initiallyStarting: Boolean = false,
 ) {
     val format = rememberLiftFormat()
@@ -125,6 +118,17 @@ fun HomeScreen(
     var picked by rememberSaveable { mutableStateOf(initialDay) }
     val day = picked ?: lastTrained
     val select = { date: LocalDate -> picked = date.coerceAtMost(today) }
+    var range by rememberSaveable { mutableStateOf(initialRange) }
+    val period = when (range) {
+        HistoryRange.Week -> RangePeriod.Week(format.firstDayOfWeek)
+        HistoryRange.Month -> RangePeriod.Month
+        else -> null
+    }
+    // Swiping to another week or month keeps the day on its last workout, so going back to Day lands on one.
+    val selectPeriod = { start: LocalDate ->
+        val until = period!!.plus(start, 1)
+        select(trained.filter { it >= start && it < until }.maxOrNull() ?: start)
+    }
     var pickingDate by rememberSaveable { mutableStateOf(false) }
     var starting by rememberSaveable { mutableStateOf(initiallyStarting) }
     val log = tab == HomeTab.Workouts
@@ -136,10 +140,20 @@ fun HomeScreen(
         topBar = {
             Column(Modifier.background(MaterialTheme.colorScheme.surface)) {
                 TopAppBar(
-                    title = { Text(if (log) format.month(day, today) else stringResource(R.string.app_title)) },
+                    title = {
+                        Text(
+                            when {
+                                !log -> stringResource(R.string.app_title)
+                                range == HistoryRange.Week -> format.week(period!!.start(day), today)
+                                range == HistoryRange.All -> stringResource(R.string.tab_workouts)
+                                else -> format.month(day, today)
+                            },
+                        )
+                    },
                     actions = {
-                        if (log) {
-                            if (day != today) {
+                        if (log && range != HistoryRange.All) {
+                            val away = period?.let { it.start(day) != it.start(today) } ?: (day != today)
+                            if (away) {
                                 TextButton(onClick = { select(today) }) { Text(stringResource(R.string.date_today)) }
                             }
                             IconButton(onClick = { pickingDate = true }) {
@@ -160,6 +174,24 @@ fun HomeScreen(
                     },
                 )
                 if (log) {
+                    SingleChoiceSegmentedButtonRow(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = RangeSpace.gutter)
+                            .padding(bottom = RangeSpace.s2),
+                    ) {
+                        val labels = listOf(R.string.history_day, R.string.history_week, R.string.history_month, R.string.history_all)
+                        HistoryRange.entries.forEachIndexed { i, entry ->
+                            SegmentedButton(
+                                selected = range == entry,
+                                onClick = { range = entry },
+                                shape = SegmentedButtonDefaults.itemShape(i, HistoryRange.entries.size),
+                                label = { Text(stringResource(labels[i]), maxLines = 1) },
+                            )
+                        }
+                    }
+                }
+                if (log && range == HistoryRange.Day) {
                     RangeWeekStrip(
                         selected = day,
                         today = today,
@@ -219,8 +251,20 @@ fun HomeScreen(
         // Leaves room for the button over the end of the list.
         val contentPadding = PaddingValues(top = padding.calculateTopPadding(), bottom = padding.calculateBottomPadding() + 96.dp)
         when (tab) {
-            HomeTab.Workouts -> RangeDayPager(selected = day, onSelect = select, modifier = Modifier.fillMaxSize(), last = today) { page ->
-                DayLog(state, page, format, actions, contentPadding)
+            HomeTab.Workouts -> when (range) {
+                HistoryRange.Day -> RangeDayPager(selected = day, onSelect = select, modifier = Modifier.fillMaxSize(), last = today) { page ->
+                    DayLog(state, page, format, actions, contentPadding)
+                }
+                HistoryRange.Week -> RangePeriodPager(day, period!!, selectPeriod, Modifier.fillMaxSize(), last = today) { start ->
+                    WeekLog(state, start, format, actions, contentPadding)
+                }
+                HistoryRange.Month -> RangePeriodPager(day, period!!, selectPeriod, Modifier.fillMaxSize(), last = today) { start ->
+                    MonthLog(state, start, today, trained, format, actions, onOpenDay = {
+                        select(it)
+                        range = HistoryRange.Day
+                    }, contentPadding)
+                }
+                HistoryRange.All -> AllLog(state, today, format, actions, contentPadding)
             }
             HomeTab.Home -> Dashboard(state, now, format, contentPadding)
             HomeTab.Exercises -> ExerciseList(
@@ -250,70 +294,5 @@ fun HomeScreen(
             onDismiss = { pickingDate = false },
             last = today,
         )
-    }
-}
-
-/** One day's page of the log: the workouts done that day, or a rest day. */
-@Composable
-private fun DayLog(state: HomeState, day: LocalDate, format: LiftFormat, actions: HomeActions, contentPadding: PaddingValues) {
-    val workouts = remember(state.history, day, format) {
-        state.history.filter { it.workout.startedAt.atZone(format.zone).toLocalDate() == day }.sortedBy { it.workout.startedAt }
-    }
-    if (workouts.isEmpty()) {
-        if (!state.loaded) return
-        Box(Modifier.fillMaxSize().padding(contentPadding).padding(RangeSpace.s8), contentAlignment = Alignment.Center) {
-            Text(
-                stringResource(if (state.history.isEmpty()) R.string.workouts_empty else R.string.workouts_rest_day),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-            )
-        }
-        return
-    }
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = contentPadding) {
-        items(workouts, key = { it.workout.id }) { log ->
-            WorkoutCard(log, format, onClick = { actions.openWorkout(log.workout.id) })
-        }
-    }
-}
-
-@Composable
-private fun WorkoutCard(log: WorkoutLog, format: LiftFormat, onClick: () -> Unit) {
-    val workout = log.workout
-    Card(
-        onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = RangeSpace.gutter, vertical = RangeSpace.s1),
-    ) {
-        Column(Modifier.padding(RangeSpace.s4)) {
-            Text(format.name(workout), style = MaterialTheme.typography.titleMedium)
-            Text(
-                stringResource(
-                    R.string.workout_summary,
-                    format.time(workout.startedAt),
-                    format.duration(workout.startedAt, workout.finishedAt ?: workout.startedAt),
-                    format.volume(log.volume),
-                ),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            if (log.exercises.isNotEmpty()) Spacer(Modifier.height(RangeSpace.s3))
-            log.exercises.forEach { logged ->
-                Row(horizontalArrangement = Arrangement.spacedBy(RangeSpace.s3)) {
-                    Text(
-                        "${logged.sets.count { it.done }} × ${format.name(logged.exercise)}",
-                        modifier = Modifier.weight(1f),
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    logged.best?.let {
-                        Text(format.set(it, logged.exercise), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-            }
-        }
     }
 }

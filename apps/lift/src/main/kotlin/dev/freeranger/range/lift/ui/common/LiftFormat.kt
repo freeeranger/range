@@ -26,6 +26,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
+import java.time.temporal.TemporalAdjusters
 import java.time.temporal.WeekFields
 import java.util.Locale
 
@@ -51,6 +52,7 @@ class LiftFormat(context: Context) {
     private val monthYearFormat = pattern("LLLLy")
     private val headerFormat = pattern("EEEEdMMMM")
     private val shortDateFormat = pattern("MMMd")
+    private val shortDateYearFormat = pattern("MMMdy")
     private val weightFormat = NumberFormat.getNumberInstance(locale).apply { maximumFractionDigits = 2 }
     private val volumeFormat = NumberFormat.getIntegerInstance(locale)
     private val averageFormat = NumberFormat.getNumberInstance(locale).apply { maximumFractionDigits = 1 }
@@ -131,6 +133,20 @@ class LiftFormat(context: Context) {
     /** "October" above the week strip, with the year when it isn't this one: "January 2025". */
     fun month(date: LocalDate, today: LocalDate): String =
         date.format(if (date.year == today.year) monthFormat else monthYearFormat).capitalized()
+
+    /** "This week", "Last week", else "Oct 5 – Oct 11", with the year when it isn't this one. */
+    fun week(start: LocalDate, today: LocalDate): String {
+        val thisWeek = today.with(TemporalAdjusters.previousOrSame(firstDayOfWeek))
+        return when (start) {
+            thisWeek -> res.getString(R.string.history_this_week)
+            thisWeek.minusWeeks(1) -> res.getString(R.string.history_last_week)
+            else -> {
+                val end = start.plusDays(6)
+                val format = if (end.year == today.year) shortDateFormat else shortDateYearFormat
+                res.getString(R.string.history_week_range, start.format(format), end.format(format))
+            }
+        }
+    }
 
     /** "Thu": a day in the week strip. */
     fun weekdayShort(date: LocalDate): String =

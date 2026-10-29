@@ -18,6 +18,19 @@
     <string name="home_this_week">Den här veckan</string>
     <string name="workout_start">Starta pass</string>
     <string name="workout_continue">Fortsätt passet</string>
+
+    <!-- History -->
+    <string name="history_day">Dag</string>
+    <string name="history_week">Vecka</string>
+    <string name="history_month">Månad</string>
+    <string name="history_all">Alla</string>
+    <string name="history_this_week">Den här veckan</string>
+    <string name="history_last_week">Förra veckan</string>
+    <string name="history_week_range">%1$s – %2$s</string>
+    <string name="history_totals">%1$s · %2$s · %3$s</string>
+    <string name="history_none">Inga pass</string>
+    <string name="history_trained">Tränat</string>
+
     <string name="workouts_empty">Inga pass än.</string>
     <string name="workouts_rest_day">Vilodag</string>
     <string name="action_go_to_date">Gå till datum</string>

@@ -18,6 +18,15 @@ fun weekTotals(logs: List<WorkoutLog>, today: LocalDate, firstDayOfWeek: DayOfWe
     return WeekTotals(start, week.size, week.sumOf { it.doneSets.size }, week.sumOf { it.volume })
 }
 
+/** What finished workouts added up to over some days. */
+data class Totals(val workouts: Int, val sets: Int, val volume: Double)
+
+/** The finished workouts started from [from] up to, not including, [until]. */
+fun totals(logs: List<WorkoutLog>, from: LocalDate, until: LocalDate, zone: ZoneId): Totals {
+    val done = logs.filter { log -> log.workout.isFinished && log.workout.startedAt.atZone(zone).toLocalDate().let { it >= from && it < until } }
+    return Totals(done.size, done.sumOf { it.doneSets.size }, done.sumOf { it.volume })
+}
+
 /** Sets ticked off for each muscle in the week that has [today], finished workouts only. Every muscle is there, untrained ones at zero. */
 fun weekSetsByMuscle(logs: List<WorkoutLog>, today: LocalDate, firstDayOfWeek: DayOfWeek, zone: ZoneId): Map<Muscle, Int> {
     val start = today.with(TemporalAdjusters.previousOrSame(firstDayOfWeek))

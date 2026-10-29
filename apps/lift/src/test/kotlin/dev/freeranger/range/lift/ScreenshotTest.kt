@@ -34,6 +34,7 @@ import dev.freeranger.range.lift.ui.exercise.ExerciseEditScreen
 import dev.freeranger.range.lift.ui.exercise.ExercisePickerScreen
 import dev.freeranger.range.lift.ui.exercise.PickerState
 import dev.freeranger.range.lift.ui.exercise.Session
+import dev.freeranger.range.lift.ui.home.HistoryRange
 import dev.freeranger.range.lift.ui.home.HomeActions
 import dev.freeranger.range.lift.ui.home.HomeScreen
 import dev.freeranger.range.lift.ui.home.HomeState
@@ -238,6 +239,19 @@ class ScreenshotTest {
     @Test
     @Config(qualifiers = "sv-rSE-$PHONE")
     fun workoutsSwedish() = capture { HomeScreen(home, now, HomeActions(), initialTab = HomeTab.Workouts) }
+
+    @Test
+    fun workoutsWeek() = capture { HomeScreen(home, now, HomeActions(), initialTab = HomeTab.Workouts, initialRange = HistoryRange.Week) }
+
+    @Test
+    fun workoutsMonth() = capture { HomeScreen(dashboard, now, HomeActions(), initialTab = HomeTab.Workouts, initialRange = HistoryRange.Month) }
+
+    @Test
+    @Config(qualifiers = "sv-rSE-$PHONE")
+    fun workoutsMonthSwedish() = capture { HomeScreen(dashboard, now, HomeActions(), initialTab = HomeTab.Workouts, initialRange = HistoryRange.Month) }
+
+    @Test
+    fun workoutsAll() = capture { HomeScreen(dashboard, now, HomeActions(), initialTab = HomeTab.Workouts, initialRange = HistoryRange.All) }
 
     @Test
     fun homeBusy() = capture { HomeScreen(dashboard.copy(logs = listOf(active) + progress), now, HomeActions()) }
