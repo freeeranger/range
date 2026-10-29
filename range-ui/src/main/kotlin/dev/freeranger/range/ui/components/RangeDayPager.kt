@@ -14,8 +14,10 @@ import androidx.compose.ui.Modifier
 import dev.freeranger.range.ui.theme.RangeTransitions
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
+import java.time.temporal.TemporalAdjusters
 import kotlin.math.abs
 
 /** The days the day pager and week strip reach: further back and ahead than anyone scrolls. */
@@ -98,4 +100,51 @@ internal fun FollowSelection(state: PagerState, page: Int, onSettle: (Int) -> Un
 private suspend fun PagerState.slideTo(page: Int) {
     if (abs(currentPage - page) > 1) scrollToPage(if (page > currentPage) page - 1 else page + 1)
     animateScrollToPage(page, animationSpec = RangeTransitions.pageSlide)
+}
+
+/** A stretch of days [RangePeriodPager] pages by: whole weeks starting on [Week.firstDayOfWeek], or calendar months. */
+sealed interface RangePeriod {
+    /** The first day of the period [day] is in. */
+    fun start(day: LocalDate): LocalDate
+
+    /** The first day of the period [count] periods after the one starting [start]. */
+    fun plus(start: LocalDate, count: Long): LocalDate
+
+    /** Whole periods from the one starting [from] to the one starting [to]. */
+    fun between(from: LocalDate, to: LocalDate): Long
+
+    data class Week(val firstDayOfWeek: DayOfWeek) : RangePeriod {
+        override fun start(day: LocalDate): LocalDate = day.with(TemporalAdjusters.previousOrSame(firstDayOfWeek))
+        override fun plus(start: LocalDate, count: Long): LocalDate = start.plusWeeks(count)
+        override fun between(from: LocalDate, to: LocalDate): Long = ChronoUnit.WEEKS.between(from, to)
+    }
+
+    data object Month : RangePeriod {
+        override fun start(day: LocalDate): LocalDate = day.withDayOfMonth(1)
+        override fun plus(start: LocalDate, count: Long): LocalDate = start.plusMonths(count)
+        override fun between(from: LocalDate, to: LocalDate): Long = ChronoUnit.MONTHS.between(from, to)
+    }
+}
+
+/**
+ * One page per week or month, swiped sideways like [RangeDayPager]: the page shows the period
+ * that has [selected], and swiping hands [onSelect] the first day of the period swiped to.
+ * Pages end at the period that has [last]. [content] gets each page's first day.
+ */
+@Composable
+fun RangePeriodPager(
+    selected: LocalDate,
+    period: RangePeriod,
+    onSelect: (LocalDate) -> Unit,
+    modifier: Modifier = Modifier,
+    last: LocalDate = RangeDays.last,
+    content: @Composable (LocalDate) -> Unit,
+) {
+    val origin = period.start(RangeDays.first)
+    fun pageOf(day: LocalDate) = period.between(origin, period.start(day.coerceIn(RangeDays.first, last))).toInt()
+    val state = rememberPagerState(initialPage = pageOf(selected)) { pageOf(last) + 1 }
+    FollowSelection(state, pageOf(selected)) { onSelect(period.plus(origin, it.toLong())) }
+    HorizontalPager(state, modifier, key = { it }, verticalAlignment = Alignment.Top) {
+        content(period.plus(origin, it.toLong()))
+    }
 }
