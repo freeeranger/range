@@ -20,7 +20,10 @@ import java.time.LocalDate
 data class Completion(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val taskId: Long,
-    /** The day it was ticked off on, which can be later than the day it was due. */
+    /**
+     * The day it counts for: the day a repeat's tick was for, even when ticked off late or from a
+     * past day, and the day a one-off task was ticked off, which can be later than it was due.
+     */
     val day: LocalDate,
     /** Matches the task's [Task.completedAt] or [Task.lastDoneAt] from that tick, so undoing it can find this row. */
     val at: Instant,

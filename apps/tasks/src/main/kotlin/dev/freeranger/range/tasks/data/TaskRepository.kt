@@ -50,13 +50,31 @@ class TaskRepository(
 
     /**
      * Ticks off once (the last tick of the day finishes it) and returns the task as it was before,
-     * for Undo. Does nothing on days not yet reached.
+     * for Undo. Does nothing on days not yet reached. A finished day is logged [on] the day given,
+     * from a past day's page, else on the day a repeat was for or the day a one-off was done.
      */
-    suspend fun check(id: Long): Task? {
+    suspend fun check(id: Long, on: LocalDate? = null): Task? {
         val before = dao.get(id) ?: return null
-        change(id) { if (canCheck(today())) check(now(), clock().instant()) else this }
+        change(id, on = on) { if (canCheck(today())) check(now(), clock().instant()) else this }
         return before
     }
+
+    /**
+     * Logs a gone [day] of a repeating task as done after all, when the task has already moved past
+     * it: the task stays where it is, only the history changes. Returns the logged row for Undo, or
+     * null if the day wasn't one of the task's or is already logged.
+     */
+    suspend fun backfill(id: Long, day: LocalDate): Completion? {
+        val task = dao.get(id) ?: return null
+        val sittingOnIt = !task.isCompleted && task.dueDate == day
+        if (day >= today() || sittingOnIt || !task.wasDueOn(day, clock().zone)) return null
+        if (dao.completionsOf(id).any { it.day == day }) return null
+        val completion = Completion(taskId = id, day = day, at = clock().instant())
+        return completion.copy(id = dao.insertCompletion(completion))
+    }
+
+    /** Undoes [backfill]. */
+    suspend fun unbackfill(completion: Completion) = dao.deleteCompletion(completion.id)
 
     /** Takes back one tick on the task's current day. */
     suspend fun uncheck(id: Long) = change(id) { uncheck() }
@@ -118,23 +136,28 @@ class TaskRepository(
         return true
     }
 
-    private suspend fun change(id: Long, history: Boolean = true, transform: Task.() -> Task) {
+    private suspend fun change(id: Long, history: Boolean = true, on: LocalDate? = null, transform: Task.() -> Task) {
         val task = dao.get(id) ?: return
         val updated = task.transform()
         if (updated == task) return
-        if (history) save(task, updated) else dao.update(updated)
+        if (history) save(task, updated, on) else dao.update(updated)
         // Clears a notification for a time that has just been ticked off, then sets the next reminder.
         reminders.cancel(id)
         reminders.sync(updated)
     }
 
-    /** Saves [after] and logs a newly finished day, or removes the one that was just taken back. */
-    private suspend fun save(before: Task, after: Task) {
+    /**
+     * Saves [after] and logs a newly finished day, or removes the one that was just taken back. A
+     * repeat's day is logged under the day it was for, so ticking off yesterday's late still counts
+     * for yesterday; [on] overrides that.
+     */
+    private suspend fun save(before: Task, after: Task, on: LocalDate? = null) {
         val was = before.finishedAt
         val now = after.finishedAt
         val undone = was?.takeIf { now == null || now < it }
         val finished = now?.takeIf { was == null || it > was }?.let {
-            Completion(taskId = after.id, day = it.atZone(clock().zone).toLocalDate(), at = it)
+            val day = on ?: after.lastDoneDay.takeIf { after.repeat != null } ?: it.atZone(clock().zone).toLocalDate()
+            Completion(taskId = after.id, day = day, at = it)
         }
         dao.update(after, finished, undone)
     }

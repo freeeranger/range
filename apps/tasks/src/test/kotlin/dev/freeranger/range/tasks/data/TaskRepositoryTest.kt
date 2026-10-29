@@ -130,6 +130,48 @@ class TaskRepositoryTest {
     }
 
     @Test
+    fun `ticking off yesterday's repeat late logs it under yesterday`() = runTest {
+        val id = repository.add("Take vitamins", schedule = vitamins)
+        now = friday.plusDays(1).atTime(9, 0)
+        repository.check(id)
+        repository.check(id)
+        assertEquals(listOf(friday), repository.completions.first().map { it.day })
+        assertEquals(friday.plusDays(1), repository.get(id)!!.dueDate)
+    }
+
+    @Test
+    fun `a gone day can be ticked off from its page, and undone`() = runTest {
+        val id = repository.add("Take vitamins", schedule = vitamins)
+        now = friday.plusDays(2).atTime(21, 0)
+        // Friday's ticked late, skipping Saturday.
+        repository.check(id)
+        repository.check(id)
+        assertEquals(friday.plusDays(2), repository.get(id)!!.dueDate)
+
+        val saturday = repository.backfill(id, friday.plusDays(1))!!
+        assertEquals(listOf(friday, friday.plusDays(1)), repository.completions.first().map { it.day }.sorted())
+        // Not twice, not a day it doesn't fall on, and not the day it's on now: that's an ordinary tick.
+        assertEquals(null, repository.backfill(id, friday.plusDays(1)))
+        assertEquals(null, repository.backfill(id, friday.minusDays(1)))
+        assertEquals(null, repository.backfill(id, friday.plusDays(2)))
+        assertEquals(friday.plusDays(2), repository.get(id)!!.dueDate)
+
+        repository.unbackfill(saturday)
+        assertEquals(listOf(friday), repository.completions.first().map { it.day })
+    }
+
+    @Test
+    fun `a one-off task ticked off from its gone day's page is logged under that day`() = runTest {
+        val id = repository.add("Pay rent", schedule = Schedule(friday))
+        now = friday.plusDays(3).atTime(9, 0)
+        repository.check(id, on = friday)
+        assertEquals(listOf(friday), repository.completions.first().map { it.day })
+        val other = repository.add("Call bank", schedule = Schedule(friday))
+        repository.check(other)
+        assertEquals(friday.plusDays(3), repository.completions.first().single { it.taskId == other }.day)
+    }
+
+    @Test
     fun `deleting a task deletes its history`() = runTest {
         val id = repository.add("Pay rent", schedule = Schedule(friday))
         val other = repository.add("Buy oat milk")

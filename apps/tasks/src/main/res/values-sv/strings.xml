@@ -129,6 +129,7 @@
     <string name="section_anytime">När som helst</string>
     <string name="day_empty_today">Inget kvar för idag.</string>
     <string name="day_empty">Inget planerat.</string>
+    <string name="section_missed">Missat</string>
     <string name="section_completed">Klara</string>
     <string name="day_empty_past">Inget avbockat den här dagen.</string>
     <string name="action_go_to_date">Gå till datum</string>

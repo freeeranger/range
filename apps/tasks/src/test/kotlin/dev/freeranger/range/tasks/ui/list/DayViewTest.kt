@@ -63,13 +63,31 @@ class DayViewTest {
     }
 
     @Test
-    fun `a past day lists only what was ticked off on it, read from the history`() {
+    fun `a past day lists what was ticked off on it, read from the history, and what was missed`() {
         val thursday = friday.minusDays(1)
         val history = listOf(ticked(creatine, thursday.atTime(8, 5)), ticked(gym, thursday.atTime(18, 0)), ticked(milk, friday.atTime(9, 0)))
         val view = dayView(all, history, thursday, friday)
         assertEquals(listOf(gym, creatine), view.completed)
-        assertEquals(DayView(completed = view.completed), view)
-        assertEquals(emptyList<Task>(), dayView(all, history, friday.minusDays(2), friday).completed)
+        // Rent was due Thursday and is still open.
+        assertEquals(DayView(missed = listOf(rent), completed = view.completed), view)
+        assertEquals(DayView(), dayView(all, history, friday.minusDays(2), friday))
+    }
+
+    @Test
+    fun `a repeat's gone days are missed until something is logged for them, from the day it was made`() {
+        val monday = friday.minusDays(4)
+        // Made on Monday evening for 8:00 every day since Monday, so it started on Tuesday.
+        val made = Task(id = 7, title = "Stretch", createdAt = instant(monday.atTime(20, 0)), dueDate = friday, times = listOf(morning), repeat = Repeat(anchor = monday))
+        val tuesday = monday.plusDays(1)
+        val wednesday = monday.plusDays(2)
+        val history = listOf(ticked(made, tuesday.atTime(8, 5)))
+        assertEquals(emptyList<Task>(), dayView(listOf(made), history, monday, friday).missed)
+        assertEquals(emptyList<Task>(), dayView(listOf(made), history, tuesday, friday).missed)
+        assertEquals(listOf(made), dayView(listOf(made), history, wednesday, friday).missed)
+        // A late tick counts for the day it was for.
+        val late = Completion(taskId = made.id, day = wednesday, at = instant(friday.atTime(9, 0)))
+        assertEquals(listOf(made), dayView(listOf(made), history + late, wednesday, friday).completed)
+        assertEquals(emptyList<Task>(), dayView(listOf(made), history + late, wednesday, friday).missed)
     }
 
     @Test

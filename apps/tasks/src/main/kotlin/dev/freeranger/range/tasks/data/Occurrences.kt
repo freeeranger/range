@@ -5,6 +5,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 import java.time.temporal.TemporalAdjusters
 import kotlin.math.min
@@ -137,6 +138,22 @@ fun Task.days(until: LocalDate): List<LocalDate> {
 }
 
 fun Task.occursOn(day: LocalDate): Boolean = day in days(until = day)
+
+/**
+ * Whether [day], already gone, was one of the task's days: a one-off task's due day while it's
+ * still open, or a repeat's day from when the task was made up to the day it's on now (its last
+ * day, once the series is over). Whether it was ticked off then is the history's to say.
+ */
+fun Task.wasDueOn(day: LocalDate, zone: ZoneId = ZoneId.systemDefault()): Boolean {
+    val current = dueDate ?: return false
+    val repeat = repeat ?: return !isCompleted && day == current
+    val last = if (isCompleted) lastDoneDay ?: return false else current
+    if (day > last || !repeat.matches(day)) return false
+    // A task made in the evening for mornings starts the next day, as withSchedule has it.
+    val created = createdAt.atZone(zone)
+    val firstDay = created.toLocalDate()
+    return day > firstDay || (day == firstDay && (times.isEmpty() || times.any { it > created.toLocalTime() }))
+}
 
 private fun RepeatEnd.allows(day: LocalDate, index: Int): Boolean = when (this) {
     RepeatEnd.Never -> true

@@ -5,16 +5,18 @@ import dev.freeranger.range.tasks.data.RepeatUnit
 import dev.freeranger.range.tasks.data.Task
 import dev.freeranger.range.tasks.data.days
 import dev.freeranger.range.tasks.data.occursOn
+import dev.freeranger.range.tasks.data.wasDueOn
 import java.time.LocalDate
 import java.time.LocalTime
 
 /**
  * What the list shows for one day. Today has every section. A later day lists what falls on it,
  * including each repeat of a repeating task, which can't be ticked off early, and every undated
- * task: those stay on every day until they're done. An earlier day only lists what was ticked
- * off on it.
+ * task: those stay on every day until they're done. An earlier day lists what was ticked off on
+ * it, and what was due then but [missed], which can still be ticked off for that day.
  */
 data class DayView(
+    val missed: List<Task> = emptyList(),
     val overdue: List<Task> = emptyList(),
     val due: List<Task> = emptyList(),
     val anytime: List<Task> = emptyList(),
@@ -30,7 +32,7 @@ fun dayView(tasks: List<Task>, completions: List<Completion>, day: LocalDate, to
             anytime = tasks.filter { it.dueDate == null && !it.isCompleted }.sortedBy { it.createdAt },
         )
     }
-    if (day < today) return DayView(completed = completedOn(day, tasks, completions))
+    if (day < today) return DayView(missed = missedOn(day, tasks, completions), completed = completedOn(day, tasks, completions))
 
     val open = tasks.filterNot { it.isDone(today) }
     val view = DayView(
@@ -50,6 +52,12 @@ private fun completedOn(day: LocalDate, tasks: List<Task>, completions: List<Com
         .sortedByDescending { it.at }
         .distinctBy { it.taskId }
         .mapNotNull { byId[it.taskId] }
+}
+
+/** What fell on [day], already gone, and wasn't ticked off for it. */
+private fun missedOn(day: LocalDate, tasks: List<Task>, completions: List<Completion>): List<Task> {
+    val done = completions.filter { it.day == day }.mapTo(HashSet()) { it.taskId }
+    return tasks.filter { it.id !in done && it.wasDueOn(day) }.sortedWith(timeOrder)
 }
 
 /**

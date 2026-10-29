@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 
 data class TaskListState(
     val tasks: List<Task> = emptyList(),
@@ -24,8 +25,8 @@ data class TaskListState(
     val loaded: Boolean = false,
 )
 
-/** A tick that just happened, with the task as it was before so it can be undone. */
-data class Ticked(val before: Task, val after: Task)
+/** A tick that just happened, with the task as it was before, or the day logged after the fact, so it can be undone. */
+data class Ticked(val before: Task, val after: Task, val backfilled: Completion? = null)
 
 class TaskListViewModel(private val repository: TaskRepository) : ViewModel() {
     val state: StateFlow<TaskListState> = combine(repository.tasks, repository.completions) { tasks, completions ->
@@ -42,16 +43,27 @@ class TaskListViewModel(private val repository: TaskRepository) : ViewModel() {
         viewModelScope.launch { repository.add(title, details, schedule) }
     }
 
-    fun check(id: Long) {
+    /**
+     * Ticks off once, or from a past [day]'s page, for that day: the task's own tick if it's still
+     * on that day, otherwise the day is logged as done after all.
+     */
+    fun check(id: Long, day: LocalDate? = null) {
         viewModelScope.launch {
-            val before = repository.check(id) ?: return@launch
+            val task = repository.get(id) ?: return@launch
+            if (day != null && (task.isCompleted || task.dueDate != day)) {
+                repository.backfill(id, day)?.let { ticks.send(Ticked(task, task, it)) }
+                return@launch
+            }
+            val before = repository.check(id, on = day) ?: return@launch
             val after = repository.get(id) ?: return@launch
             if (after != before) ticks.send(Ticked(before, after))
         }
     }
 
-    fun undo(before: Task) {
-        viewModelScope.launch { repository.restore(before) }
+    fun undo(ticked: Ticked) {
+        viewModelScope.launch {
+            ticked.backfilled?.let { repository.unbackfill(it) } ?: repository.restore(ticked.before)
+        }
     }
 
     fun reopen(id: Long) {

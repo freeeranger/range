@@ -81,7 +81,8 @@ fun TaskListRoute(onOpenTask: (Long) -> Unit, onOpenSettings: () -> Unit, deleti
 
     // Every tick gets an Undo, as in Google Tasks: the one way to take back any tick.
     LaunchedEffect(viewModel) {
-        viewModel.ticked.collect { (before, after) ->
+        viewModel.ticked.collect { ticked ->
+            val (before, after) = ticked
             val message = if (after.doneCount > before.doneCount && after.doneCount < after.steps) {
                 resources.getString(R.string.snackbar_progress, after.title, after.doneCount, after.steps)
             } else {
@@ -89,7 +90,7 @@ fun TaskListRoute(onOpenTask: (Long) -> Unit, onOpenSettings: () -> Unit, deleti
             }
             snackbar.currentSnackbarData?.dismiss()
             val result = snackbar.showSnackbar(message, actionLabel = resources.getString(R.string.snackbar_undo), duration = SnackbarDuration.Short)
-            if (result == SnackbarResult.ActionPerformed) viewModel.undo(before)
+            if (result == SnackbarResult.ActionPerformed) viewModel.undo(ticked)
         }
     }
     LaunchedEffect(viewModel) {
@@ -123,7 +124,8 @@ fun TaskListRoute(onOpenTask: (Long) -> Unit, onOpenSettings: () -> Unit, deleti
 /** Everything the list can ask for, so the screen takes one parameter instead of six. */
 data class TaskListActions(
     val add: (title: String, details: String, schedule: Schedule?) -> Unit = { _, _, _ -> },
-    val check: (id: Long) -> Unit = {},
+    /** Ticks off once; from a past day's page, for that [day]. */
+    val check: (id: Long, day: LocalDate?) -> Unit = { _, _ -> },
     val reopen: (id: Long) -> Unit = {},
     val open: (id: Long) -> Unit = {},
     val openSettings: () -> Unit = {},
@@ -132,7 +134,8 @@ data class TaskListActions(
 /**
  * The task list for one day at a time: today by default, with a week strip above and the list
  * swiped sideways a day at a time. Today shows overdue, today's and undated tasks; later days
- * show what falls on them; earlier days show what was ticked off on them.
+ * show what falls on them; earlier days show what was ticked off on them, and what was missed,
+ * which can still be ticked off for that day.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -264,7 +267,7 @@ private fun DayList(
 ) {
     val today = now.toLocalDate()
     LazyColumn(Modifier.fillMaxSize(), contentPadding = contentPadding) {
-        val empty = if (day < today) view.completed.isEmpty() else !view.hasOpenTasks
+        val empty = if (day < today) view.completed.isEmpty() && view.missed.isEmpty() else !view.hasOpenTasks
         if (state.loaded && empty) {
             item(key = "empty") {
                 val message = when {
@@ -297,6 +300,9 @@ private fun DayList(
         }
         section("anytime", R.string.section_anytime, view.anytime) { task, itemModifier ->
             TaskRow(task, done = false, now, format, actions, due = null, modifier = itemModifier)
+        }
+        section("missed", R.string.section_missed, view.missed) { task, itemModifier ->
+            TaskRow(task, done = false, now, format, actions, due = timesText(task, format, today), missedOn = day, modifier = itemModifier)
         }
         if (day < today) {
             // History: nothing else is listed on a past day, so there's nothing to fold it away from.
@@ -351,7 +357,8 @@ private fun timesText(task: Task, format: TaskFormat, today: LocalDate): String?
  * One task. [done] rows sit under Completed and untick on tap. On open rows the ring ticks off
  * once; a task due several times a day fills a segment per tick and is done after the last.
  * A repeating task on a day that hasn't come yet can't be ticked, and neither can a [preview]
- * of one of its later repeats. A [history] row, on a past day, is read-only.
+ * of one of its later repeats. A [history] row, on a past day, is read-only. A row [missedOn] a
+ * past day ticks off for that day.
  */
 @Composable
 private fun TaskRow(
@@ -364,11 +371,13 @@ private fun TaskRow(
     modifier: Modifier = Modifier,
     preview: Boolean = false,
     history: Boolean = false,
+    missedOn: LocalDate? = null,
 ) {
     val today = now.toLocalDate()
-    val canCheck = !preview && task.canCheck(today)
+    val canCheck = missedOn != null || (!preview && task.canCheck(today))
     val colors = MaterialTheme.colorScheme
-    val doneCount = if (preview) 0 else task.doneCount
+    // A missed day's ticks are its own; only the day the task is still on has some already.
+    val doneCount = if (preview || (missedOn != null && task.dueDate != missedOn)) 0 else task.doneCount
 
     ListItem(
         modifier = modifier.clickable { actions.open(task.id) },
@@ -376,7 +385,7 @@ private fun TaskRow(
         leadingContent = {
             RangeCheckbox(
                 checked = done,
-                onCheckedChange = { if (done) actions.reopen(task.id) else actions.check(task.id) },
+                onCheckedChange = { if (done) actions.reopen(task.id) else actions.check(task.id, missedOn) },
                 contentDescription = stringResource(if (done) R.string.tasks_reopen else R.string.tasks_complete, task.title),
                 enabled = !history && (done || canCheck),
                 steps = task.steps,
@@ -410,7 +419,7 @@ private fun TaskRow(
                             Text(task.details, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                         if (due != null) {
-                            val color = if (!preview && task.isOverdue(now)) colors.error else colors.onSurfaceVariant
+                            val color = if (!preview && missedOn == null && task.isOverdue(now)) colors.error else colors.onSurfaceVariant
                             val icon = when {
                                 task.repeat != null -> RangeIcons.Repeat
                                 task.times.isNotEmpty() -> RangeIcons.Schedule
